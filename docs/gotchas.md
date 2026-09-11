@@ -43,6 +43,18 @@ both in one rule means a browser that does not know `:autofill` loses the WebKit
 fix too — yellow comes back on exactly the browsers that need the workaround.
 They are separate rules in `src/index.css`. Keep them separate.
 
+**The fill colour must follow the surface, not be named.** The first version of
+this rule hardcoded Sequel Silver as the inset shadow and Sequel Brown as the
+text, which was correct while every page was light — and painted a silver box
+with brown text on the dark login page the moment one existed. It now uses
+`--surface-bg`, published by `.surface-dark` / `.surface-light`, with
+`currentColor` for the text. Any new override that needs a background colour
+should do the same rather than naming one.
+
+The `transition: background-color 100000s` is the other half of the trick, not
+decoration: the inset shadow hides the initial fill, and deferring the
+transition by roughly a day stops Chrome repainting the background afterwards.
+
 Related: the engines differ in kind, not just in prefix.
 
 - WebKit/Blink paint a **background** that ignores `background-color` — cover it

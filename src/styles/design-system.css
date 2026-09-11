@@ -15,12 +15,14 @@
    * either one without knowing which it is standing on.
    */
   .surface-dark {
-    background-color: var(--color-sequel-brown);
+    --surface-bg: var(--color-sequel-brown);
+    background-color: var(--surface-bg);
     color: var(--color-sequel-silver);
   }
 
   .surface-light {
-    background-color: var(--color-sequel-silver);
+    --surface-bg: var(--color-sequel-silver);
+    background-color: var(--surface-bg);
     color: var(--color-sequel-brown);
   }
 

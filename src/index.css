@@ -121,7 +121,10 @@
      white flash between first paint and React mounting. */
   html,
   body {
-    background-color: var(--color-sequel-silver);
+    /* Declared here as well as on .surface-light so that anything outside a
+       surface still has a background to refer to. */
+    --surface-bg: var(--color-sequel-silver);
+    background-color: var(--surface-bg);
     color: var(--color-sequel-brown);
   }
 
@@ -161,15 +164,28 @@
      selector drops the whole rule it sits in, which would take the others with
      it if they shared a list.
 
+     Both rules follow the surface rather than naming a colour. An earlier
+     version hardcoded the light ground, which was correct while every page was
+     light and painted a silver box on the dark login page the moment one
+     existed. `--surface-bg` is set by .surface-dark / .surface-light, so a
+     field inherits whichever ground it is standing on.
+
      WebKit and Blink paint a yellow BACKGROUND that ignores background-color,
      so it has to be covered by a large inset shadow, and the text needs
-     -webkit-text-fill-color because `color` is ignored too. */
+     -webkit-text-fill-color because `color` is ignored too. The absurd
+     transition delay is the second half of the trick: the shadow hides the
+     fill, and deferring any background-color transition by roughly a day stops
+     Chrome repainting it afterwards. */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus {
-    -webkit-text-fill-color: var(--color-sequel-brown);
-    -webkit-box-shadow: 0 0 0 1000px var(--color-sequel-silver) inset;
-    caret-color: var(--color-sequel-brown);
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: currentColor;
+    -webkit-box-shadow: 0 0 0 1000px var(--surface-bg) inset;
+    caret-color: currentColor;
+    transition: background-color 100000s ease-in-out 0s;
   }
 
   /* Firefox instead applies a FILTER over the field, which no background
@@ -177,9 +193,13 @@
      :autofill selector also covers current Chrome, Safari and Edge. */
   input:autofill,
   input:autofill:hover,
-  input:autofill:focus {
+  input:autofill:focus,
+  input:autofill:active,
+  textarea:autofill,
+  select:autofill {
     filter: none;
-    box-shadow: 0 0 0 1000px var(--color-sequel-silver) inset;
-    caret-color: var(--color-sequel-brown);
+    box-shadow: 0 0 0 1000px var(--surface-bg) inset;
+    caret-color: currentColor;
+    transition: background-color 100000s ease-in-out 0s;
   }
 }
