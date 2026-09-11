@@ -72,9 +72,10 @@ the full brand pass.
 
 Outstanding:
 
-1. **Staff sign-in cannot work yet**: `auth.users` is empty, the Magic Link
-   email template still sends a link rather than `{{ .Token }}`, and custom
-   SMTP is not configured. [`auth.md`](auth.md) lists every step.
+1. **Staff sign-in needs four dashboard settings before it works**: the Magic
+   Link template must carry `{{ .Token }}` rather than a link, OTP expiry set
+   to 600s, signups closed, and Resend SMTP entered. The three staff accounts
+   exist. [`auth.md`](auth.md) lists every step.
 2. `xano-webhook` is deployed but **inert until two secrets are set** in the
    Supabase dashboard: `XANO_WEBHOOK_SECRET` and `APP_BASE_URL`. Until then
    every call returns 500 naming what is missing. Contract in
