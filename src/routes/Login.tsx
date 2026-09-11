@@ -1,12 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useSession } from '../lib/auth'
 import { loginErrorMessage } from '../lib/authErrors'
 import { supabase } from '../lib/supabase'
-
-/** Supabase refuses a second code inside a minute; the UI says so rather than
- *  letting someone earn a rate-limit error by pressing the button again. */
-const RESEND_SECONDS = 60
 
 export default function Login() {
   const session = useSession()
@@ -16,14 +12,7 @@ export default function Login() {
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [cooldown, setCooldown] = useState(0)
   const codeInput = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (cooldown <= 0) return
-    const id = setTimeout(() => setCooldown((s) => s - 1), 1000)
-    return () => clearTimeout(id)
-  }, [cooldown])
 
   // Already signed in — nothing to do here.
   if (session) return <Navigate to="/" replace />
@@ -47,7 +36,6 @@ export default function Login() {
       return
     }
     setStep('code')
-    setCooldown(RESEND_SECONDS)
     setTimeout(() => codeInput.current?.focus(), 0)
   }
 
@@ -128,13 +116,10 @@ export default function Login() {
           method="post"
           className="flex w-full max-w-[22rem] flex-col"
         >
-          <h1 className="display-heading mb-4">Check your email</h1>
-          <p className="field-label mb-6 opacity-65">
-            A 6-digit code is on its way to {email}. It expires in 10 minutes.
-          </p>
+          <h1 className="display-heading mb-4">Login</h1>
 
           <label className="field-label" htmlFor="code">
-            Code
+            Pin
           </label>
           <input
             id="code"
@@ -147,8 +132,8 @@ export default function Login() {
             autoComplete="one-time-code"
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-            placeholder="000000"
-            className="field-underline mt-2 tracking-[0.5em]"
+            placeholder="Enter 6-digit Code"
+            className="field-underline mt-2"
           />
 
           {error && <p className="form-error mt-3">{error}</p>}
@@ -160,28 +145,6 @@ export default function Login() {
           >
             {busy ? 'Checking…' : 'Login'}
           </button>
-
-          <div className="mt-6 flex gap-6">
-            <button
-              type="button"
-              disabled={busy || cooldown > 0}
-              onClick={() => void requestCode()}
-              className="corner-note underline disabled:no-underline"
-            >
-              {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStep('email')
-                setCode('')
-                setError(null)
-              }}
-              className="corner-note underline"
-            >
-              Use a different email
-            </button>
-          </div>
         </form>
       )}
 
