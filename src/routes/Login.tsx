@@ -92,13 +92,18 @@ export default function Login() {
           <label className="field-label" htmlFor="email">
             Email
           </label>
+          {/* autoComplete is "username", not "email". The first tells a password
+              manager this is the account identifier for a login, so it offers
+              saved sign-ins for this site; the second says it is an address to
+              fill from the address book, which is why the suggestions came back
+              as a generic contact list. */}
           <input
             id="email"
             name="email"
             type="email"
             required
             autoFocus
-            autoComplete="email"
+            autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email Address"
