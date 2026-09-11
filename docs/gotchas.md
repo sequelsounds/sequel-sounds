@@ -56,7 +56,17 @@ took two passes to get right:
    overridden.
 
 Both now name `--surface-fg` / `--surface-bg`, published by `.surface-dark` and
-`.surface-light`. **Inside an autofilled field, treat `currentColor` as
+`.surface-light`.
+
+**It is not only colour — the font is replaced too.** Browsers restyle an
+autofilled field rather than merely tinting it, deliberately, so a site cannot
+disguise what has been filled in. `font-family` is part of that. Unlike the
+background and the text colour, it needs no hack: it is overridable, but it has
+to be declared in a rule that *matches the autofill state*. A family on the
+field's own class does not, which is why an autofilled field came out in the
+system font while everything around it stayed Creato. All three autofill rules
+now restate it, and `.field-boxed` declares its family instead of inheriting
+one — an inherited value is one more thing there is nothing to override. **Inside an autofilled field, treat `currentColor` as
 unavailable.** `.field-underline` and `.field-boxed` take their border and text
 from `--surface-fg` for the same reason: a border drawn from `currentColor`
 turns dark as soon as Chrome fills the field.

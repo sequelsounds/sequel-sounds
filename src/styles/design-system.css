@@ -99,6 +99,9 @@
     border: 1px solid var(--surface-fg);
     background-color: transparent;
     color: var(--surface-fg);
+    /* Stated rather than inherited: an inherited family is one more thing the
+       browser's autofill styling can quietly replace. */
+    font-family: var(--font-sans);
     font-size: 0.875rem;
   }
 

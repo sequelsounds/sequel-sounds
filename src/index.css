@@ -178,6 +178,13 @@
      fill, and deferring any background-color transition by roughly a day stops
      Chrome repainting it afterwards.
 
+     The font is restated here too. Browsers do not only tint an autofilled
+     field, they restyle it — deliberately, so a site cannot disguise what has
+     been filled in — and the family is part of that. Unlike the background and
+     the text colour, which need the two hacks above, the family is simply
+     overridable; it just has to be declared in a rule that matches the autofill
+     state, which the field's own class does not.
+
      Both colours are named through --surface-fg / --surface-bg and NOT through
      currentColor. -webkit-text-fill-color exists because the browser has
      already overridden `color` on an autofilled field, so currentColor resolves
@@ -190,6 +197,7 @@
   textarea:-webkit-autofill,
   select:-webkit-autofill {
     -webkit-text-fill-color: var(--surface-fg);
+    font-family: var(--font-sans);
     -webkit-box-shadow: 0 0 0 1000px var(--surface-bg) inset;
     caret-color: var(--surface-fg);
     transition: background-color 100000s ease-in-out 0s;
@@ -205,6 +213,7 @@
   textarea:autofill,
   select:autofill {
     filter: none;
+    font-family: var(--font-sans);
     box-shadow: 0 0 0 1000px var(--surface-bg) inset;
     color: var(--surface-fg);
     caret-color: var(--surface-fg);
@@ -220,6 +229,7 @@
   textarea:-moz-autofill,
   select:-moz-autofill {
     filter: none;
+    font-family: var(--font-sans);
     box-shadow: 0 0 0 1000px var(--surface-bg) inset;
     color: var(--surface-fg);
     caret-color: var(--surface-fg);
