@@ -1,0 +1,112 @@
+# Gotchas
+
+Things that cost time once. Each is real and was hit in this repo.
+
+## S3 secret lengths are validated, on purpose
+
+`sign-upload` checks that `S3_ACCESS_KEY_ID` is exactly 20 characters and
+`S3_SECRET_ACCESS_KEY` exactly 40, and refuses to run if not.
+
+Without it, a truncated or whitespace-padded secret pasted into the Supabase
+dashboard fails at *signing* time — S3 returns `SignatureDoesNotMatch`, which
+reads like a code bug and sends you looking in entirely the wrong place. The
+check turns a mystery into `S3_SECRET_ACCESS_KEY is 39 chars, expected 40`.
+
+The error response reports **names and lengths only, never values**. Keep it
+that way: this endpoint is reachable by anyone holding a share token.
+
+Secrets live in the Supabase dashboard (Edge Functions → Secrets) and never in
+the repo: `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`, `S3_BUCKET`.
+
+## An empty `file.type` breaks uploads
+
+Browsers hand back `''` for `file.type` on plenty of real AIFF and FLAC files,
+and `sign-upload` rejects anything that is not `audio/*` or `video/*` with a 415.
+On a 50-file drop that silently loses files.
+
+`contentTypeFor()` in `src/lib/upload.ts` falls back to an extension lookup.
+Fixed client-side deliberately, so the Edge Function needs no redeploy — and the
+same resolved type is used for the presign, the PUT header and the `mime_type`
+column so all three agree.
+
+## Tailwind v4: bare `rounded` is not a theme token
+
+Zeroing `--radius-*` in `@theme` does **not** make `rounded` square — the bare
+class is a hardcoded `.25rem`. Two elements stayed curved after the scale was
+zeroed. Both are now done: the scale is zeroed *and* no `rounded*` class exists
+in markup.
+
+## `:autofill` and `:-webkit-autofill` cannot share a selector list
+
+CSS drops an **entire rule** if any selector in its list is unrecognised. Putting
+both in one rule means a browser that does not know `:autofill` loses the WebKit
+fix too — yellow comes back on exactly the browsers that need the workaround.
+They are separate rules in `src/index.css`. Keep them separate.
+
+Related: the engines differ in kind, not just in prefix.
+
+- WebKit/Blink paint a **background** that ignores `background-color` — cover it
+  with a large inset `box-shadow`, and set `-webkit-text-fill-color` because
+  `color` is ignored as well.
+- Firefox applies a **`filter`** over the field. `filter: none` is what clears
+  it; no background override will.
+- Firefox also draws `::-moz-focus-inner` on buttons and rings a half-typed
+  `type="email"` via `:-moz-ui-invalid`. Both are reset.
+
+## `:focus-visible` ignores programmatic focus
+
+Calling `.focus()` from a script does not match `:focus-visible` — the browser
+reserves it for keyboard interaction. A check that reported `outline: none` on a
+button looked like a broken style and was a broken *test*. Send real Tab
+keypresses.
+
+## `useRef`'s initial value is evaluated once
+
+`useRef(loadSent(token))` keeps the value from mount. React Router changes the
+`:token` param **without remounting**, so switching inbox links client-side left
+the page holding the previous inbox's keys and mis-flagging files.
+
+Fixed structurally: the route is a wrapper rendering `<Inbox key={token} />`.
+Prefer remounting over patching refs when *all* of a component's state belongs
+to the thing that changed.
+
+## `input.files = …` then reading it back reports zero
+
+The change handler resets `e.target.value = ''` so the same file can be picked
+twice in a row. Any test that assigns `input.files`, dispatches `change`, then
+reads `input.files.length` sees `0` and looks like a failure. Measure before
+dispatching.
+
+Also: `new File(...)` without an explicit `lastModified` defaults to
+`Date.now()`, so two "identical" test files get different dedupe keys. Set it
+explicitly when testing duplicates.
+
+## `text-transform: uppercase` does not change `textContent`
+
+A button reading `BROWSE` on screen still has `textContent === 'Browse'`.
+Case-insensitive matching in tests, always.
+
+## Library tags can be sales copy
+
+Production-music libraries stuff descriptions into the ID3 title field. One real
+file arrived titled *"QUEEN OF THE NIGHT ARIA from The Magic Flute --- Fierce
+soprano aria with famous ridiculously high climax. Wri…"*. The rule "filename
+wins only when the tag is empty" does not help — the tag is not empty, just
+useless. **Open question**, no decision yet.
+
+## The dev server port is not pinned
+
+`vite.config.ts` sets no port, so 5173 is only Vite's default. If something else
+holds it, Vite silently increments and `.claude/launch.json` is then wrong. Add
+`server: { port: 5173, strictPort: true }` if that ever bites.
+
+## The Lambda lives outside this repo
+
+Nothing here can change preview rendering, peaks, or the planned `content_hash`
+work. The contract is written down in the README; the code is elsewhere.
+
+## Edge Functions need deploying separately
+
+Editing `supabase/functions/sign-upload/index.ts` changes nothing in production
+until `supabase functions deploy sign-upload` runs. The duplicate pre-check is
+currently **written but not deployed**.

@@ -1,0 +1,67 @@
+# CLAUDE.md
+
+Working notes for Claude in this repo. Read `docs/overview.md` first for what
+the product is; this file is about how to work here.
+
+## Commands
+
+```bash
+npm run dev     # Vite dev server on :5173 (not pinned — see gotchas)
+npm run build   # tsc -b && vite build
+npm run lint    # oxlint
+npm run types   # regenerate src/lib/database.types.ts (needs the supabase CLI)
+```
+
+There is **no Prettier config**, but the codebase is Prettier-formatted with
+`--no-semi --single-quote`. Match it. If a scripted edit disturbs formatting,
+reformat with exactly those flags rather than hand-fixing indentation.
+
+The `supabase` CLI is **not installed** on this machine. `npm run types` will
+fail; patch `src/lib/database.types.ts` by hand after a migration and keep it
+alphabetical, the way the generator emits it.
+
+## Before you change anything
+
+- **Read the live database, not just the migrations.** They have matched so far,
+  but the Supabase MCP can query `sveirphsppyfhulymjiu` directly and that is the
+  truth. Several "bugs" this session were data, not code — a string in
+  `projects_mirror.client_name`, not a hardcoded label.
+- **Read the Webflow site for anything visual.** Brand values are not guesses:
+  the site at `sequelsounds.app` (id `68e6c2e8dbcd39de2547a97d`) is queryable,
+  and computed styles off the live page settle colour, spacing and type
+  questions exactly. See `docs/decisions.md`.
+
+## Conventions
+
+- Tailwind v4. Design tokens live in `@theme` in `src/index.css`; brand colours
+  are `sequel-brown`, `sequel-silver`, `sequel-asphalt`. **No `neutral-*`
+  classes** — they are cool greys on a warm palette and read as washed out.
+- **Zero border radius.** The whole radius scale is zeroed in `@theme` and there
+  are no `rounded*` classes in markup. Both, deliberately — see gotchas.
+- Fonts are self-hosted in `public/fonts/`, never linked from a CDN. All use
+  `font-display: block`, and the above-the-fold faces are preloaded in
+  `index.html`.
+- Comments explain *why*, not what. Match the density already in `src/lib/`.
+
+## Things that are easy to get wrong
+
+- **Partners never fill in forms.** The inbox page takes a name/email/company
+  once per browser and nothing else. Do not add per-track fields; staff edit
+  metadata in the library.
+- **Browser-side metadata is a first pass.** The Lambda re-reads tags server-side
+  and is authoritative. Never make an upload depend on a browser tag read.
+- **Nothing blocks an upload on a guess.** Duplicate detection is advisory at
+  every layer. Losing a track that belonged is worse than storing it twice.
+- **Never commit font files you have not licensed**, and never write secret
+  values into the repo or into error messages. `sign-upload` reports secret
+  *names and lengths* only, on purpose.
+
+## Verifying work
+
+Prefer checking the running app over asserting it works. The in-app browser can
+drive `localhost:5173`, and reading computed styles or the DOM beats reasoning
+about CSS. When testing uploads, clean up afterwards: delete both the `tracks`
+row and the S3 object.
+
+`:focus-visible` does not match a programmatic `.focus()` — only real keyboard
+interaction. Test focus styles by sending Tab keypresses.
