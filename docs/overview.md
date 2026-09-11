@@ -87,10 +87,11 @@ Outstanding:
 
 ```
 src/routes/Inbox.tsx     the bulk drop page
-src/lib/                 dropFiles, filename, tags, partner, sentFiles,
+src/lib/                 dropFiles, tags, partner, sentFiles,
                          uploadQueue, upload, tokenClient
 supabase/migrations/     0001 init · 0002 lock triggers
                          0003 submitter + tags · 0004 content hash
-supabase/functions/      sign-upload · xano-webhook
+supabase/functions/      sign-upload · xano-webhook · track-processed
+lambda/process-track/    the ffmpeg pass
 docs/                    architecture · auth · decisions · gotchas · xano-sync
 ```

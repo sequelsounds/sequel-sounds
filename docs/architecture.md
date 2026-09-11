@@ -12,7 +12,7 @@ Xano.
 | Supabase project | `sveirphsppyfhulymjiu`, eu-west-2, Postgres 17.4 |
 | S3 bucket | `sequel-sounds-media`, eu-west-2 |
 | Edge Function | `supabase/functions/sign-upload` |
-| ffmpeg Lambda | **outside this repo** — contract in the README |
+| ffmpeg Lambda | `lambda/process-track` (Node 20, ffmpeg via our own layer) |
 | Marketing / app site | Webflow `68e6c2e8dbcd39de2547a97d`, sequelsounds.app |
 
 ## Who can do what
@@ -97,11 +97,27 @@ Three layers, all advisory — nothing rejects an upload:
 | Layer | Catches | Status |
 | --- | --- | --- |
 | `localStorage`, per inbox token | same browser, survives reload | live |
-| `sign-upload` filename + size, per project | other devices, other partners | **written, not deployed** |
-| Lambda SHA-256 → `content_hash` / `duplicate_of` | renames, anything else | **not implemented** |
+| `sign-upload` filename + size, per project | other devices, other partners | live |
+| Lambda SHA-256 → `content_hash` / `duplicate_of` | renames, anything else | live |
 
 The browser never hashes: pushing a 5 GB drop through SubtleCrypto before the
 first byte uploads would stall the drop it is meant to protect.
+
+## Processing
+
+`lambda/process-track` runs on S3 `ObjectCreated` for `tracks/*/original.*` and
+is the authority on what a file is. It writes `preview.mp3` (or a 720p `mp4`),
+`peaks.json` and `artwork.jpg` beside the original, reads every tag with
+ffprobe, hashes the bytes, and POSTs the result to the `track-processed` Edge
+Function — which is the only thing that writes to the database.
+
+That split is deliberate: the Lambda runs arbitrary partner-supplied media
+through ffmpeg, and that is the last place that should also hold a service-role
+key. It has an S3 role limited to `tracks/*` and one shared secret.
+
+**Metadata is never rewritten.** A title is the embedded title verbatim, or the
+filename minus its extension. `embedded_tags` keeps the whole ffprobe dump, so
+a field we have not mapped is not lost.
 
 ## Xano sync
 

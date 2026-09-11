@@ -1,5 +1,6 @@
 import { parseBlob } from 'music-metadata'
-import { titleFromFilename } from './filename'
+
+const EXTENSION = /\.[^.]+$/
 
 export type FileTags = {
   title: string
@@ -10,10 +11,19 @@ export type FileTags = {
   duration_seconds: number | null
 }
 
-function clean(value: unknown): string | null {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  return trimmed === '' ? null : trimmed
+/**
+ * The title rule, and the whole of it: the embedded title exactly as the file
+ * carries it, or the filename with its extension removed. Nothing is tidied,
+ * expanded or second-guessed — a track called `03_-_Master_v2` is called that,
+ * and staff rename it in the library if they want it different.
+ */
+export function titleFor(filename: string, embedded: unknown): string {
+  if (typeof embedded === 'string' && embedded.trim() !== '') return embedded
+  return filename.replace(EXTENSION, '')
+}
+
+function text(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() !== '' ? value : null
 }
 
 function numeric(value: unknown): number | null {
@@ -22,14 +32,14 @@ function numeric(value: unknown): number | null {
 }
 
 /**
- * Best-effort tag read in the browser. This is a convenience pass so the
- * partner can see what they dropped — the ffmpeg Lambda re-reads the file
- * server-side and is the authoritative source. Anything unreadable here just
- * falls back to the filename; it is never an upload error.
+ * Best-effort tag read in the browser, so the partner can see what they
+ * dropped. The Lambda re-reads the file server-side and overwrites all of it,
+ * so nothing here needs to be complete or even correct — it must only never
+ * throw, because an unreadable tag is not a reason to refuse an upload.
  */
 export async function readTags(file: File): Promise<FileTags> {
   const fallback: FileTags = {
-    title: titleFromFilename(file.name),
+    title: titleFor(file.name, null),
     artist: null,
     album: null,
     bpm: null,
@@ -40,12 +50,11 @@ export async function readTags(file: File): Promise<FileTags> {
   try {
     const { common, format } = await parseBlob(file, { duration: true })
     return {
-      // Filename wins when the tag is absent or blank, as specified.
-      title: clean(common.title) ?? fallback.title,
-      artist: clean(common.artist) ?? clean(common.albumartist),
-      album: clean(common.album),
+      title: titleFor(file.name, common.title),
+      artist: text(common.artist) ?? text(common.albumartist),
+      album: text(common.album),
       bpm: numeric(common.bpm),
-      musical_key: clean(common.key),
+      musical_key: text(common.key),
       duration_seconds: numeric(format.duration),
     }
   } catch {

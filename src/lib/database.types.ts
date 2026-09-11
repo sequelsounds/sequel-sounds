@@ -326,106 +326,145 @@ export type Database = {
           album: string | null
           artist: string | null
           bpm: number | null
+          comments: string | null
           composer: string | null
           contact_email: string | null
           content_hash: string | null
           created_at: string
+          disc_no: number | null
           duration_seconds: number | null
           duplicate_of: string | null
+          genre: string | null
+          grouping: string | null
           id: string
           inbox_id: string | null
+          isrc: string | null
+          iswc: string | null
           kind: Database["public"]["Enums"]["track_kind"]
           label: string | null
+          embedded_tags: Json | null
           mime_type: string | null
           musical_key: string | null
           notes: string | null
           original_filename: string | null
+          pro_number: string | null
           preview_key: string | null
           processing_error: string | null
           processing_status: Database["public"]["Enums"]["processing_status"]
           project_id: string
           publisher: string | null
+          release_date: string | null
           s3_key: string | null
           size_bytes: number | null
+          staff_notes: string | null
           status: Database["public"]["Enums"]["track_status"]
           submitter_company: string | null
           submitter_email: string | null
           submitter_name: string | null
           supplier_id: string | null
+          track_no: number | null
           title: string
+          year: number | null
           updated_at: string
+          artwork_s3_key: string | null
           waveform_peaks: Json | null
-          writers: string | null
+          writers: Json | null
         }
         Insert: {
           album?: string | null
           artist?: string | null
           bpm?: number | null
+          comments?: string | null
           composer?: string | null
           contact_email?: string | null
           content_hash?: string | null
           created_at?: string
+          disc_no?: number | null
           duration_seconds?: number | null
           duplicate_of?: string | null
+          genre?: string | null
+          grouping?: string | null
           id?: string
           inbox_id?: string | null
+          isrc?: string | null
+          iswc?: string | null
           kind?: Database["public"]["Enums"]["track_kind"]
           label?: string | null
+          embedded_tags?: Json | null
           mime_type?: string | null
           musical_key?: string | null
           notes?: string | null
           original_filename?: string | null
+          pro_number?: string | null
           preview_key?: string | null
           processing_error?: string | null
           processing_status?: Database["public"]["Enums"]["processing_status"]
           project_id: string
           publisher?: string | null
+          release_date?: string | null
           s3_key?: string | null
           size_bytes?: number | null
+          staff_notes?: string | null
           status?: Database["public"]["Enums"]["track_status"]
           submitter_company?: string | null
           submitter_email?: string | null
           submitter_name?: string | null
           supplier_id?: string | null
+          track_no?: number | null
           title: string
+          year?: number | null
           updated_at?: string
+          artwork_s3_key?: string | null
           waveform_peaks?: Json | null
-          writers?: string | null
+          writers?: Json | null
         }
         Update: {
           album?: string | null
           artist?: string | null
           bpm?: number | null
+          comments?: string | null
           composer?: string | null
           contact_email?: string | null
           content_hash?: string | null
           created_at?: string
+          disc_no?: number | null
           duration_seconds?: number | null
           duplicate_of?: string | null
+          genre?: string | null
+          grouping?: string | null
           id?: string
           inbox_id?: string | null
+          isrc?: string | null
+          iswc?: string | null
           kind?: Database["public"]["Enums"]["track_kind"]
           label?: string | null
+          embedded_tags?: Json | null
           mime_type?: string | null
           musical_key?: string | null
           notes?: string | null
           original_filename?: string | null
+          pro_number?: string | null
           preview_key?: string | null
           processing_error?: string | null
           processing_status?: Database["public"]["Enums"]["processing_status"]
           project_id?: string
           publisher?: string | null
+          release_date?: string | null
           s3_key?: string | null
           size_bytes?: number | null
+          staff_notes?: string | null
           status?: Database["public"]["Enums"]["track_status"]
           submitter_company?: string | null
           submitter_email?: string | null
           submitter_name?: string | null
           supplier_id?: string | null
+          track_no?: number | null
           title?: string
+          year?: number | null
           updated_at?: string
+          artwork_s3_key?: string | null
           waveform_peaks?: Json | null
-          writers?: string | null
+          writers?: Json | null
         }
         Relationships: [
           {
