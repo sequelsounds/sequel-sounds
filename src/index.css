@@ -199,6 +199,22 @@
   select:autofill {
     filter: none;
     box-shadow: 0 0 0 1000px var(--surface-bg) inset;
+    color: inherit;
+    caret-color: currentColor;
+    transition: background-color 100000s ease-in-out 0s;
+  }
+
+  /* Firefox before 86 only knows the prefixed selector, and :-moz-autofill-preview
+     is the ghosted value shown while a suggestion is merely highlighted. Its own
+     rule again: neither name is understood by other engines, and sharing a list
+     would take the standard rule down with it. */
+  input:-moz-autofill,
+  input:-moz-autofill-preview,
+  textarea:-moz-autofill,
+  select:-moz-autofill {
+    filter: none;
+    box-shadow: 0 0 0 1000px var(--surface-bg) inset;
+    color: inherit;
     caret-color: currentColor;
     transition: background-color 100000s ease-in-out 0s;
   }

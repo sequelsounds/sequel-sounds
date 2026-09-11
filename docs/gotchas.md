@@ -61,7 +61,10 @@ Related: the engines differ in kind, not just in prefix.
   with a large inset `box-shadow`, and set `-webkit-text-fill-color` because
   `color` is ignored as well.
 - Firefox applies a **`filter`** over the field. `filter: none` is what clears
-  it; no background override will.
+  it; no background override will. Firefox before 86 knows only
+  `:-moz-autofill`, and `:-moz-autofill-preview` is the ghosted value shown
+  while a suggestion is merely highlighted — both in a third rule of their own,
+  for the same reason.
 - Firefox also draws `::-moz-focus-inner` on buttons and rings a half-typed
   `type="email"` via `:-moz-ui-invalid`. Both are reset.
 
