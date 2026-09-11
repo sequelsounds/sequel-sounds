@@ -121,10 +121,17 @@ export default function Login() {
           <label className="field-label" htmlFor="code">
             Pin
           </label>
+          {/* data-* opt-outs for LastPass, 1Password and Dashlane. Without them a
+              short numeric field gets treated as something to save and offer
+              back, which is useless for a code that is dead in ten minutes.
+              These are the same three the Webflow pin field carries. */}
           <input
             id="code"
             name="one-time-code"
             ref={codeInput}
+            data-lpignore="true"
+            data-1p-ignore=""
+            data-form-type="other"
             required
             inputMode="numeric"
             pattern="[0-9]*"
