@@ -69,15 +69,14 @@ the full brand pass.
 
 Outstanding:
 
-1. `sign-upload`'s duplicate pre-check is **written but not deployed** —
-   `supabase functions deploy sign-upload`.
+1. `xano-webhook` is deployed but **inert until two secrets are set** in the
+   Supabase dashboard: `XANO_WEBHOOK_SECRET` and `APP_BASE_URL`. Until then
+   every call returns 500 naming what is missing. Contract in
+   [`xano-sync.md`](xano-sync.md).
 2. The Lambda's `content_hash` / `duplicate_of` work is **not started**; the
    columns and indexes exist, nothing writes them.
-3. Test uploads are still in the database and S3 — 7 tracks, ~193 MB, all in
-   the two TEST projects, including **three** copies of
-   `QUEEN_OF_THE_NIGHT_ARIA.wav` (the third landed before the dedupe fix).
-4. Open question: library tags whose "title" is a paragraph of sales copy.
-5. Upload errors still render in `text-red-600`, the last off-palette colour.
+3. Open question: library tags whose "title" is a paragraph of sales copy.
+4. Upload errors still render in `text-red-600`, the last off-palette colour.
 
 ## Map
 
@@ -87,6 +86,6 @@ src/lib/                 dropFiles, filename, tags, partner, sentFiles,
                          uploadQueue, upload, tokenClient
 supabase/migrations/     0001 init · 0002 lock triggers
                          0003 submitter + tags · 0004 content hash
-supabase/functions/      sign-upload
-docs/                    architecture · decisions · gotchas
+supabase/functions/      sign-upload · xano-webhook
+docs/                    architecture · decisions · gotchas · xano-sync
 ```

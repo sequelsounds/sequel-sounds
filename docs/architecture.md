@@ -103,6 +103,18 @@ Three layers, all advisory — nothing rejects an upload:
 The browser never hashes: pushing a 5 GB drop through SubtleCrypto before the
 first byte uploads would stall the drop it is meant to protect.
 
+## Xano sync
+
+Xano owns projects and suppliers; this app mirrors them. `xano-webhook` receives
+a change and upserts on `xano_id`, then returns the project's inbox URL so Xano
+can store the link it hands to partners. Upserts make retries safe. Deletes are
+deliberately unsupported — tracks and playlists hang off `projects_mirror` by
+foreign key and would cascade.
+
+It is the only Edge Function with `verify_jwt` disabled: the caller is a server
+holding a shared secret, and the publishable key would prove nothing. Full
+contract in [`xano-sync.md`](xano-sync.md).
+
 ## Schema
 
 `supabase/migrations/`, applied in order:

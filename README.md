@@ -15,6 +15,7 @@ RLS by `app.request_token()`.
 - [`docs/architecture.md`](docs/architecture.md) — how the pieces fit
 - [`docs/decisions.md`](docs/decisions.md) — why things are the way they are
 - [`docs/gotchas.md`](docs/gotchas.md) — traps that cost time once
+- [`docs/xano-sync.md`](docs/xano-sync.md) — the Xano → Supabase webhook contract
 
 ## Setup
 
