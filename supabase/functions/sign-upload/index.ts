@@ -41,6 +41,30 @@ function extensionOf(filename: string): string | null {
   return ALLOWED_EXT.has(ext) ? ext : null
 }
 
+/** Config sanity, so a mistyped secret fails loudly instead of as a bad signature. */
+function readConfig() {
+  const missing: string[] = []
+  const get = (name: string) => {
+    const v = Deno.env.get(name)
+    if (!v) missing.push(name)
+    return v ?? ''
+  }
+  const cfg = {
+    bucket: get('S3_BUCKET'),
+    region: get('S3_REGION'),
+    accessKeyId: get('S3_ACCESS_KEY_ID'),
+    secretAccessKey: get('S3_SECRET_ACCESS_KEY'),
+  }
+  const problems = [...missing.map((m) => `${m} is not set`)]
+  if (cfg.accessKeyId && cfg.accessKeyId.length !== 20) {
+    problems.push(`S3_ACCESS_KEY_ID is ${cfg.accessKeyId.length} chars, expected 20`)
+  }
+  if (cfg.secretAccessKey && cfg.secretAccessKey.length !== 40) {
+    problems.push(`S3_SECRET_ACCESS_KEY is ${cfg.secretAccessKey.length} chars, expected 40`)
+  }
+  return { cfg, problems }
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
 
@@ -49,6 +73,12 @@ Deno.serve(async (req) => {
   }
   if (req.method !== 'POST') {
     return json({ error: 'method not allowed' }, 405, origin)
+  }
+
+  const { cfg, problems } = readConfig()
+  if (problems.length) {
+    // Names and lengths only — never the values.
+    return json({ error: 'storage is misconfigured', problems }, 500, origin)
   }
 
   const token = req.headers.get('x-share-token')
@@ -95,19 +125,17 @@ Deno.serve(async (req) => {
     return json({ error: 'this link has expired' }, 403, origin)
   }
 
-  const bucket = Deno.env.get('S3_BUCKET')!
-  const region = Deno.env.get('S3_REGION')!
   const aws = new AwsClient({
-    accessKeyId: Deno.env.get('S3_ACCESS_KEY_ID')!,
-    secretAccessKey: Deno.env.get('S3_SECRET_ACCESS_KEY')!,
-    region,
+    accessKeyId: cfg.accessKeyId,
+    secretAccessKey: cfg.secretAccessKey,
+    region: cfg.region,
     service: 's3',
   })
 
   const trackId = crypto.randomUUID()
   const key = `tracks/${trackId}/original.${ext}`
 
-  const target = new URL(`https://${bucket}.s3.${region}.amazonaws.com/${key}`)
+  const target = new URL(`https://${cfg.bucket}.s3.${cfg.region}.amazonaws.com/${key}`)
   target.searchParams.set('X-Amz-Expires', String(URL_TTL_SECONDS))
 
   const signed = await aws.sign(target.toString(), {
