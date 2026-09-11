@@ -80,18 +80,17 @@ export default function Login() {
           <label className="field-label" htmlFor="email">
             Email
           </label>
-          {/* autoComplete is "username", not "email". The first tells a password
-              manager this is the account identifier for a login, so it offers
-              saved sign-ins for this site; the second says it is an address to
-              fill from the address book, which is why the suggestions came back
-              as a generic contact list. */}
+          {/* "email", not "username". "username" invites the password manager to
+              attach to the field, and this flow has no password for it to ever
+              save — so it finds nothing and offers a bare "Manage Passwords"
+              menu every time. An address is genuinely what we want filled. */}
           <input
             id="email"
             name="email"
             type="email"
             required
             autoFocus
-            autoComplete="username"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email Address"
