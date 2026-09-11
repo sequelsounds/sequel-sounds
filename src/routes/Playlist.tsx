@@ -5,7 +5,7 @@ export default function Playlist() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Playlist</h1>
-      <p className="text-sm text-neutral-500">
+      <p className="text-sm text-sequel-brown/70">
         Ordering, theme editor, share link and viewer stats go here. ({id})
       </p>
     </div>

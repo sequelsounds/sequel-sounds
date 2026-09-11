@@ -323,16 +323,21 @@ export type Database = {
       }
       tracks: {
         Row: {
+          album: string | null
           artist: string | null
+          bpm: number | null
           composer: string | null
           contact_email: string | null
+          content_hash: string | null
           created_at: string
           duration_seconds: number | null
+          duplicate_of: string | null
           id: string
           inbox_id: string | null
           kind: Database["public"]["Enums"]["track_kind"]
           label: string | null
           mime_type: string | null
+          musical_key: string | null
           notes: string | null
           original_filename: string | null
           preview_key: string | null
@@ -343,6 +348,9 @@ export type Database = {
           s3_key: string | null
           size_bytes: number | null
           status: Database["public"]["Enums"]["track_status"]
+          submitter_company: string | null
+          submitter_email: string | null
+          submitter_name: string | null
           supplier_id: string | null
           title: string
           updated_at: string
@@ -350,16 +358,21 @@ export type Database = {
           writers: string | null
         }
         Insert: {
+          album?: string | null
           artist?: string | null
+          bpm?: number | null
           composer?: string | null
           contact_email?: string | null
+          content_hash?: string | null
           created_at?: string
           duration_seconds?: number | null
+          duplicate_of?: string | null
           id?: string
           inbox_id?: string | null
           kind?: Database["public"]["Enums"]["track_kind"]
           label?: string | null
           mime_type?: string | null
+          musical_key?: string | null
           notes?: string | null
           original_filename?: string | null
           preview_key?: string | null
@@ -370,6 +383,9 @@ export type Database = {
           s3_key?: string | null
           size_bytes?: number | null
           status?: Database["public"]["Enums"]["track_status"]
+          submitter_company?: string | null
+          submitter_email?: string | null
+          submitter_name?: string | null
           supplier_id?: string | null
           title: string
           updated_at?: string
@@ -377,16 +393,21 @@ export type Database = {
           writers?: string | null
         }
         Update: {
+          album?: string | null
           artist?: string | null
+          bpm?: number | null
           composer?: string | null
           contact_email?: string | null
+          content_hash?: string | null
           created_at?: string
           duration_seconds?: number | null
+          duplicate_of?: string | null
           id?: string
           inbox_id?: string | null
           kind?: Database["public"]["Enums"]["track_kind"]
           label?: string | null
           mime_type?: string | null
+          musical_key?: string | null
           notes?: string | null
           original_filename?: string | null
           preview_key?: string | null
@@ -397,6 +418,9 @@ export type Database = {
           s3_key?: string | null
           size_bytes?: number | null
           status?: Database["public"]["Enums"]["track_status"]
+          submitter_company?: string | null
+          submitter_email?: string | null
+          submitter_name?: string | null
           supplier_id?: string | null
           title?: string
           updated_at?: string

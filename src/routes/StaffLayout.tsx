@@ -1,17 +1,18 @@
 import { Link, Outlet } from 'react-router-dom'
+import SequelLogo from '../components/SequelLogo'
 import { supabase } from '../lib/supabase'
 
 export default function StaffLayout() {
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900">
-      <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-6 py-3">
-        <Link to="/" className="font-semibold tracking-tight">
-          Sequel Sounds
+    <div className="min-h-screen bg-sequel-silver text-sequel-brown">
+      <header className="flex items-center justify-between border-b border-sequel-brown px-6 py-3">
+        <Link to="/">
+          <SequelLogo />
         </Link>
         <button
           type="button"
           onClick={() => supabase.auth.signOut()}
-          className="text-sm text-neutral-500 hover:text-neutral-900"
+          className="text-sm text-sequel-brown/70 hover:text-sequel-brown"
         >
           Sign out
         </button>

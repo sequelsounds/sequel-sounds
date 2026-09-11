@@ -1,29 +1,60 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import SequelLogo from '../components/SequelLogo'
+import { fileKey, filesFromDrop, isMediaFile } from '../lib/dropFiles'
+import {
+  isComplete,
+  loadPartner,
+  savePartner,
+  type Partner,
+} from '../lib/partner'
+import { loadSent, markSent } from '../lib/sentFiles'
+import { readTagsAll, type FileTags } from '../lib/tags'
 import { tokenClient } from '../lib/tokenClient'
-import { putToS3, signUpload } from '../lib/upload'
+import { contentTypeFor, putToS3, signUpload } from '../lib/upload'
+import { runQueue } from '../lib/uploadQueue'
 
-type Submission = {
+type RowState =
+  'reading' | 'ready' | 'uploading' | 'done' | 'failed' | 'duplicate'
+
+type Row = {
   id: string
-  title: string
-  artist: string
-  filename: string
-  sentAt: Date
+  file: File
+  dedupe: string
+  state: RowState
+  progress: number
+  error: string | null
+  tags: FileTags | null
 }
 
-const EMPTY = {
-  title: '',
-  artist: '',
-  contact_email: '',
-  publisher: '',
-  writers: '',
-  label: '',
-  notes: '',
+const PARALLEL_UPLOADS = 4
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`
+  if (bytes >= 1024 ** 2) return `${Math.round(bytes / 1024 ** 2)} MB`
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`
 }
 
-export default function Inbox() {
+function formatDuration(seconds: number | null): string | null {
+  if (seconds === null) return null
+  const m = Math.floor(seconds / 60)
+  const s = Math.round(seconds % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+/**
+ * Keyed on the token so that moving between two inbox links rebuilds the page.
+ * Everything here — the queue, the already-sent keys, the batch note — belongs
+ * to one inbox, and useRef's initial value would otherwise survive the change
+ * and mis-flag files against the previous inbox.
+ */
+export default function InboxRoute() {
   const { token = '' } = useParams()
+  return <Inbox key={token} token={token} />
+}
+
+function Inbox({ token }: { token: string }) {
   const supabase = useMemo(() => tokenClient(token), [token])
 
   // The token grants read on its own inbox row only; we need the ids that the
@@ -33,137 +64,483 @@ export default function Inbox() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('inboxes')
-        .select('id, project_id, label')
+        .select('id, project_id, projects_mirror(name)')
         .single()
       if (error) throw error
       return data
     },
   })
 
-  const [form, setForm] = useState(EMPTY)
-  const [file, setFile] = useState<File | null>(null)
-  const [fileKey, setFileKey] = useState(0)
-  const [busy, setBusy] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [error, setError] = useState<string | null>(null)
+  // Read once at mount rather than in an effect: there is no SSR here, so the
+  // stored partner is available on the very first render and the form never
+  // flashes empty for someone who has dropped files before.
+  const stored = useMemo(() => loadPartner(), [])
+  const [partner, setPartner] = useState<Partner>(stored)
+  const [editingPartner, setEditingPartner] = useState(!isComplete(stored))
+  const [rows, setRows] = useState<Row[]>([])
+  const sentKeys = useRef<Set<string>>(loadSent(token))
+  const [note, setNote] = useState('')
+  const [dragging, setDragging] = useState(false)
+  const [running, setRunning] = useState(false)
 
-  // Partners cannot read the inbox back (RLS blocks it, so one partner can't
-  // enumerate another's submissions). This session-only list is their receipt.
-  const [sent, setSent] = useState<Submission[]>([])
+  // Workers run concurrently and outlive any single render, so they read the
+  // live rows and batch note through refs rather than a captured closure. The
+  // refs are synced after commit; every worker is started from an event handler,
+  // which runs after effects have flushed.
+  const rowsRef = useRef<Row[]>([])
+  const noteRef = useRef('')
+  useEffect(() => {
+    rowsRef.current = rows
+  }, [rows])
+  useEffect(() => {
+    noteRef.current = note
+  }, [note])
 
-  function set<K extends keyof typeof EMPTY>(key: K, value: string) {
-    setForm((f) => ({ ...f, [key]: value }))
-  }
+  useEffect(() => {
+    savePartner(partner)
+  }, [partner])
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!file || !inbox.data) return
-    setBusy(true)
-    setProgress(0)
-    setError(null)
+  const patch = useCallback((id: string, next: Partial<Row>) => {
+    setRows((current) =>
+      current.map((row) => (row.id === id ? { ...row, ...next } : row)),
+    )
+  }, [])
+
+  const addFiles = useCallback(
+    async (incoming: File[]) => {
+      const media = incoming.filter(isMediaFile)
+      if (media.length === 0) return
+
+      const seen = new Set(rowsRef.current.map((row) => row.dedupe))
+      const fresh: Row[] = []
+      for (const file of media) {
+        const dedupe = fileKey(file)
+        if (seen.has(dedupe)) continue // dropped the same folder twice
+        seen.add(dedupe)
+        fresh.push({
+          id: crypto.randomUUID(),
+          file,
+          dedupe,
+          // Sent from this browser before — flagged, not dropped, so the
+          // partner can see why it is being skipped.
+          state: sentKeys.current.has(dedupe) ? 'duplicate' : 'reading',
+          progress: 0,
+          error: null,
+          tags: null,
+        })
+      }
+      if (fresh.length === 0) return
+
+      setRows((current) => [...current, ...fresh])
+
+      // Tags are a fast first pass for the partner's benefit; the row is uploadable
+      // either way, so this never gates the queue.
+      await readTagsAll(
+        fresh.map((row) => row.file),
+        (index, tags) =>
+          patch(fresh[index].id, {
+            tags,
+            ...(fresh[index].state === 'duplicate' ? {} : { state: 'ready' }),
+          }),
+      )
+    },
+    [patch],
+  )
+
+  async function uploadOne(id: string) {
+    const row = rowsRef.current.find((r) => r.id === id)
+    if (!row || !inbox.data) return
+
+    patch(id, { state: 'uploading', progress: 0, error: null })
     try {
       // 1. The Edge Function validates the token and mints the track id + key.
-      const signed = await signUpload(token, file)
+      const signed = await signUpload(token, row.file)
 
       // 2. Straight to S3 — the file never passes through Supabase.
-      await putToS3(signed.upload_url, file, setProgress)
+      await putToS3(signed.upload_url, row.file, (progress) =>
+        patch(id, { progress }),
+      )
 
       // 3. Only now record the row, so a failed upload leaves no track behind.
-      const { error } = await supabase
-        .from('tracks')
-        .insert({
-          ...form,
-          id: signed.track_id,
-          inbox_id: signed.inbox_id,
-          project_id: signed.project_id,
-          s3_key: signed.key,
-          original_filename: file.name,
-          mime_type: file.type,
-          size_bytes: file.size,
-          kind: file.type.startsWith('video/') ? 'video' : 'audio',
-        })
+      const tags = row.tags
+      const contentType = contentTypeFor(row.file)
+      const trimmedNote = noteRef.current.trim()
+      const { error } = await supabase.from('tracks').insert({
+        id: signed.track_id,
+        inbox_id: signed.inbox_id,
+        project_id: signed.project_id,
+        s3_key: signed.key,
+        original_filename: row.file.name,
+        mime_type: contentType,
+        size_bytes: row.file.size,
+        kind: contentType.startsWith('video/') ? 'video' : 'audio',
+
+        // Browser-side tags, filename as the fallback for title. The Lambda
+        // re-reads the file server-side and overwrites these.
+        title: tags?.title ?? row.file.name,
+        artist: tags?.artist ?? null,
+        album: tags?.album ?? null,
+        bpm: tags?.bpm ?? null,
+        musical_key: tags?.musical_key ?? null,
+        duration_seconds: tags?.duration_seconds ?? null,
+
+        submitter_name: partner.name.trim(),
+        submitter_email: partner.email.trim(),
+        submitter_company: partner.company.trim(),
+        // Keep the pre-existing column populated so staff views that read it
+        // still show a way to reply.
+        contact_email: partner.email.trim(),
+        notes: trimmedNote === '' ? null : trimmedNote,
+      })
       if (error) throw error
 
-      setSent((s) => [
-        {
-          id: signed.track_id,
-          title: form.title,
-          artist: form.artist,
-          filename: file.name,
-          sentAt: new Date(),
-        },
-        ...s,
-      ])
-      setForm(EMPTY)
-      setFile(null)
-      setFileKey((k) => k + 1)
-      setProgress(0)
+      sentKeys.current.add(row.dedupe)
+      markSent(token, row.dedupe)
+      patch(id, { state: 'done', progress: 100 })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed')
-    } finally {
-      setBusy(false)
+      patch(id, {
+        state: 'failed',
+        error: err instanceof Error ? err.message : 'Upload failed',
+      })
     }
   }
 
-  const field = 'w-full rounded border border-neutral-300 px-3 py-2 text-sm'
+  async function send(ids: string[]) {
+    if (ids.length === 0 || running) return
+    setRunning(true)
+    try {
+      await runQueue(ids, uploadOne, PARALLEL_UPLOADS)
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  async function onDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragging(false)
+    await addFiles(await filesFromDrop(e.dataTransfer))
+  }
+
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    void addFiles(Array.from(e.target.files ?? []))
+    e.target.value = '' // let the same folder be picked again
+  }
+
+  const counts = useMemo(() => {
+    const done = rows.filter((r) => r.state === 'done').length
+    const failed = rows.filter((r) => r.state === 'failed').length
+    const pending = rows.filter(
+      (r) => r.state === 'ready' || r.state === 'reading',
+    ).length
+    return { done, failed, pending, total: rows.length }
+  }, [rows])
+
+  const projectName = inbox.data?.projects_mirror?.name ?? ''
+  useEffect(() => {
+    document.title = projectName || 'Upload'
+  }, [projectName])
+
+  const partnerReady = isComplete(partner)
+  const pendingIds = rows.filter((r) => r.state === 'ready').map((r) => r.id)
+  const duplicateCount = rows.filter((r) => r.state === 'duplicate').length
+  // What this drop will actually send. A row already sent is not outstanding
+  // work, so counting it as one made "0 of 1 done" describe a job that could
+  // never finish.
+  const sendableTotal = rows.length - duplicateCount
+  const failedIds = rows.filter((r) => r.state === 'failed').map((r) => r.id)
+  const field = 'w-full border border-sequel-brown px-3 py-2 text-sm'
 
   return (
-    <div className="mx-auto max-w-xl space-y-8 p-8">
-      <div>
-        <h1 className="text-xl font-semibold">Submit tracks</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Title, artist and your email are required. Everything else helps but is optional.
-        </p>
-      </div>
+    <div className="min-h-screen bg-sequel-silver text-sequel-brown">
+      <div className="mx-auto max-w-4xl space-y-6 px-6 pb-28 pt-10">
+        <SequelLogo className="mb-8" />
 
-      <form onSubmit={onSubmit} className="space-y-3">
-        <input required value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Title *" className={field} />
-        <input required value={form.artist} onChange={(e) => set('artist', e.target.value)} placeholder="Artist / composer *" className={field} />
-        <input required type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="Your email *" className={field} />
-        <input value={form.publisher} onChange={(e) => set('publisher', e.target.value)} placeholder="Publisher" className={field} />
-        <input value={form.writers} onChange={(e) => set('writers', e.target.value)} placeholder="Writers" className={field} />
-        <input value={form.label} onChange={(e) => set('label', e.target.value)} placeholder="Label" className={field} />
-        <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Notes" rows={3} className={field} />
-        <input key={fileKey} required type="file" accept="audio/*,video/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-sm" />
+        {/* Height is reserved so the page does not jump when the name lands,
+            but nothing is drawn in the gap — a placeholder is more noticeable
+            than the empty space it is meant to cover. */}
+        <header className="min-h-10">
+          <h1 className="font-title text-[2rem] font-normal leading-tight">
+            {projectName}
+          </h1>
+        </header>
 
-        {busy && (
-          <div className="space-y-1">
-            <div className="h-1.5 overflow-hidden rounded bg-neutral-200">
-              <div
-                className="h-full bg-neutral-900 transition-[width]"
-                style={{ width: `${progress}%` }}
-              />
+        {/* ---- who is sending, asked once per browser ---- */}
+        <section>
+          {partnerReady && !editingPartner ? (
+            <div className="flex items-center justify-between gap-4">
+              <div className="text-sm">
+                <span className="font-medium">{partner.name}</span>
+                <span className="text-sequel-brown/70">
+                  {' '}
+                  · {partner.company}
+                </span>
+                <div className="text-xs text-sequel-brown/60">
+                  {partner.email}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingPartner(true)}
+                className="shrink-0 text-xs text-sequel-brown/70 underline"
+              >
+                Not you?
+              </button>
             </div>
-            <p className="text-xs text-neutral-500">Uploading… {progress}%</p>
+          ) : (
+            <div
+              className="space-y-3"
+              onBlur={(e) => {
+                // relatedTarget is where focus went; if it is still inside this
+                // group the partner is just moving between the three fields.
+                if (
+                  !e.currentTarget.contains(e.relatedTarget as Node | null) &&
+                  isComplete(partner)
+                ) {
+                  setEditingPartner(false)
+                }
+              }}
+            >
+              <div>
+                <h2 className="text-sm font-semibold">Who is sending these?</h2>
+                <p className="text-xs text-sequel-brown/70">
+                  Asked once and remembered on this browser.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <input
+                  value={partner.name}
+                  onChange={(e) =>
+                    setPartner({ ...partner, name: e.target.value })
+                  }
+                  placeholder="Your name"
+                  className={field}
+                />
+                <input
+                  type="email"
+                  value={partner.email}
+                  onChange={(e) =>
+                    setPartner({ ...partner, email: e.target.value })
+                  }
+                  placeholder="Your email"
+                  className={field}
+                />
+                <input
+                  value={partner.company}
+                  onChange={(e) =>
+                    setPartner({ ...partner, company: e.target.value })
+                  }
+                  placeholder="Company / label"
+                  className={field}
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ---- the dropzone ---- */}
+        <section
+          onDragOver={(e) => {
+            e.preventDefault()
+            setDragging(true)
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          className={`border border-dashed p-10 text-center transition-colors ${
+            dragging
+              ? 'border-sequel-brown bg-sequel-brown/5'
+              : 'border-sequel-brown bg-transparent'
+          }`}
+        >
+          <p className="text-sm font-medium">Drop files or folders here</p>
+          <p className="mt-1 text-xs text-sequel-brown/70">
+            WAV, AIFF, FLAC, MP3, M4A, MOV, MP4 — up to 2 GB each
+          </p>
+          <div className="mt-4 flex justify-center gap-2">
+            <label className="font-mono uppercase font-light inline-flex h-8 w-44 items-center justify-center px-[1.2rem] text-[0.7rem] leading-4 cursor-pointer border border-sequel-brown transition-colors hover:bg-sequel-brown hover:text-sequel-silver">
+              Browse
+              <input
+                type="file"
+                multiple
+                accept="audio/*,video/*"
+                onChange={onPick}
+                className="hidden"
+              />
+            </label>
           </div>
+        </section>
+
+        {/* ---- one note for the whole batch ---- */}
+        {rows.length > 0 && (
+          <section>
+            <label className="text-sm font-medium" htmlFor="batch-note">
+              Anything we should know?{' '}
+              <span className="text-sequel-brown/60">(optional)</span>
+            </label>
+            <textarea
+              id="batch-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+              placeholder="Applies to everything in this drop."
+              className={`${field} mt-1`}
+            />
+          </section>
         )}
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {/* ---- the rows ---- */}
+        {rows.length > 0 && (
+          <section className="overflow-hidden border border-sequel-brown">
+            <ul className="divide-y divide-sequel-brown/30">
+              {rows.map((row) => (
+                <li key={row.id} className="flex items-center gap-3 p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">
+                      {row.tags?.title ?? row.file.name}
+                    </div>
+                    <div className="truncate text-xs text-sequel-brown/70">
+                      {[
+                        row.tags?.artist,
+                        row.tags?.album,
+                        formatDuration(row.tags?.duration_seconds ?? null),
+                        row.tags?.bpm ? `${row.tags.bpm} BPM` : null,
+                        row.tags?.musical_key,
+                        formatSize(row.file.size),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </div>
+                    {row.state === 'uploading' && (
+                      <div className="mt-1.5 h-1 overflow-hidden bg-sequel-brown/15">
+                        <div
+                          className="h-full bg-sequel-brown transition-[width]"
+                          style={{ width: `${row.progress}%` }}
+                        />
+                      </div>
+                    )}
+                    {row.state === 'failed' && (
+                      <p className="mt-1 text-xs text-red-600">{row.error}</p>
+                    )}
+                  </div>
 
-        <button type="submit" disabled={busy || !inbox.data} className="rounded bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-50">
-          {busy ? 'Sending…' : 'Send track'}
-        </button>
-      </form>
+                  <div className="shrink-0 text-xs">
+                    {row.state === 'reading' && (
+                      <span className="text-sequel-brown/60">Reading…</span>
+                    )}
+                    {row.state === 'ready' && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRows((c) => c.filter((r) => r.id !== row.id))
+                        }
+                        className="text-sequel-brown/60 underline hover:text-sequel-brown"
+                      >
+                        Remove
+                      </button>
+                    )}
+                    {row.state === 'uploading' && (
+                      <span className="tabular-nums text-sequel-brown/70">
+                        {row.progress}%
+                      </span>
+                    )}
+                    {row.state === 'done' && (
+                      <svg
+                        viewBox="0 0 16 16"
+                        className="h-4 w-4"
+                        role="img"
+                        aria-label="Sent"
+                      >
+                        <path
+                          d="M3 8.5l3.5 3.5L13 5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        />
+                      </svg>
+                    )}
+                    {row.state === 'duplicate' && (
+                      <span className="font-mono text-[0.7rem] uppercase text-sequel-brown/60">
+                        Already sent
+                      </span>
+                    )}
+                    {row.state === 'failed' && (
+                      <button
+                        type="button"
+                        disabled={running}
+                        onClick={() => void send([row.id])}
+                        className="text-sequel-brown underline disabled:opacity-40"
+                      >
+                        Retry
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {counts.done > 0 && (
+              <p className="border-t border-sequel-brown/30 px-3 py-2 text-xs text-sequel-brown/60">
+                Ticked tracks are with us. This list clears when you close the
+                page — you do not need to keep it.
+              </p>
+            )}
+          </section>
+        )}
 
-      {sent.length > 0 && (
-        <section className="rounded-lg border border-neutral-200 bg-white p-4">
-          <h2 className="text-sm font-semibold">Sent in this session</h2>
-          <ul className="mt-2 divide-y divide-neutral-100 text-sm">
-            {sent.map((s) => (
-              <li key={s.id} className="py-2">
-                <span className="font-medium">{s.title}</span>
-                <span className="text-neutral-500"> — {s.artist}</span>
-                <div className="text-xs text-neutral-400">
-                  {s.filename} · {s.sentAt.toLocaleTimeString()}
-                </div>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-xs text-neutral-400">
-            This list is only kept while the page is open. We have your submissions.
-          </p>
-        </section>
-      )}
+        {/* ---- sticky action bar ---- */}
+        {rows.length > 0 && (
+          <div className="fixed inset-x-0 bottom-0 border-t border-sequel-brown bg-sequel-silver/95 backdrop-blur">
+            <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 p-4">
+              <div className="text-sm">
+                {sendableTotal > 0 && (
+                  <span className="font-medium tabular-nums">
+                    {counts.done} of {sendableTotal} done
+                  </span>
+                )}
+                {duplicateCount > 0 && (
+                  <span className="text-sequel-brown/70">
+                    {sendableTotal > 0 ? ' · ' : ''}
+                    {duplicateCount} already sent
+                  </span>
+                )}
+                {counts.failed > 0 && (
+                  <span className="text-red-600">
+                    {' '}
+                    · {counts.failed} failed
+                  </span>
+                )}
+                {!partnerReady && (
+                  <span className="text-sequel-brown/70">
+                    {' '}
+                    · add your details first
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                {counts.failed > 0 && !running && (
+                  <button
+                    type="button"
+                    onClick={() => void send(failedIds)}
+                    className="font-mono uppercase font-light inline-flex h-8 w-44 items-center justify-center px-[1.2rem] text-[0.7rem] leading-4 border border-sequel-brown transition-colors hover:bg-sequel-brown hover:text-sequel-silver"
+                  >
+                    Retry {counts.failed} failed
+                  </button>
+                )}
+                {(pendingIds.length > 0 || running) && (
+                  <button
+                    type="button"
+                    disabled={running || !partnerReady || !inbox.data}
+                    onClick={() => void send(pendingIds)}
+                    className="font-mono uppercase font-light inline-flex h-8 w-44 items-center justify-center px-[1.2rem] text-[0.7rem] leading-4 bg-sequel-brown text-sequel-silver disabled:opacity-40"
+                  >
+                    {running
+                      ? `Uploading… ${counts.done}/${sendableTotal}`
+                      : `Send ${pendingIds.length} track${pendingIds.length === 1 ? '' : 's'}`}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

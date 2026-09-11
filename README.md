@@ -8,6 +8,14 @@ Staff sign in with Supabase Auth. Partners and clients never get accounts —
 they use share-token links, sent as an `x-share-token` header and validated in
 RLS by `app.request_token()`.
 
+## Documentation
+
+- [`CLAUDE.md`](CLAUDE.md) — working notes for Claude in this repo
+- [`docs/overview.md`](docs/overview.md) — one-page summary of the whole system
+- [`docs/architecture.md`](docs/architecture.md) — how the pieces fit
+- [`docs/decisions.md`](docs/decisions.md) — why things are the way they are
+- [`docs/gotchas.md`](docs/gotchas.md) — traps that cost time once
+
 ## Setup
 
 ```bash
@@ -51,3 +59,32 @@ Secrets). They are never in the repo:
 - `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` — IAM user `sequel-sounds-signer`
 - `S3_REGION` = `eu-west-2`
 - `S3_BUCKET` = `sequel-sounds-media`
+
+## Duplicate detection
+
+The same recording arriving twice is a tidiness problem, not a failure — it
+costs storage and a Lambda run, and staff see the track twice. So nothing in
+this path rejects an upload. Each layer only narrows what the next one has to
+look at:
+
+| Layer | Catches | Where |
+| --- | --- | --- |
+| `localStorage` keys, per inbox token | a re-drop from the same browser, including after a reload | `src/lib/sentFiles.ts` |
+| filename + byte length, per project | a re-drop from another device or another partner, before the bytes move | `sign-upload`, returned as `already_uploaded` |
+| SHA-256 of the file | renamed copies, and anything the first two miss | the ffmpeg Lambda |
+
+The browser never hashes. Pushing 50 files through SubtleCrypto before the
+first byte uploads would stall the drop it is meant to protect, and the answer
+would still only be as good as one browser's memory.
+
+**The Lambda owes two things** (its source lives outside this repo):
+
+1. Write `tracks.content_hash` — the SHA-256 of the original it has already
+   downloaded to render the preview. No extra read.
+2. If another track in the same `project_id` already carries that hash, set
+   `tracks.duplicate_of` to the *earliest* such track.
+
+Both columns are advisory. There is no unique constraint, the file is kept
+either way, and resolving a flagged duplicate is a staff decision in the
+library — refusing an upload on a guess risks losing a track that belonged.
+

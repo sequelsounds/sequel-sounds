@@ -15,18 +15,18 @@ export default function Projects() {
     },
   })
 
-  if (isPending) return <p className="text-sm text-neutral-500">Loading…</p>
+  if (isPending) return <p className="text-sm text-sequel-brown/70">Loading…</p>
   if (error) return <p className="text-sm text-red-600">{error.message}</p>
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Projects</h1>
-      <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
+      <ul className="divide-y divide-sequel-brown/30 border border-sequel-brown">
         {data.map((p) => (
           <li key={p.id}>
-            <Link to={`/projects/${p.id}`} className="block px-4 py-3 hover:bg-neutral-50">
+            <Link to={`/projects/${p.id}`} className="block px-4 py-3 hover:bg-sequel-brown/5">
               <span className="font-medium">{p.name}</span>
-              {p.client_name && <span className="ml-2 text-sm text-neutral-500">{p.client_name}</span>}
+              {p.client_name && <span className="ml-2 text-sm text-sequel-brown/70">{p.client_name}</span>}
             </Link>
           </li>
         ))}

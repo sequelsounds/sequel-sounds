@@ -1,1 +1,182 @@
 @import 'tailwindcss';
+
+/* Creato Display (Zetafonts), self-hosted so nothing depends on an external
+   CDN staying up. Converted to woff2 from the licensed OTFs on the Webflow
+   site — about 19 KB per weight, and a browser only fetches the weights a page
+   actually paints.
+
+   font-display: block, not swap — the brief is Creato every time. `block`
+   holds text invisible while the face loads instead of painting a system font
+   first and reflowing. Same-origin woff2 at this size resolves in a few ms. */
+@font-face {
+  font-family: 'Creato Display';
+  src: url('/fonts/CreatoDisplay-Thin.woff2') format('woff2');
+  font-weight: 100;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Creato Display';
+  src: url('/fonts/CreatoDisplay-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Creato Display';
+  src: url('/fonts/CreatoDisplay-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Creato Display';
+  src: url('/fonts/CreatoDisplay-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Creato Display';
+  src: url('/fonts/CreatoDisplay-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+
+/* Webflow records ExtraBold as 700, the same as Bold. Mapped to 800 here so
+   the two faces stay reachable independently. */
+@font-face {
+  font-family: 'Creato Display';
+  src: url('/fonts/CreatoDisplay-ExtraBold.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Creato Display';
+  src: url('/fonts/CreatoDisplay-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: block;
+}
+
+/* Azeret Mono, the button face on the Webflow site. Google ships it as a
+   variable font, so one 26 KB file covers every weight — the three per-weight
+   URLs in their CSS all resolve to the same bytes. */
+@font-face {
+  font-family: 'Azeret Mono';
+  src: url('/fonts/AzeretMono-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+
+/* Fahkwang, the display face on the Webflow site ("YOUR PROJECTS"). */
+@font-face {
+  font-family: 'Fahkwang';
+  src: url('/fonts/Fahkwang-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@theme {
+  /* No fallback family by design. The generic `sans-serif` is the last resort
+     the browser would reach for anyway if every face failed to load; naming a
+     specific substitute is what lets a non-Creato face paint. */
+  --font-sans: 'Creato Display', sans-serif;
+  --font-mono: 'Azeret Mono', ui-monospace, monospace;
+  --font-title: 'Fahkwang', serif;
+
+  /* Brand colours, read from the Webflow site's own variables so the two stay
+     in step: --_colors---sequel-brown / silver / asphalt. */
+  --color-sequel-brown: #372b29;
+  --color-sequel-silver: #f1f0ee;
+  --color-sequel-asphalt: #302f2c;
+
+  /* Sequel has no rounded corners anywhere — a survey of the live Projects
+     page returns an empty set of border radii. Zeroing the scale means any
+     `rounded*` utility, including ones added later, stays square. */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
+}
+
+@layer base {
+  /* Painted on the document itself, not just the page wrapper, so there is no
+     white flash between first paint and React mounting. */
+  html,
+  body {
+    background-color: var(--color-sequel-silver);
+    color: var(--color-sequel-brown);
+  }
+
+  /* The browser's focus ring, replaced rather than removed — keyboard users
+     still need to see where they are. :focus-visible keeps it off mouse clicks
+     on buttons while still showing it in text fields. */
+  :focus-visible {
+    outline: 1px solid var(--color-sequel-brown);
+    /* Flush against the border rather than offset from it. An offset ring
+       draws a second box around a field that already has a 1px line; sitting
+       flush, the two read as one heavier line. */
+    outline-offset: 0;
+  }
+
+  /* Text fields carry a blinking caret, which already says where focus is, so
+     the ring is dropped for them. Buttons and links keep it — they have no
+     caret, and without it keyboard focus would be invisible. */
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+  }
+
+  /* Firefox draws its own dotted inner border on focused buttons, on top of
+     the outline above. */
+  ::-moz-focus-inner {
+    border: 0;
+  }
+
+  /* Firefox rings fields it considers invalid (an unfinished type="email")
+     with a red glow of its own. */
+  :-moz-ui-invalid {
+    box-shadow: none;
+  }
+
+  /* Autofill. Every engine tints these fields and none of them offers an off
+     switch, so each gets its own rule: a browser that does not understand one
+     selector drops the whole rule it sits in, which would take the others with
+     it if they shared a list.
+
+     WebKit and Blink paint a yellow BACKGROUND that ignores background-color,
+     so it has to be covered by a large inset shadow, and the text needs
+     -webkit-text-fill-color because `color` is ignored too. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--color-sequel-brown);
+    -webkit-box-shadow: 0 0 0 1000px var(--color-sequel-silver) inset;
+    caret-color: var(--color-sequel-brown);
+  }
+
+  /* Firefox instead applies a FILTER over the field, which no background
+     override can defeat — `filter: none` is what clears it. The standard
+     :autofill selector also covers current Chrome, Safari and Edge. */
+  input:autofill,
+  input:autofill:hover,
+  input:autofill:focus {
+    filter: none;
+    box-shadow: 0 0 0 1000px var(--color-sequel-silver) inset;
+    caret-color: var(--color-sequel-brown);
+  }
+}

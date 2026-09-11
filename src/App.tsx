@@ -10,7 +10,7 @@ import StaffLayout from './routes/StaffLayout'
 
 function RequireStaff({ children }: { children: React.ReactNode }) {
   const session = useSession()
-  if (session === undefined) return <div className="p-8 text-sm text-neutral-500">Loading…</div>
+  if (session === undefined) return <div className="p-8 text-sm text-sequel-brown/70">Loading…</div>
   if (session === null) return <Navigate to="/login" replace />
   return <>{children}</>
 }

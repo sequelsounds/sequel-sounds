@@ -125,6 +125,20 @@ Deno.serve(async (req) => {
     return json({ error: 'this link has expired' }, 403, origin)
   }
 
+  // Cheap duplicate pre-check. Advisory only: it still signs the upload, so a
+  // partner is never blocked by a guess — the browser uses this to warn before
+  // pushing tens of megabytes that the project already has. The authoritative
+  // check is the Lambda's content hash, which sees the actual bytes.
+  const { data: existing } = await admin
+    .from('tracks')
+    .select('id, created_at')
+    .eq('project_id', inbox.project_id)
+    .eq('original_filename', filename)
+    .eq('size_bytes', size_bytes)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
   const aws = new AwsClient({
     accessKeyId: cfg.accessKeyId,
     secretAccessKey: cfg.secretAccessKey,
@@ -151,6 +165,11 @@ Deno.serve(async (req) => {
       expires_in: URL_TTL_SECONDS,
       project_id: inbox.project_id,
       inbox_id: inbox.id,
+      // Same name and byte length already in this project. Not proof — two
+      // different masters can share both — so it is surfaced, never enforced.
+      already_uploaded: existing
+        ? { track_id: existing.id, created_at: existing.created_at }
+        : null,
     },
     200,
     origin,

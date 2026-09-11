@@ -2,9 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sequel Sounds</title>
+    <!-- font-display: block holds text invisible until the face lands, so the
+         two faces above the fold are preloaded to keep that window short.
+         crossorigin is required even same-origin: fonts fetch in CORS mode,
+         and without it the preload is discarded and fetched twice. -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+      href="/fonts/CreatoDisplay-Bold.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+      href="/fonts/CreatoDisplay-Regular.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+      href="/fonts/AzeretMono-Variable.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+      href="/fonts/Fahkwang-Regular.woff2" />
+    <title>Upload</title>
   </head>
   <body>
     <div id="root"></div>

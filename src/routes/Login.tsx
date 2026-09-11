@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import SequelLogo from '../components/SequelLogo'
 import { supabase } from '../lib/supabase'
 
 export default function Login() {
@@ -11,22 +12,25 @@ export default function Login() {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
     if (error) setError(error.message)
     setBusy(false)
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 rounded-lg bg-white p-8 shadow-sm">
-        <h1 className="text-lg font-semibold">Sequel Sounds</h1>
+    <div className="flex min-h-screen items-center justify-center bg-sequel-silver">
+      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 p-8">
+        <SequelLogo className="mb-2" />
         <input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
-          className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+          className="w-full border border-sequel-brown px-3 py-2 text-sm"
         />
         <input
           type="password"
@@ -34,13 +38,13 @@ export default function Login() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"
-          className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+          className="w-full border border-sequel-brown px-3 py-2 text-sm"
         />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+          className="font-mono uppercase font-light inline-flex h-8 w-44 items-center justify-center px-[1.2rem] text-[0.7rem] leading-4 bg-sequel-brown text-sequel-silver disabled:opacity-50"
         >
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
