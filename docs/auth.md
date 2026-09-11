@@ -121,12 +121,17 @@ change in this repo — the app's rule is only ever "an account must exist".
 
 ## What is still needed
 
-### Resend
+### Resend — done
 
-The domain is already verified (DKIM at `resend._domainkey`, send subdomain in
-DNS) and the sender will be `noreply@sequelsounds.com`. What remains is to
-create an API key with send permission and enter it in Supabase — Project
-Settings → Authentication → SMTP:
+Configured 2026-09-11 and confirmed in the auth logs, which recorded the switch
+as the email cap moving from Supabase's built-in sender to the custom one:
+
+```
+env GOTRUE_RATE_LIMIT_EMAIL_SENT changed, updating Email limiter from 2/1h to 30
+```
+
+Sender is `noreply@sequelsounds.com` on the already-verified domain. For
+reference, the settings are Project Settings → Authentication → SMTP:
 
 | Field | Value |
 | --- | --- |
@@ -140,6 +145,12 @@ Settings → Authentication → SMTP:
 **The API key does not belong in this chat or in the repo.** It is a live
 sending credential; enter it in the Supabase dashboard directly.
 
-Until SMTP is set, codes go out through Supabase's shared sender, which is
-rate-limited to a handful of emails an hour and prone to spam folders. It is
-enough to test with and not enough to rely on.
+**Two different limits both return 429 with `over_email_send_rate_limit`,** and
+they are worth telling apart when something fails:
+
+| Message | Limit |
+| --- | --- |
+| `email rate limit exceeded` | the hourly cap — 2/hour on the built-in sender, 30 with custom SMTP |
+| `For security purposes, you can only request this after N seconds` | the short per-request cooldown |
+
+Reading the error *code* alone will send you after the wrong one.
