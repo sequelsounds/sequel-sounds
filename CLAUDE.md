@@ -34,8 +34,15 @@ alphabetical, the way the generator emits it.
 ## Conventions
 
 - Tailwind v4. Design tokens live in `@theme` in `src/index.css`; brand colours
-  are `sequel-brown`, `sequel-silver`, `sequel-asphalt`. **No `neutral-*`
-  classes** — they are cool greys on a warm palette and read as washed out.
+  are `sequel-brown`, `sequel-silver`, `sequel-asphalt`, `sequel-error`. **No
+  `neutral-*` classes, and no Tailwind `red-*`** — both are cool on a warm
+  palette and read as washed out or foreign.
+- **Build pages from `src/styles/design-system.css`**, not from ad-hoc
+  utilities: `.surface-dark` / `.surface-light`, `.display-heading`,
+  `.field-label`, `.field-underline` / `.field-boxed`, `.corner-note`,
+  `.form-error`, and `.btn` plus a language (`.btn-wide` for landing pages,
+  `.btn-mono` for the tool) and a colour (`.btn-light`, `.btn-dark`,
+  `.btn-outline`). Add to that file rather than restating values in a route.
 - **Zero border radius.** The whole radius scale is zeroed in `@theme` and there
   are no `rounded*` classes in markup. Both, deliberately — see gotchas.
 - Fonts are self-hosted in `public/fonts/`, never linked from a CDN. All use

@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './styles/design-system.css';
 
 /* Creato Display (Zetafonts), self-hosted so nothing depends on an external
    CDN staying up. Converted to woff2 from the licensed OTFs on the Webflow
@@ -99,6 +100,8 @@
   --color-sequel-brown: #372b29;
   --color-sequel-silver: #f1f0ee;
   --color-sequel-asphalt: #302f2c;
+  /* .login_error_text on the Webflow login page. */
+  --color-sequel-error: #eb9a93;
 
   /* Sequel has no rounded corners anywhere — a survey of the live Projects
      page returns an empty set of border radii. Zeroing the scale means any

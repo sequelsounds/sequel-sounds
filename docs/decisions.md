@@ -5,6 +5,52 @@ rediscovering an argument later.
 
 ---
 
+## One design system file, two button languages
+
+**2026-09-11.** Shared styles live in `src/styles/design-system.css`, imported
+by `index.css`. Tokens stay in `@theme`; this file is only the components built
+from them, so a page never restates a padding or a weight.
+
+The awkward finding: the Webflow site speaks **two** button languages, and they
+are not reconcilable.
+
+| | Where | Spec |
+| --- | --- | --- |
+| `.btn-wide` | login, marketing | Creato, sentence case, 0.85rem, padding 0.85/2.2rem, auto width |
+| `.btn-mono` | the app shell | Azeret Mono 300, uppercase, 0.7rem, fixed 11 x 2rem |
+
+Collapsing them into one would have broken whichever page lost. They are kept as
+named variants instead, with colour as a separate axis (`.btn-light` for dark
+grounds, `.btn-dark` / `.btn-outline` for light ones), so either language works
+on either surface.
+
+Fields and surfaces follow the same split: `.field-underline` is the login
+treatment, `.field-boxed` the tool's. Both take their borders from
+`currentColor` rather than naming a colour, so a field inherits whichever
+surface it is placed on instead of needing a variant per ground.
+
+Two things fell out of reading the login page that were open questions before:
+
+- **The error colour is `#eb9a93`**, not Tailwind red. That was the last
+  off-palette colour in the app and is now `--color-sequel-error`.
+- **The login page is inverted** — Sequel Brown ground, Sequel Silver text. The
+  app is not uniformly light; it has two true surfaces.
+
+## Login matches the Webflow page, but not its auth
+
+**2026-09-11.** Layout, type, spacing, logo treatment and button styles are
+copied from Webflow `/login`, verified by measuring both: heading Creato 300 at
+32px/32px, fields underline-only on transparent, the button 47px tall with
+0.85/2.2rem padding, mark 4rem square inset 3rem, copyright and help link pinned
+to the bottom corners.
+
+**The flows differ and that is deliberate.** Webflow logs in with an email and a
+4-digit pin (Wized-driven); this app uses Supabase Auth with a password. The
+look was the brief, not the mechanism, and changing the auth model is not a
+styling task. Consequences: there is a Password field where Webflow has a Pin
+field, the button reads Login rather than Request pin, and the "Sign Up" link is
+omitted — staff accounts are created by hand, so there is nothing to sign up to.
+
 ## Duplicate uploads are advisory, never blocked
 
 **2026-09-11.** A real duplicate was found in production:

@@ -248,10 +248,10 @@ function Inbox({ token }: { token: string }) {
   // never finish.
   const sendableTotal = rows.length - duplicateCount
   const failedIds = rows.filter((r) => r.state === 'failed').map((r) => r.id)
-  const field = 'w-full border border-sequel-brown px-3 py-2 text-sm'
+  const field = 'field-boxed'
 
   return (
-    <div className="min-h-screen bg-sequel-silver text-sequel-brown">
+    <div className="surface-light min-h-screen">
       <div className="mx-auto max-w-4xl space-y-6 px-6 pb-28 pt-10">
         <SequelLogo className="mb-8" />
 
@@ -356,7 +356,7 @@ function Inbox({ token }: { token: string }) {
             WAV, AIFF, FLAC, MP3, M4A, MOV, MP4 — up to 2 GB each
           </p>
           <div className="mt-4 flex justify-center gap-2">
-            <label className="font-mono uppercase font-light inline-flex h-8 w-44 items-center justify-center px-[1.2rem] text-[0.7rem] leading-4 cursor-pointer border border-sequel-brown transition-colors hover:bg-sequel-brown hover:text-sequel-silver">
+            <label className="btn btn-mono btn-outline cursor-pointer">
               Browse
               <input
                 type="file"
@@ -418,7 +418,7 @@ function Inbox({ token }: { token: string }) {
                       </div>
                     )}
                     {row.state === 'failed' && (
-                      <p className="mt-1 text-xs text-red-600">{row.error}</p>
+                      <p className="form-error mt-1">{row.error}</p>
                     )}
                   </div>
 
@@ -502,7 +502,7 @@ function Inbox({ token }: { token: string }) {
                   </span>
                 )}
                 {counts.failed > 0 && (
-                  <span className="text-red-600">
+                  <span className="text-sequel-error">
                     {' '}
                     · {counts.failed} failed
                   </span>
@@ -519,7 +519,7 @@ function Inbox({ token }: { token: string }) {
                   <button
                     type="button"
                     onClick={() => void send(failedIds)}
-                    className="font-mono uppercase font-light inline-flex h-8 w-44 items-center justify-center px-[1.2rem] text-[0.7rem] leading-4 border border-sequel-brown transition-colors hover:bg-sequel-brown hover:text-sequel-silver"
+                    className="btn btn-mono btn-outline"
                   >
                     Retry {counts.failed} failed
                   </button>
@@ -529,7 +529,7 @@ function Inbox({ token }: { token: string }) {
                     type="button"
                     disabled={running || !partnerReady || !inbox.data}
                     onClick={() => void send(pendingIds)}
-                    className="font-mono uppercase font-light inline-flex h-8 w-44 items-center justify-center px-[1.2rem] text-[0.7rem] leading-4 bg-sequel-brown text-sequel-silver disabled:opacity-40"
+                    className="btn btn-mono btn-dark"
                   >
                     {running
                       ? `Uploading… ${counts.done}/${sendableTotal}`

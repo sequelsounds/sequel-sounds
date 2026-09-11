@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import SequelLogo from '../components/SequelLogo'
 import { supabase } from '../lib/supabase'
 
 export default function Login() {
@@ -21,34 +20,69 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-sequel-silver">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 p-8">
-        <SequelLogo className="mb-2" />
+    /* Layout mirrors the Webflow /login page: full-bleed dark ground, the mark
+       and copyright pinned 3rem into opposite corners, and the form as a 22rem
+       column centred in the viewport. */
+    <div className="surface-dark relative flex min-h-screen items-center justify-center">
+      <img
+        src="/sequel-mark-light.svg"
+        alt=""
+        width={96}
+        height={96}
+        className="absolute left-12 top-12 h-16 w-16"
+      />
+
+      <form onSubmit={onSubmit} className="flex w-full max-w-[22rem] flex-col">
+        <h1 className="display-heading mb-4">Login</h1>
+
+        <label className="field-label" htmlFor="email">
+          Email
+        </label>
         <input
+          id="email"
           type="email"
           required
+          autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
-          className="w-full border border-sequel-brown px-3 py-2 text-sm"
+          placeholder="Email Address"
+          className="field-underline mt-2"
         />
+
+        <label className="field-label mt-6" htmlFor="password">
+          Password
+        </label>
         <input
+          id="password"
           type="password"
           required
+          autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"
-          className="w-full border border-sequel-brown px-3 py-2 text-sm"
+          className="field-underline mt-2"
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        {error && <p className="form-error mt-3">{error}</p>}
+
         <button
           type="submit"
           disabled={busy}
-          className="font-mono uppercase font-light inline-flex h-8 w-44 items-center justify-center px-[1.2rem] text-[0.7rem] leading-4 bg-sequel-brown text-sequel-silver disabled:opacity-50"
+          className="btn btn-wide btn-light mt-12 self-start"
         >
-          {busy ? 'Signing in…' : 'Sign in'}
+          {busy ? 'Signing in…' : 'Login'}
         </button>
       </form>
+
+      <div className="corner-note absolute bottom-12 left-12">
+        © All rights reserved {new Date().getFullYear()}
+      </div>
+      <a
+        className="corner-note absolute bottom-12 right-12"
+        href="mailto:support@sequelsounds.com"
+      >
+        Trouble signing in?
+      </a>
     </div>
   )
 }

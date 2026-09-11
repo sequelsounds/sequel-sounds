@@ -1,0 +1,179 @@
+/* Design system.
+ *
+ * Every value here was read off the Webflow site rather than chosen — the
+ * login page (`/login`) for the dark surface, and the Projects page for the
+ * app shell. Where the two disagree, both are kept: see the buttons below.
+ *
+ * Tokens live in `@theme` in index.css. This file is only the components built
+ * from them, so a page never has to restate a padding or a weight.
+ */
+
+@layer components {
+  /* ---------------------------------------------------------------- surfaces
+   * The app has two grounds, and they are true inverses. Text colour is set
+   * here so that everything below can lean on `currentColor` and work on
+   * either one without knowing which it is standing on.
+   */
+  .surface-dark {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  .surface-light {
+    background-color: var(--color-sequel-silver);
+    color: var(--color-sequel-brown);
+  }
+
+  /* -------------------------------------------------------------------- type */
+  .display-heading {
+    font-family: var(--font-sans);
+    font-size: 2rem;
+    font-weight: 300;
+    line-height: 2rem;
+  }
+
+  .field-label {
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.25rem;
+  }
+
+  /* Corner furniture — copyright, help links. Quiet until hovered. */
+  .corner-note {
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.25rem;
+    color: color-mix(in srgb, currentColor 65%, transparent);
+    text-decoration: none;
+    transition: color 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  a.corner-note:hover {
+    color: currentColor;
+  }
+
+  .form-error {
+    color: var(--color-sequel-error);
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+
+  /* ------------------------------------------------------------------ fields
+   * Two field languages, both from the site. The underline field is the login
+   * treatment; the boxed field is what the inbox uses on a light ground.
+   *
+   * Both derive their borders from `currentColor` rather than naming a colour,
+   * so a field inherits the surface it is placed on instead of needing a
+   * variant per ground.
+   */
+  .field-underline {
+    width: 100%;
+    padding: 0.4rem 0 0.5rem;
+    border: none;
+    border-bottom: 1px solid color-mix(in srgb, currentColor 80%, transparent);
+    background-color: transparent;
+    color: inherit;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 400;
+    line-height: 1rem;
+    transition: border-color 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .field-underline::placeholder {
+    color: color-mix(in srgb, currentColor 30%, transparent);
+    font-weight: 300;
+  }
+
+  .field-underline:focus {
+    border-bottom-color: currentColor;
+  }
+
+  .field-boxed {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid currentColor;
+    background-color: transparent;
+    color: inherit;
+    font-size: 0.875rem;
+  }
+
+  .field-boxed::placeholder {
+    color: color-mix(in srgb, currentColor 55%, transparent);
+  }
+
+  /* ----------------------------------------------------------------- buttons
+   * The site speaks two button languages and they are not interchangeable:
+   *
+   *   .btn-wide  login and marketing — Creato, sentence case, roomy, auto width
+   *   .btn-mono  the app shell — Azeret Mono 300, uppercase, a fixed 11x2rem
+   *
+   * Collapsing them into one would break whichever page did not win, so pick
+   * by context: .btn-wide for a page someone lands on, .btn-mono inside the
+   * tool. Colour is a separate axis again, so either language works on either
+   * ground.
+   */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    cursor: pointer;
+    transition:
+      background-color 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      color 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .btn:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+
+  .btn-wide {
+    padding: 0.85rem 2.2rem;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    font-weight: 400;
+    line-height: 1.25rem;
+    text-align: center;
+  }
+
+  .btn-mono {
+    width: 11rem;
+    height: 2rem;
+    padding: 0 1.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 300;
+    line-height: 1rem;
+    text-transform: uppercase;
+  }
+
+  /* Light fill — for use on a dark surface. */
+  .btn-light {
+    background-color: var(--color-sequel-silver);
+    color: var(--color-sequel-asphalt);
+  }
+
+  .btn-light:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-sequel-silver) 82%, transparent);
+  }
+
+  /* Dark fill — for use on a light surface. */
+  .btn-dark {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  /* Outlined — inverts on hover. */
+  .btn-outline {
+    border: 1px solid var(--color-sequel-brown);
+    background-color: transparent;
+    color: var(--color-sequel-brown);
+  }
+
+  .btn-outline:hover:not(:disabled) {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+}
