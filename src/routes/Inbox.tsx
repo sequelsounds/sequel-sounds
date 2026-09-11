@@ -61,7 +61,7 @@ export default function Inbox() {
     try {
       // TODO: request an S3 presigned PUT and upload `file` before inserting,
       // then set s3_key / original_filename / mime_type / size_bytes.
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('tracks')
         .insert({
           ...form,
@@ -72,13 +72,11 @@ export default function Inbox() {
           size_bytes: file.size,
           kind: file.type.startsWith('video/') ? 'video' : 'audio',
         })
-        .select('id')
-        .single()
       if (error) throw error
 
       setSent((s) => [
         {
-          id: data.id,
+          id: crypto.randomUUID(),
           title: form.title,
           artist: form.artist,
           filename: file.name,
