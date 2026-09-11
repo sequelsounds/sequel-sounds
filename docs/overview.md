@@ -20,7 +20,10 @@ are Webflow (`sequelsounds.app`).
 
 ## Access model
 
-Staff are Supabase Auth users. Everyone else sends a share token in an
+Staff are Supabase Auth users who sign in with a 6-digit emailed code — no
+passwords, no magic links. An address without an account cannot sign itself up
+(`shouldCreateUser: false`), which is how sign-in stays limited to staff; see
+[`auth.md`](auth.md). Everyone else sends a share token in an
 `x-share-token` header, validated in RLS by `app.request_token()` — a header, not
 a query param, so it stays out of Postgres logs and `Referer`.
 
@@ -69,14 +72,17 @@ the full brand pass.
 
 Outstanding:
 
-1. `xano-webhook` is deployed but **inert until two secrets are set** in the
+1. **Staff sign-in cannot work yet**: `auth.users` is empty, the Magic Link
+   email template still sends a link rather than `{{ .Token }}`, and custom
+   SMTP is not configured. [`auth.md`](auth.md) lists every step.
+2. `xano-webhook` is deployed but **inert until two secrets are set** in the
    Supabase dashboard: `XANO_WEBHOOK_SECRET` and `APP_BASE_URL`. Until then
    every call returns 500 naming what is missing. Contract in
    [`xano-sync.md`](xano-sync.md).
-2. The Lambda's `content_hash` / `duplicate_of` work is **not started**; the
+3. The Lambda's `content_hash` / `duplicate_of` work is **not started**; the
    columns and indexes exist, nothing writes them.
-3. Open question: library tags whose "title" is a paragraph of sales copy.
-4. Upload errors still render in `text-red-600`, the last off-palette colour.
+4. Open question: library tags whose "title" is a paragraph of sales copy.
+
 
 ## Map
 
@@ -87,5 +93,5 @@ src/lib/                 dropFiles, filename, tags, partner, sentFiles,
 supabase/migrations/     0001 init · 0002 lock triggers
                          0003 submitter + tags · 0004 content hash
 supabase/functions/      sign-upload · xano-webhook
-docs/                    architecture · decisions · gotchas · xano-sync
+docs/                    architecture · auth · decisions · gotchas · xano-sync
 ```

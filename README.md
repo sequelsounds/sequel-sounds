@@ -4,7 +4,7 @@ Internal music supervision tool. React + TypeScript + Vite, Supabase for data
 and staff auth, AWS S3 (eu-west-2) for audio/video with a Lambda that renders
 MP3 previews and waveform peaks.
 
-Staff sign in with Supabase Auth. Partners and clients never get accounts —
+Staff sign in with a 6-digit code emailed by Supabase Auth — no passwords. Partners and clients never get accounts —
 they use share-token links, sent as an `x-share-token` header and validated in
 RLS by `app.request_token()`.
 
@@ -15,6 +15,7 @@ RLS by `app.request_token()`.
 - [`docs/architecture.md`](docs/architecture.md) — how the pieces fit
 - [`docs/decisions.md`](docs/decisions.md) — why things are the way they are
 - [`docs/gotchas.md`](docs/gotchas.md) — traps that cost time once
+- [`docs/auth.md`](docs/auth.md) — staff sign-in, and the dashboard settings it needs
 - [`docs/xano-sync.md`](docs/xano-sync.md) — the Xano → Supabase webhook contract
 
 ## Setup
