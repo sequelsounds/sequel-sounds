@@ -82,6 +82,9 @@ export default function Login() {
       {step === 'email' ? (
         <form
           onSubmit={requestCode}
+          name="login"
+          id="login-form"
+          method="post"
           className="flex w-full max-w-[22rem] flex-col"
         >
           <h1 className="display-heading mb-4">Login</h1>
@@ -91,6 +94,7 @@ export default function Login() {
           </label>
           <input
             id="email"
+            name="email"
             type="email"
             required
             autoFocus
@@ -112,7 +116,13 @@ export default function Login() {
           </button>
         </form>
       ) : (
-        <form onSubmit={verify} className="flex w-full max-w-[22rem] flex-col">
+        <form
+          onSubmit={verify}
+          name="login-code"
+          id="login-code-form"
+          method="post"
+          className="flex w-full max-w-[22rem] flex-col"
+        >
           <h1 className="display-heading mb-4">Check your email</h1>
           <p className="field-label mb-6 opacity-65">
             A 6-digit code is on its way to {email}. It expires in 10 minutes.
@@ -123,6 +133,7 @@ export default function Login() {
           </label>
           <input
             id="code"
+            name="one-time-code"
             ref={codeInput}
             required
             inputMode="numeric"
