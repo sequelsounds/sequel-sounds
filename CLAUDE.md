@@ -65,3 +65,35 @@ row and the S3 object.
 
 `:focus-visible` does not match a programmatic `.focus()` — only real keyboard
 interaction. Test focus styles by sending Tab keypresses.
+
+## Deployment
+
+The app is a static build on **Cloudflare Workers** at
+**https://studio.sequelsounds.com** (`wrangler.jsonc`, assets from `./dist`,
+SPA not-found handling).
+
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are **build-time**
+variables — Vite inlines them, so they belong in Cloudflare's build environment,
+not as Worker secrets. Set as Worker secrets they do nothing and the app throws
+`Missing VITE_SUPABASE_URL` on load.
+
+**A new origin has to be added in three places, or uploads fail in ways that
+look unrelated:**
+
+1. `ALLOWED_ORIGINS` in `supabase/functions/sign-upload/index.ts`, then redeploy
+2. the S3 bucket CORS — `infra/s3-cors.json`, applied with
+   `aws s3api put-bucket-cors --bucket sequel-sounds-media --region eu-west-2
+   --cors-configuration file://infra/s3-cors.json`
+3. `APP_BASE_URL` in the Supabase secrets, which is what `xano-webhook` uses to
+   build the inbox links Xano stores
+
+Miss (1) and the presign call is blocked; miss (2) and the presign succeeds but
+the PUT to S3 is blocked — the page looks fine until someone actually drops a
+file. Miss (3) and every partner link Xano hands out points at the wrong host.
+
+Edge Functions deploy separately from the app; editing a file under
+`supabase/functions/` changes nothing until it is deployed. There is no supabase
+CLI on this machine, but the Supabase MCP can deploy — keep `verify_jwt` as it
+was (`true` for `sign-upload`, `false` for `xano-webhook`, which authenticates
+itself with a shared secret).
+

@@ -15,7 +15,11 @@ const ALLOWED_EXT = new Set([
 const MAX_BYTES = 2 * 1024 * 1024 * 1024 // 2 GB — single PUT tops out at 5 GB
 const URL_TTL_SECONDS = 900
 
-const ALLOWED_ORIGINS = [/^http:\/\/localhost:\d+$/, /^https:\/\/[^.]+\.sequelsounds\.app$/]
+const ALLOWED_ORIGINS = [
+  /^http:\/\/localhost:\d+$/, // dev
+  /^https:\/\/studio\.sequelsounds\.com$/, // the live app
+  /^https:\/\/[^.]+\.sequelsounds\.app$/, // Webflow subdomains
+]
 
 function corsHeaders(origin: string | null) {
   const allowed = origin && ALLOWED_ORIGINS.some((re) => re.test(origin)) ? origin : ''
