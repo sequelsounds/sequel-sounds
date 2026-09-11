@@ -16,14 +16,16 @@
    */
   .surface-dark {
     --surface-bg: var(--color-sequel-brown);
+    --surface-fg: var(--color-sequel-silver);
     background-color: var(--surface-bg);
-    color: var(--color-sequel-silver);
+    color: var(--surface-fg);
   }
 
   .surface-light {
     --surface-bg: var(--color-sequel-silver);
+    --surface-fg: var(--color-sequel-brown);
     background-color: var(--surface-bg);
-    color: var(--color-sequel-brown);
+    color: var(--surface-fg);
   }
 
   /* -------------------------------------------------------------------- type */
@@ -72,9 +74,9 @@
     width: 100%;
     padding: 0.4rem 0 0.5rem;
     border: none;
-    border-bottom: 1px solid color-mix(in srgb, currentColor 80%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--surface-fg) 80%, transparent);
     background-color: transparent;
-    color: inherit;
+    color: var(--surface-fg);
     font-family: var(--font-sans);
     font-size: 0.9rem;
     font-weight: 400;
@@ -83,25 +85,25 @@
   }
 
   .field-underline::placeholder {
-    color: color-mix(in srgb, currentColor 30%, transparent);
+    color: color-mix(in srgb, var(--surface-fg) 30%, transparent);
     font-weight: 300;
   }
 
   .field-underline:focus {
-    border-bottom-color: currentColor;
+    border-bottom-color: var(--surface-fg);
   }
 
   .field-boxed {
     width: 100%;
     padding: 0.5rem 0.75rem;
-    border: 1px solid currentColor;
+    border: 1px solid var(--surface-fg);
     background-color: transparent;
-    color: inherit;
+    color: var(--surface-fg);
     font-size: 0.875rem;
   }
 
   .field-boxed::placeholder {
-    color: color-mix(in srgb, currentColor 55%, transparent);
+    color: color-mix(in srgb, var(--surface-fg) 55%, transparent);
   }
 
   /* ----------------------------------------------------------------- buttons

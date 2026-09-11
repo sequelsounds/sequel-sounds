@@ -43,13 +43,23 @@ both in one rule means a browser that does not know `:autofill` loses the WebKit
 fix too — yellow comes back on exactly the browsers that need the workaround.
 They are separate rules in `src/index.css`. Keep them separate.
 
-**The fill colour must follow the surface, not be named.** The first version of
-this rule hardcoded Sequel Silver as the inset shadow and Sequel Brown as the
-text, which was correct while every page was light — and painted a silver box
-with brown text on the dark login page the moment one existed. It now uses
-`--surface-bg`, published by `.surface-dark` / `.surface-light`, with
-`currentColor` for the text. Any new override that needs a background colour
-should do the same rather than naming one.
+**The colours must follow the surface — and `currentColor` cannot do it.** This
+took two passes to get right:
+
+1. The first version hardcoded Sequel Silver as the inset shadow and Sequel
+   Brown as the text. Correct while every page was light; it painted a silver
+   box on the dark login page the moment one existed.
+2. The fix used `currentColor` instead, which looked principled and produced
+   *dark text on the dark surface*. `-webkit-text-fill-color` exists precisely
+   because the browser has already overridden `color` on an autofilled field,
+   so `currentColor` resolves to the browser's value — the very one being
+   overridden.
+
+Both now name `--surface-fg` / `--surface-bg`, published by `.surface-dark` and
+`.surface-light`. **Inside an autofilled field, treat `currentColor` as
+unavailable.** `.field-underline` and `.field-boxed` take their border and text
+from `--surface-fg` for the same reason: a border drawn from `currentColor`
+turns dark as soon as Chrome fills the field.
 
 The `transition: background-color 100000s` is the other half of the trick, not
 decoration: the inset shadow hides the initial fill, and deferring the
