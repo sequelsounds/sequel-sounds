@@ -71,6 +71,8 @@
    * variant per ground.
    */
   .field-underline {
+    --field-font-size: 0.9rem;
+    --field-font-weight: 400;
     width: 100%;
     padding: 0.4rem 0 0.5rem;
     border: none;
@@ -78,8 +80,8 @@
     background-color: transparent;
     color: var(--surface-fg);
     font-family: var(--font-sans);
-    font-size: 0.9rem;
-    font-weight: 400;
+    font-size: var(--field-font-size);
+    font-weight: var(--field-font-weight);
     line-height: 1rem;
     transition: border-color 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
@@ -94,6 +96,8 @@
   }
 
   .field-boxed {
+    --field-font-size: 0.875rem;
+    --field-font-weight: 400;
     width: 100%;
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--surface-fg);
@@ -102,7 +106,8 @@
     /* Stated rather than inherited: an inherited family is one more thing the
        browser's autofill styling can quietly replace. */
     font-family: var(--font-sans);
-    font-size: 0.875rem;
+    font-size: var(--field-font-size);
+    font-weight: var(--field-font-weight);
   }
 
   .field-boxed::placeholder {
