@@ -44,7 +44,7 @@
     display: flex;
     height: 6rem;
     flex-direction: column;
-    justify-content: flex-start;
+    justify-content: center;
     padding: 0 2rem;
     border-bottom: 1px solid var(--color-sequel-line);
   }
@@ -73,9 +73,23 @@
    *
    * One class carries the line above the title and the line below it: on
    * that page they are the same element ("Let's check in on..." and the
-   * person's name), which is what the 6rem band is sized for —
-   * 1rem + 0.8 + 2 + 1rem + 0.8 lands just inside it.
+   * person's name).
+   *
+   * Its 1rem top margin is the one value not copied. Webflow's h1 brings a
+   * default top margin of its own, so there the gap lands on both sides of
+   * the title; ours has none, which left the line above jammed against the
+   * title and the line below stranded 16px away. The band spaces the three
+   * lines evenly instead and centres them, so the stack reads as one block.
    */
+  /* The three lines as one block, so the gap is the same above and below
+   * the title wherever the stack sits — on its own, or beside the buttons. */
+  .page-heading {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
   .page-title {
     font-family: var(--font-title);
     font-size: 2rem;
@@ -86,7 +100,6 @@
   }
 
   .page-subtitle {
-    margin-top: 1rem;
     font-size: 0.8rem;
     line-height: 0.8rem;
     font-weight: 400;

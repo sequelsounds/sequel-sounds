@@ -34,7 +34,7 @@ export default function Playlists() {
     <>
       <div className="header-band">
         <div className="flex items-center justify-between gap-4">
-          <div>
+          <div className="page-heading">
             <div className="page-subtitle">Everything you have put together…</div>
             <h1 className="page-title">Playlists</h1>
             <div className="page-subtitle">

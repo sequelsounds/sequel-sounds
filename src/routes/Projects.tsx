@@ -11,10 +11,12 @@ export default function Projects() {
   return (
     <>
       <div className="header-band">
-        <div className="page-subtitle">Let's check in on…</div>
-        <h1 className="page-title">Your projects</h1>
-        <div className="page-subtitle">
-          {projects.data ? plural(projects.data.length, 'project') : '\u00a0'}
+        <div className="page-heading">
+          <div className="page-subtitle">Let's check in on…</div>
+          <h1 className="page-title">Your projects</h1>
+          <div className="page-subtitle">
+            {projects.data ? plural(projects.data.length, 'project') : '\u00a0'}
+          </div>
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
