@@ -120,6 +120,13 @@ and preview in the staff app silently fails to load; miss (2) and the presign su
 the PUT to S3 is blocked — the page looks fine until someone actually drops a
 file. Miss (3) and every partner link Xano hands out points at the wrong host.
 
+The Edge Functions' IAM key was provisioned for **presigning**, which only
+ever names one key at a time — so it has no `s3:ListBucket` and no
+`s3:DeleteObject`. `delete-track` needs both, and fails with
+`list failed (403)` without them. The statement to add is
+`infra/s3-list-policy.json`; note that `ListBucket` is granted on the
+**bucket** arn, not on `bucket/*`, which is the usual way to get this wrong.
+
 Edge Functions deploy separately from the app; editing a file under
 `supabase/functions/` changes nothing until it is deployed. There is no supabase
 CLI on this machine, but the Supabase MCP can deploy — keep `verify_jwt` as it
