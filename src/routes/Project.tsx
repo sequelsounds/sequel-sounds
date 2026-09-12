@@ -78,6 +78,7 @@ export default function Project() {
     () => groupSubmissions(tracks.data ?? []),
     [tracks.data],
   )
+  const title = project.data?.name ?? ''
   const sequelNo = project.data?.sequel_no ?? ''
   const trackUrl = trackProjectUrl(project.data?.xano_uuid ?? null)
 
@@ -102,9 +103,11 @@ export default function Project() {
   return (
     <>
       <div className="header-band">
-        <div className="page-eyebrow">Studio</div>
+        <div className="page-eyebrow">{project.data?.client_name ?? ' '}</div>
         <div className="title-row gap-4">
-          <h1 className="page-title min-w-0 flex-1 truncate">Projects</h1>
+          <h1 className="page-title min-w-0 flex-1 truncate">
+            <span className="sentence-case font-sans">{title}</span>
+          </h1>
           <div className="flex shrink-0 gap-2">
             <button
               type="button"
@@ -126,7 +129,7 @@ export default function Project() {
             )}
           </div>
         </div>
-        <div className="page-subtitle">{sequelNo ? `#${sequelNo}` : ' '}</div>
+        <div className="page-subtitle">{sequelNo || ' '}</div>
       </div>
 
       {/* tab_bar_app: the search first at 40%, then the divider, then what
