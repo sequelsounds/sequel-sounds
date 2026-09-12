@@ -117,7 +117,9 @@ export default function TrackMeta({ track, onClose }: Props) {
         className="surface-light max-h-full w-full max-w-2xl overflow-auto border border-sequel-line p-6 shadow-[0_10px_40px_rgba(55,43,41,0.25)]"
       >
         <div className="mb-4 flex items-baseline justify-between gap-4">
-          <h2 className="font-title text-[17px] font-normal uppercase">Track details</h2>
+          {/* .display-heading is already Creato at 2rem/300 — the login page's
+              treatment, reused rather than restated. */}
+          <h2 className="display-heading uppercase">Track details</h2>
           <button type="button" onClick={onClose} className="text-sequel-mid hover:text-sequel-ink">
             ×
           </button>
