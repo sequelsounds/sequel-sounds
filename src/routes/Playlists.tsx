@@ -34,9 +34,13 @@ export default function Playlists() {
     <>
       <div className="header-band">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="page-title">
-            Playlists
-          </h1>
+          <div>
+            <div className="page-subtitle">Everything you have put together…</div>
+            <h1 className="page-title">Playlists</h1>
+            <div className="page-subtitle">
+              {playlists.data ? plural(playlists.data.length, 'playlist') : '\u00a0'}
+            </div>
+          </div>
           <button
             type="button"
             className="btn btn-tool btn-outline"

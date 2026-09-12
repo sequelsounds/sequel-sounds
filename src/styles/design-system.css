@@ -44,7 +44,7 @@
     display: flex;
     height: 6rem;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     padding: 0 2rem;
     border-bottom: 1px solid var(--color-sequel-line);
   }
@@ -68,8 +68,13 @@
   /* ---------------------------------------------------------- page headings
    * Read off Webflow's Projects page: title_app is Fahkwang 2rem/2rem
    * uppercase in Sequel Brown, and project_subtitle_app is 0.8rem/0.8rem at
-   * weight 400, a clear 1rem below it. Both fixed, not fluid — the page they
+   * weight 400 with 1rem above it. Both fixed, not fluid — the page they
    * come from does not scale them with the viewport.
+   *
+   * One class carries the line above the title and the line below it: on
+   * that page they are the same element ("Let's check in on..." and the
+   * person's name), which is what the 6rem band is sized for —
+   * 1rem + 0.8 + 2 + 1rem + 0.8 lands just inside it.
    */
   .page-title {
     font-family: var(--font-title);

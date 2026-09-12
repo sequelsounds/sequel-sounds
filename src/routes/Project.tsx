@@ -94,15 +94,11 @@ export default function Project() {
       <div className="header-band">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
+            <div className="page-subtitle">{project.data?.client_name ?? ' '}</div>
             <h1 className="page-title [overflow-wrap:anywhere]">
               <span className="sentence-case font-sans">{title}</span>
-              {number && (
-                <span className="ml-3 align-middle font-sans text-xs normal-case tracking-[.04em] text-sequel-mid">
-                  {number}
-                </span>
-              )}
             </h1>
-            <div className="mt-1 text-sequel-mid">{project.data?.client_name ?? ' '}</div>
+            <div className="page-subtitle">{number || ' '}</div>
           </div>
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
             <button

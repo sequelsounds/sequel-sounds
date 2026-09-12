@@ -14,9 +14,8 @@ export default function Library() {
       <div className="header-band">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="page-title">
-              Library
-            </h1>
+            <div className="page-subtitle">Everything partners have sent…</div>
+            <h1 className="page-title">Library</h1>
             <div className="page-subtitle">
               {tracks.data ? plural(tracks.data.length, 'track') : ' '}
             </div>
