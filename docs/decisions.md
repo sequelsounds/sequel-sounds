@@ -5,6 +5,26 @@ rediscovering an argument later.
 
 ---
 
+## Fahkwang had one weight, and the app asked for five
+
+**2026-09-13.** Only `Fahkwang-Regular.woff2` was ever committed, declared at
+`font-weight: 400`. Every heavier request in the app therefore rendered as
+Regular: PLAYLISTER asked for 600 and "PLAYLISTER" measured **106.89px at
+300, 400, 500, 600 and 700 alike** — the browser did not even synthesise a
+bolder one. Type that looked subtly wrong was type the font could not set.
+
+Fahkwang is not in Webflow's custom fonts — that library holds only Switzer
+and Creato Display. Webflow pulls it from Google, and the live site loads
+300 to 700. So the six weights come from Google too, latin and latin-ext,
+`unicode-range` intact so a project named "Mãe Terra" pulls the second file
+and nothing else does. Under the SIL Open Font License, which permits
+self-hosting.
+
+The Regular fetched this way is **byte-identical** to the one already
+committed, which confirms the original came from the same subset of the same
+version — so the other five cannot shift the metrics of anything already on
+screen.
+
 ## The page header is header_app's element tree, not its class list
 
 **2026-09-12.** Reading the classes was not enough, and reading only the
