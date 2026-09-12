@@ -1,13 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Search from '../components/staff/Search'
+import RowMenu from '../components/staff/RowMenu'
 import TrackTable from '../components/staff/TrackTable'
-import {
-  MailIcon,
-  MenuIcon,
-  PencilIcon,
-  ShareIcon,
-} from '../components/staff/icons'
+import { MailIcon, PencilIcon, ShareIcon } from '../components/staff/icons'
 import { useCreator } from '../lib/creator'
 import { formatDate, plural } from '../lib/format'
 import {
@@ -64,49 +60,6 @@ function groupSubmissions(tracks: TrackWithUse[]): Submission[] {
     if (!g.note && t.notes) g.note = t.notes
   }
   return [...groups.values()].sort((a, b) => (a.latest < b.latest ? 1 : -1))
-}
-
-/** The row's ⋮, holding whatever did not earn an icon of its own. */
-function RowMenu({
-  items,
-}: {
-  items: { label: string; disabled?: boolean; onSelect: () => void }[]
-}) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        className="icon-btn"
-        aria-label="More"
-        title="More"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <MenuIcon />
-      </button>
-      {open && (
-        <>
-          {/* Click anywhere else closes it, including on another row. */}
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="menu text-[0.8rem]">
-            {items.map((i) => (
-              <button
-                key={i.label}
-                type="button"
-                disabled={i.disabled}
-                onClick={() => {
-                  setOpen(false)
-                  i.onSelect()
-                }}
-              >
-                {i.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  )
 }
 
 export default function Project() {

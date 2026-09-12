@@ -1,10 +1,15 @@
 import { useDraggable } from '@dnd-kit/core'
 import { useMemo, useState } from 'react'
-import { formatDuration } from '../../lib/format'
+import { formatDuration, plural } from '../../lib/format'
 import { toPlayerTrack, usePlayer, type PlayerTrack } from '../../lib/player'
-import type { TrackWithUse } from '../../lib/queries'
+import {
+  playlistCount,
+  useDeleteTrack,
+  type TrackWithUse,
+} from '../../lib/queries'
 import Artwork from './Artwork'
 import { GripIcon, InfoIcon, PauseIcon, PlayIcon, ShareIcon } from './icons'
+import RowMenu from './RowMenu'
 import TrackMeta from './TrackMeta'
 
 type Props = {
@@ -37,7 +42,10 @@ export default function TrackTable({ tracks, lean = false }: Props) {
           <col style={{ width: 34 }} />
           <col style={{ width: 56 }} />
           <col />
-          {!lean && <col style={{ width: 86 }} />}
+          {/* Three 24px marks and two 14px gaps is 100, and the cell's own
+              12px padding either side puts the column at 124. At 86 the
+              first mark was clipped by the td's overflow. */}
+          {!lean && <col style={{ width: 124 }} />}
           {!lean && <col style={{ width: 80 }} />}
         </colgroup>
         <tbody>
@@ -86,6 +94,7 @@ function TrackRow({
   onEdit: () => void
 }) {
   const player = usePlayer()
+  const remove = useDeleteTrack()
   const [copied, setCopied] = useState(false)
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `track:${track.id}`,
@@ -167,6 +176,25 @@ function TrackRow({
               >
                 <ShareIcon />
               </button>
+              <RowMenu
+                items={[
+                  {
+                    label: 'Delete track…',
+                    onSelect: () => {
+                      const uses = playlistCount(track)
+                      const where =
+                        uses > 0 ? ` It is in ${plural(uses, 'playlist')}.` : ''
+                      if (
+                        !confirm(
+                          `Delete “${track.title}”?${where} The audio is removed from storage as well, and this cannot be undone.`,
+                        )
+                      )
+                        return
+                      remove.mutate(track.id)
+                    },
+                  },
+                ]}
+              />
             </div>
           </td>
           <td className="secondary pr-5 text-right">

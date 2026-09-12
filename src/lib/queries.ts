@@ -400,6 +400,42 @@ export function useTrackActions() {
   })
 }
 
+/**
+ * Deleting a track is the one destructive thing in the app, and it reaches
+ * past Postgres: the row cascades cleanly, but the audio, the preview, the
+ * peaks and the artwork all live in S3, which the browser has no rights over.
+ * The delete-track function does both halves behind a staff session.
+ */
+export function useDeleteTrack() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await supabase.auth.getSession()
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-track`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${data.session?.access_token ?? ''}`,
+          },
+          body: JSON.stringify({ id }),
+        },
+      )
+      if (!res.ok) {
+        const detail = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(detail?.error ?? `could not delete the track (${res.status})`)
+      }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['tracks'] })
+      void qc.invalidateQueries({ queryKey: ['playlists'] })
+      void qc.invalidateQueries({ queryKey: ['playlist'] })
+    },
+  })
+}
+
 export type OrderRow = {
   id: string
   track_id: string

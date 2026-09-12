@@ -87,6 +87,29 @@ keyed on. So the mirror carries both: `xano_id` stays the upsert key, and the
 webhook now takes `uuid` into `xano_uuid`. A project without one shows no
 button rather than a wrong link.
 
+## Deleting a track happens in a function, not the browser
+
+**2026-09-12.** There was no way to delete a track at all. The gap was never
+the database — `staff_all` is `FOR ALL`, `playlist_tracks` and `comments`
+cascade, and `playlists.video_track_id`, `project_assets.track_id`,
+`events.track_id` and `tracks.duplicate_of` all null out. The gap was S3:
+nothing in the app has ever removed an object, so a deleted row would have
+left its original, preview, peaks and artwork in the bucket with nothing
+pointing at them.
+
+So `delete-track` does both halves behind a staff session. The browser is
+given no S3 delete rights, because a delete the page can issue is a delete
+anyone holding the page can issue.
+
+**Objects first, then the row.** A half-finished delete then leaves the
+track still listed and the call repeatable. The other order loses the only
+record that the files exist.
+
+The prefix is built from the id, so the id is checked against a uuid
+pattern before it is used as one. And the keys are listed rather than
+assumed: the Lambda writes a known handful today, but a key added later
+would otherwise be the one thing left behind.
+
 ## Tracks no longer say how many playlists they are in
 
 **2026-09-12.** The "in N playlists" pill came from the approved mockup and
