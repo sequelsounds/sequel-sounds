@@ -699,8 +699,8 @@
     place-items: center;
     /* Narrower than the 1rem channel it sits in, so it never laps over the
        pane's border beside it. */
-    width: 0.75rem;
-    height: 2rem;
+    width: 0.875rem;
+    height: 2.75rem;
     background-color: var(--color-sequel-brown);
     color: var(--color-sequel-silver);
     border: 0;
