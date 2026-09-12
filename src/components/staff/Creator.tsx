@@ -1110,20 +1110,17 @@ function CreatorTrack({
           so the label said the same thing a second time, on the rows with
           the least width to spare. */}
       <span className="flex-1 truncate">{track?.title ?? 'Missing track'}</span>
-      {/* Both arrive under the pointer, and stay put while Edit all is on.
-          They are different things and say so: × takes the track out of
-          this list, the bin deletes the track itself — which is what you
-          want the moment after dropping the wrong file. */}
-      <span
-        className={`shrink-0 items-center gap-1 ${
-          editing ? 'flex' : 'hidden group-hover/row:flex'
-        }`}
-      >
+      {/* One control per state, not two side by side. Taking a track out of
+          a list is curation, which is what Edit all is for and where the ×
+          has always lived. Deleting the track is the thing you reach for
+          the moment after dropping the wrong file, so that is what a plain
+          hover offers. */}
+      {editing ? (
         <button
           type="button"
           aria-label="Remove from playlist"
           title="Remove from this playlist"
-          className="px-1 text-lg leading-none"
+          className="shrink-0 px-1 text-lg leading-none"
           onClick={(e) => {
             e.stopPropagation()
             onRemove()
@@ -1131,12 +1128,13 @@ function CreatorTrack({
         >
           ×
         </button>
-        {track && (
+      ) : (
+        track && (
           <button
             type="button"
             aria-label="Delete track"
             title="Delete the track itself"
-            className="icon-btn"
+            className="icon-btn hidden shrink-0 group-hover/row:grid"
             onClick={(e) => {
               e.stopPropagation()
               onDeleteTrack()
@@ -1144,8 +1142,8 @@ function CreatorTrack({
           >
             <TrashIcon />
           </button>
-        )}
-      </span>
+        )
+      )}
     </div>
   )
 }
