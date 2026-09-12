@@ -114,6 +114,7 @@ function Shell() {
           onClick={() => creator.setCollapsed(!creator.collapsed)}
         >
           <ChevronIcon
+            size="0.75rem"
             className={creator.collapsed ? 'rotate-90' : '-rotate-90'}
           />
         </button>
