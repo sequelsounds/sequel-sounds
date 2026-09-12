@@ -427,6 +427,12 @@ export function useDeleteTrack() {
         const detail = (await res.json().catch(() => null)) as { error?: string } | null
         throw new Error(detail?.error ?? `could not delete the track (${res.status})`)
       }
+      return (await res.json()) as { objects_deleted: number }
+    },
+    // A delete that fails has to say so. Without this the row simply stays
+    // where it is and nothing explains why.
+    onError: (e: Error) => {
+      alert(`The track was not deleted: ${e.message}`)
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['tracks'] })
