@@ -1131,7 +1131,7 @@ function EmptyDrop({
         className={`flex w-full flex-col items-center justify-center gap-3 border border-dashed px-4 py-10 text-center ${
           isOver
             ? 'border-sequel-brown bg-sequel-well text-sequel-ink'
-            : 'border-sequel-grey text-sequel-mid'
+            : 'border-sequel-line text-sequel-mid'
         }`}
       >
         <UploadFileIcon size="1.5rem" />
@@ -1160,7 +1160,7 @@ function EndDrop({ empty, onClick }: { empty: boolean; onClick: () => void }) {
       className={`mx-[18px] my-[10px] flex w-[calc(100%-36px)] cursor-pointer flex-col items-center justify-center gap-3 border border-dashed px-4 py-10 text-center text-[13px] ${
         isOver
           ? 'border-sequel-brown bg-sequel-well text-sequel-ink'
-          : 'border-sequel-grey text-sequel-mid'
+          : 'border-sequel-line text-sequel-mid'
       }`}
     >
       <UploadFileIcon size="1.5rem" />
