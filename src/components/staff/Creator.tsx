@@ -136,7 +136,6 @@ export default function Creator() {
   // The name typed before a playlist exists. The panel with nothing open
   // is a playlist waiting to be made, not an absence.
   const [draftName, setDraftName] = useState('')
-  const [deletingTrack, setDeletingTrack] = useState<Track | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   const data = playlist.data ?? null
@@ -847,7 +846,7 @@ export default function Creator() {
                         onPlay={() => index >= 0 && player.play(queue, index)}
                         onRemove={() => remove(row)}
                         onDeleteTrack={() =>
-                          row.track && setDeletingTrack(row.track)
+                          row.track && removeTrack.mutate(row.track.id)
                         }
                       />
                     )
@@ -973,19 +972,6 @@ export default function Creator() {
             </div>
           </div>
         </>
-      )}
-      {deletingTrack && (
-        <Confirm
-          title={`Delete “${deletingTrack.title}”?`}
-          body="The audio, preview and artwork go too."
-          confirmLabel="Delete track"
-          onConfirm={() => {
-            const id = deletingTrack.id
-            setDeletingTrack(null)
-            removeTrack.mutate(id)
-          }}
-          onCancel={() => setDeletingTrack(null)}
-        />
       )}
       {destroying && data && (
         <Confirm

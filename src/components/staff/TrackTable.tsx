@@ -1,14 +1,9 @@
 import { useDraggable } from '@dnd-kit/core'
 import { useMemo, useState } from 'react'
-import { formatDuration, plural } from '../../lib/format'
+import { formatDuration } from '../../lib/format'
 import { toPlayerTrack, usePlayer, type PlayerTrack } from '../../lib/player'
-import {
-  playlistCount,
-  useDeleteTrack,
-  type TrackWithUse,
-} from '../../lib/queries'
+import { useDeleteTrack, type TrackWithUse } from '../../lib/queries'
 import Artwork from './Artwork'
-import Confirm from './Confirm'
 import {
   GripIcon,
   InfoIcon,
@@ -41,11 +36,9 @@ export default function TrackTable({ tracks, lean = false }: Props) {
   // table's order, which a row does not know.
   const [editing, setEditing] = useState<number | null>(null)
   const editingTrack = editing == null ? null : (tracks[editing] ?? null)
-  // Beside the dialog above rather than inside a row: a <tr> can hold
-  // nothing but cells, and this was riding in a sixth one on a table of
-  // five columns.
-  const [deleting, setDeleting] = useState<number | null>(null)
-  const deletingTrack = deleting == null ? null : (tracks[deleting] ?? null)
+  // Deleting does not ask. The bin is deliberate enough on its own, and
+  // the objects it removes are recoverable — the bucket keeps versions.
+  // Only a failure is worth interrupting for, which the mutation handles.
   const remove = useDeleteTrack()
 
   return (
@@ -70,7 +63,7 @@ export default function TrackTable({ tracks, lean = false }: Props) {
               queue={queue}
               lean={lean}
               onEdit={() => setEditing(index)}
-              onDelete={() => setDeleting(index)}
+              onDelete={() => remove.mutate(track.id)}
             />
           ))}
         </tbody>
@@ -88,25 +81,6 @@ export default function TrackTable({ tracks, lean = false }: Props) {
               ? () => setEditing(editing! + 1)
               : undefined
           }
-        />
-      )}
-      {deletingTrack && (
-        <Confirm
-          title={`Delete “${deletingTrack.title}”?`}
-          // Only the part that is true and not obvious: being in more than
-          // one playlist is the consequence worth stopping for.
-          body={`The audio, preview and artwork go too.${
-            playlistCount(deletingTrack) > 1
-              ? ` It is in ${plural(playlistCount(deletingTrack), 'playlist')} and comes out of all of them.`
-              : ''
-          }`}
-          confirmLabel="Delete track"
-          onConfirm={() => {
-            const id = deletingTrack.id
-            setDeleting(null)
-            remove.mutate(id)
-          }}
-          onCancel={() => setDeleting(null)}
         />
       )}
     </>
