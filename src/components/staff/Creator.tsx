@@ -128,6 +128,11 @@ export default function Creator() {
   const [uploads, setUploads] = useState<Upload[]>([])
   const [fileOver, setFileOver] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
+  const titleInput = useRef<HTMLInputElement>(null)
+  // The id of a playlist this panel just made, so its name can be put up
+  // for typing the moment it loads. A ref, not state: nothing renders
+  // differently because of it.
+  const nameOnArrival = useRef<string | null>(null)
   const session = useSession()
   const [attaching, setAttaching] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -153,6 +158,14 @@ export default function Creator() {
     setPicking(false)
     setAttaching(false)
     setAddingTracks(false)
+
+    // A playlist this panel just made: put its name up for typing, whole,
+    // so the first keystroke replaces "New playlist" rather than appending
+    // to it.
+    if (data && nameOnArrival.current === data.id) {
+      nameOnArrival.current = null
+      titleInput.current?.select()
+    }
   }, [data])
 
   // Scoped to the project on screen: arriving at a project shows its latest
@@ -517,6 +530,11 @@ export default function Creator() {
     const id = await actions.createPlaylist.mutateAsync({
       projectId: routeProjectId,
     })
+    // Naming it is the first thing you do — you would rather the list read
+    // as itself in the column on the left before tracks start landing in
+    // it. So the name is selected and waiting, not something to go and
+    // click on afterwards.
+    nameOnArrival.current = id
     open(id)
   }
 
@@ -687,6 +705,7 @@ export default function Creator() {
           <div className="flex items-start gap-[10px] border-b border-sequel-line px-[18px] py-[14px]">
             <div className="min-w-0 flex-1">
               <input
+                ref={titleInput}
                 className="creator-title"
                 value={title}
                 aria-label="Playlist name"
