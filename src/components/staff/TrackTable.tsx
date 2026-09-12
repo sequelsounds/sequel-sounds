@@ -93,11 +93,11 @@ export default function TrackTable({ tracks, lean = false }: Props) {
       {deletingTrack && (
         <Confirm
           title={`Delete “${deletingTrack.title}”?`}
-          body={`The audio, preview and artwork are removed from storage as well.${
-            playlistCount(deletingTrack) > 0
-              ? ` It is in ${plural(playlistCount(deletingTrack), 'playlist')}, and will be taken out of ${
-                  playlistCount(deletingTrack) === 1 ? 'it' : 'them'
-                }.`
+          // Only the part that is true and not obvious: being in more than
+          // one playlist is the consequence worth stopping for.
+          body={`The audio, preview and artwork go too.${
+            playlistCount(deletingTrack) > 1
+              ? ` It is in ${plural(playlistCount(deletingTrack), 'playlist')} and comes out of all of them.`
               : ''
           }`}
           confirmLabel="Delete track"

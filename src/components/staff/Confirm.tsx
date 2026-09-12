@@ -50,7 +50,12 @@ export default function Confirm({
         onClick={(e) => e.stopPropagation()}
         className="surface-light w-full max-w-[30rem] border border-sequel-line p-7 shadow-[0_10px_40px_rgba(55,43,41,0.25)]"
       >
-        <h2 className="submission-title [overflow-wrap:anywhere]">{title}</h2>
+        {/* Library titles run to a couple of hundred characters — the whole
+            "TITLE --- sales copy" pattern — and a dialog that opens three
+            lines deep reads as a bigger deal than it is. */}
+        <h2 className="submission-title line-clamp-2 [overflow-wrap:anywhere]">
+          {title}
+        </h2>
         {body && <p className="mt-3 text-[0.8rem] text-sequel-mid">{body}</p>}
         <div className="mt-7 flex justify-end gap-2">
           <button

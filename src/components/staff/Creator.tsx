@@ -977,7 +977,7 @@ export default function Creator() {
       {deletingTrack && (
         <Confirm
           title={`Delete “${deletingTrack.title}”?`}
-          body="The audio, preview and artwork are removed from storage as well, and it comes out of every playlist it is in — not just this one."
+          body="The audio, preview and artwork go too."
           confirmLabel="Delete track"
           onConfirm={() => {
             const id = deletingTrack.id
