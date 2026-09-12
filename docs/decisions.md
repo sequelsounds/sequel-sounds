@@ -87,6 +87,22 @@ keyed on. So the mirror carries both: `xano_id` stays the upsert key, and the
 webhook now takes `uuid` into `xano_uuid`. A project without one shows no
 button rather than a wrong link.
 
+## A project is a split, not three tabs
+
+**2026-09-12.** Inbox and Playlists were separate tabs, so seeing what a
+partner sent and what had been built from it meant switching between two
+full-page lists. They are one view now, the shape DISCO uses for the same
+job: the left column indexes everything, the right reads whichever one is
+open.
+
+Both kinds sit in the same column because both are lists of tracks —
+staff playlists first under **Playlists**, the partner drops under
+**Inbox**, newest first within each. A drop is a playlist nobody in the
+office made, which is the only real difference between them.
+
+Whatever is first opens on landing, so the page is never empty. `?tab=inbox`
+still resolves rather than 404ing on a stale link; it lands on the split.
+
 ## The project title is the link to Track
 
 **2026-09-12.** Open in Track was a button beside the title pointing at the

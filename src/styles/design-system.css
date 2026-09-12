@@ -719,6 +719,107 @@
   }
 
   /* The inbox's stacked submissions. */
+  /* ------------------------------------------------------------ the split
+   * A project is a list of playlists and a reader for whichever one is
+   * open, side by side — the shape DISCO uses for the same job. The left
+   * column is the index, the right is the contents.
+   */
+  .split {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  .split-list {
+    width: 40%;
+    min-width: 15rem;
+    overflow: auto;
+    border-right: 1px solid var(--color-sequel-line);
+  }
+
+  .split-detail {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: auto;
+  }
+
+  /* Staff playlists first, then the inbox, each under its own label. */
+  .split-group {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 2rem 6px;
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    font-weight: 300;
+    text-transform: uppercase;
+    color: var(--color-sequel-mid);
+  }
+
+  .split-row {
+    display: block;
+    width: 100%;
+    padding: 12px 2rem;
+    text-align: left;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
+
+  .split-row[aria-current='true'] {
+    background-color: var(--color-sequel-playing);
+  }
+
+  .split-row:hover {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  .split-row-title {
+    display: block;
+    font-size: 0.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .split-row-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 5px;
+    font-size: 0.7rem;
+    color: var(--color-sequel-mid);
+    overflow: hidden;
+  }
+
+  .split-row:hover .split-row-meta {
+    color: var(--color-sequel-silver);
+  }
+
+  /* The head of the right column: what is open, and who sent it. */
+  .detail-head {
+    padding: 18px 2rem 14px;
+    border-bottom: 1px solid var(--color-sequel-line);
+  }
+
+  .detail-meta {
+    margin-top: 6px;
+    font-size: 0.8rem;
+    font-weight: 300;
+    color: var(--color-sequel-mid);
+  }
+
+  .detail-from {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background-color: var(--color-sequel-white);
+    font-size: 0.8rem;
+  }
+
   .submission-open {
     display: flex;
     align-items: baseline;

@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { ChevronIcon } from '../components/staff/icons'
 import Search from '../components/staff/Search'
 import TrackTable from '../components/staff/TrackTable'
 import { useCreator } from '../lib/creator'
 import { formatDate, plural } from '../lib/format'
 import {
+  usePlaylist,
   usePlaylistActions,
   usePlaylists,
   useProject,
@@ -14,9 +14,11 @@ import {
   type TrackWithUse,
 } from '../lib/queries'
 import { trackProjectUrl } from '../lib/track'
-import { PlaylistRows } from './Playlists'
 
-type Tab = 'inbox' | 'playlists' | 'activity'
+type Tab = 'playlists' | 'activity'
+
+/** What the right-hand pane is showing. */
+type Open = { kind: 'playlist' | 'submission'; key: string }
 
 /**
  * One partner drop. Grouped on the id the inbox page mints per send; rows
@@ -63,7 +65,8 @@ function groupSubmissions(tracks: TrackWithUse[]): Submission[] {
 export default function Project() {
   const { id } = useParams()
   const [params, setParams] = useSearchParams()
-  const tab = (params.get('tab') as Tab | null) ?? 'inbox'
+  // ?tab=inbox predates the split; both halves live in one view now.
+  const tab: Tab = params.get('tab') === 'activity' ? 'activity' : 'playlists'
   const project = useProject(id)
   const tracks = useProjectTracks(id)
   const playlists = usePlaylists(id)
@@ -72,12 +75,48 @@ export default function Project() {
   useRecordVisit(id)
 
   const [copied, setCopied] = useState(false)
-  const [toggled, setToggled] = useState<Record<string, boolean>>({})
+  const [picked, setPicked] = useState<Open | null>(null)
 
   const submissions = useMemo(
     () => groupSubmissions(tracks.data ?? []),
     [tracks.data],
   )
+  // The left column: staff playlists first, then the inbox's own drops.
+  // Whichever comes first is what opens when you land on the project.
+  const open: Open | null =
+    picked ??
+    (playlists.data?.[0]
+      ? { kind: 'playlist', key: playlists.data[0].id }
+      : submissions[0]
+        ? { kind: 'submission', key: submissions[0].key }
+        : null)
+  const openPlaylist = usePlaylist(open?.kind === 'playlist' ? open.key : null)
+  const openSubmission =
+    open?.kind === 'submission'
+      ? (submissions.find((s) => s.key === open.key) ?? null)
+      : null
+
+  // A playlist's rows come back as plain tracks. The project's own list
+  // already knows which playlists each one is in, so reuse that where it
+  // can and fall back to this playlist alone.
+  const playlistTracks = useMemo<TrackWithUse[]>(() => {
+    const rows = openPlaylist.data?.playlist_tracks
+    if (!rows) return []
+    const known = new Map(tracks.data?.map((t) => [t.id, t]) ?? [])
+    return [...rows]
+      .sort((a, b) => a.position - b.position)
+      .flatMap((r) =>
+        r.tracks
+          ? [
+              known.get(r.tracks.id) ?? {
+                ...r.tracks,
+                playlist_tracks: [{ playlist_id: r.playlist_id }],
+              },
+            ]
+          : [],
+      )
+  }, [openPlaylist.data, tracks.data])
+
   const title = project.data?.name ?? ''
   const sequelNo = project.data?.sequel_no ?? ''
   const trackUrl = trackProjectUrl(project.data?.xano_uuid ?? null)
@@ -92,7 +131,7 @@ export default function Project() {
 
   const setTab = (next: Tab) => {
     const p = new URLSearchParams(params)
-    if (next === 'inbox') p.delete('tab')
+    if (next === 'playlists') p.delete('tab')
     else p.set('tab', next)
     setParams(p, { replace: true })
   }
@@ -144,25 +183,7 @@ export default function Project() {
           <Search />
         </div>
         <div className="tab-band-divider mx-6" />
-        <div
-          role="tablist"
-          className="flex items-end gap-[26px] self-stretch"
-        >
-          <button
-            type="button"
-            role="tab"
-            className="tab"
-            aria-selected={tab === 'inbox'}
-            onClick={() => setTab('inbox')}
-          >
-            Inbox
-            {tracks.data && (
-              <span className="count">
-                {plural(submissions.length, 'submission')} ·{' '}
-                {plural(tracks.data.length, 'track')}
-              </span>
-            )}
-          </button>
+        <div role="tablist" className="flex items-end gap-[26px] self-stretch">
           <button
             type="button"
             role="tab"
@@ -171,8 +192,11 @@ export default function Project() {
             onClick={() => setTab('playlists')}
           >
             Playlists
-            {playlists.data && (
-              <span className="count">{playlists.data.length}</span>
+            {tracks.data && (
+              <span className="count">
+                {plural(playlists.data?.length ?? 0, 'playlist')} ·{' '}
+                {plural(submissions.length, 'submission')}
+              </span>
             )}
           </button>
           <button
@@ -187,96 +211,149 @@ export default function Project() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto">
-        {tab === 'inbox' && (
-          <>
+      {tab === 'playlists' && (
+        <div className="split">
+          <div className="split-list">
+            <div className="split-group">
+              <span>Playlists</span>
+              <button
+                type="button"
+                className="underline"
+                onClick={async () => {
+                  const newId = await actions.createPlaylist.mutateAsync({
+                    projectId: id ?? null,
+                  })
+                  creator.open(newId)
+                  setPicked({ kind: 'playlist', key: newId })
+                }}
+              >
+                New
+              </button>
+            </div>
+            {playlists.data?.length === 0 && (
+              <p className="px-8 pb-2 text-[0.8rem] text-sequel-mid">
+                None yet.
+              </p>
+            )}
+            {playlists.data?.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className="split-row"
+                aria-current={open?.kind === 'playlist' && open.key === p.id}
+                onClick={() => setPicked({ kind: 'playlist', key: p.id })}
+              >
+                <span className="split-row-title">{p.name}</span>
+                <span className="split-row-meta">
+                  <span className="pill">
+                    {plural(p.playlist_tracks[0]?.count ?? 0, 'track')}
+                  </span>
+                  {formatDate(p.updated_at)}
+                </span>
+              </button>
+            ))}
+
+            <div className="split-group">
+              <span>Inbox</span>
+            </div>
+            {tracks.data && submissions.length === 0 && (
+              <p className="px-8 pb-4 text-[0.8rem] text-sequel-mid">
+                Nothing sent yet. Copy the link above and pass it to partners.
+              </p>
+            )}
+            {submissions.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                className="split-row"
+                aria-current={open?.kind === 'submission' && open.key === s.key}
+                onClick={() => setPicked({ kind: 'submission', key: s.key })}
+              >
+                <span className="split-row-title">{s.company}</span>
+                <span className="split-row-meta">
+                  <span className="pill">
+                    {plural(s.tracks.length, 'track')}
+                  </span>
+                  {formatDate(s.latest)}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="split-detail">
             {tracks.isPending && (
               <p className="px-7 py-4 text-sequel-mid">Loading…</p>
             )}
             {tracks.error && (
               <p className="form-error px-7 py-4">{tracks.error.message}</p>
             )}
-            {tracks.data && submissions.length === 0 && (
+            {!open && tracks.data && (
               <p className="px-7 py-6 text-sequel-mid">
-                Nothing has been sent to this inbox yet. Copy the link above and
-                pass it to partners.
+                Nothing here yet. A partner's first drop, or a playlist you
+                start, opens on this side.
               </p>
             )}
-            {submissions.map((s, i) => {
-              const open = toggled[s.key] ?? i === 0
-              const meta = [
-                s.email,
-                formatDate(s.latest),
-                plural(s.tracks.length, 'track'),
-              ]
-                .filter(Boolean)
-                .join(' · ')
-              return open ? (
-                <section key={s.key}>
-                  <div
-                    className="submission-open"
-                    onClick={() =>
-                      setToggled((t) => ({ ...t, [s.key]: false }))
-                    }
-                  >
-                    <h2 className="submission-title">{s.company}</h2>
-                    <span className="min-w-0 truncate text-[13px] text-sequel-mid">
-                      {meta}
-                      {s.note && <> · “{s.note}”</>}
-                    </span>
-                    <ChevronIcon className="ml-auto shrink-0" />
+
+            {openSubmission && (
+              <>
+                <div className="detail-head">
+                  <h2 className="submission-title">{openSubmission.company}</h2>
+                  <div className="detail-meta">
+                    {plural(openSubmission.tracks.length, 'track')} ·{' '}
+                    {formatDate(openSubmission.latest)}
                   </div>
-                  <TrackTable tracks={s.tracks} />
-                </section>
-              ) : (
-                <div
-                  key={s.key}
-                  className={`submission-closed ${i > 0 && !(toggled[submissions[i - 1].key] ?? i - 1 === 0) ? '' : 'border-t'}`}
-                  onClick={() => setToggled((t) => ({ ...t, [s.key]: true }))}
-                >
-                  <h2 className="submission-title">{s.company}</h2>
-                  <span className="min-w-0 truncate text-[13px] text-sequel-mid">
-                    {meta}
-                  </span>
-                  <ChevronIcon className="ml-auto shrink-0 -rotate-90" />
+                  {(openSubmission.email || openSubmission.note) && (
+                    <div className="detail-from">
+                      {openSubmission.email && (
+                        <div>
+                          From <strong>{openSubmission.company}</strong>
+                          <span className="ml-2 text-sequel-mid">
+                            {openSubmission.email}
+                          </span>
+                        </div>
+                      )}
+                      {openSubmission.note && (
+                        <p className="mt-2">“{openSubmission.note}”</p>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )
-            })}
-          </>
-        )}
-
-        {tab === 'playlists' && (
-          <>
-            <div className="flex justify-end px-7 pt-4">
-              <button
-                type="button"
-                className="btn btn-tool btn-outline"
-                onClick={async () => {
-                  const newId = await actions.createPlaylist.mutateAsync({
-                    projectId: id ?? null,
-                  })
-                  creator.open(newId)
-                }}
-              >
-                New playlist
-              </button>
-            </div>
-            {playlists.data && playlists.data.length === 0 && (
-              <p className="px-7 py-6 text-sequel-mid">
-                No playlists for this project yet.
-              </p>
+                <TrackTable tracks={openSubmission.tracks} />
+              </>
             )}
-            {playlists.data && playlists.data.length > 0 && (
-              <PlaylistRows
-                rows={playlists.data}
-                onOpen={(p) => creator.open(p.id)}
-                current={creator.playlistId}
-              />
-            )}
-          </>
-        )}
 
-        {tab === 'activity' && (
+            {open?.kind === 'playlist' && openPlaylist.data && (
+              <>
+                <div className="detail-head">
+                  <h2 className="submission-title">{openPlaylist.data.name}</h2>
+                  <div className="detail-meta">
+                    {plural(playlistTracks.length, 'track')} ·{' '}
+                    {formatDate(openPlaylist.data.updated_at)}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-tool btn-outline mt-3"
+                    onClick={() => creator.open(openPlaylist.data!.id)}
+                  >
+                    Edit in creator
+                  </button>
+                </div>
+                {playlistTracks.length === 0 ? (
+                  <p className="px-7 py-6 text-sequel-mid">
+                    Nothing in this playlist yet. Drag tracks in from a
+                    submission, or drop files on the creator.
+                  </p>
+                ) : (
+                  <TrackTable tracks={playlistTracks} />
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'activity' && (
+        <div className="min-h-0 flex-1 overflow-auto">
           <div className="px-7 py-6 text-sequel-mid">
             <p>
               Activity is recorded from the viewer page — who opened each
@@ -286,8 +363,8 @@ export default function Project() {
               Nothing to show until the first playlist is shared.
             </p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </>
   )
 }
