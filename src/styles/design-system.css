@@ -280,7 +280,10 @@
   }
 
   .tab {
-    padding: 0 0 12px;
+    /* The label sits down on its underline rather than floating well above
+       it. The rule below the strip is the same distance from the text as the
+       active tab's own mark, so the two read as one line. */
+    padding: 2px 0 8px;
     color: var(--color-sequel-mid);
     border-bottom: 2px solid transparent;
     background: none;
