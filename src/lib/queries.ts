@@ -424,8 +424,17 @@ export function useDeleteTrack() {
         },
       )
       if (!res.ok) {
-        const detail = (await res.json().catch(() => null)) as { error?: string } | null
-        throw new Error(detail?.error ?? `could not delete the track (${res.status})`)
+        const body = (await res.json().catch(() => null)) as
+          | { error?: string; detail?: string; key?: string; status?: number }
+          | null
+        // The detail carries the status AWS or Postgres actually returned.
+        // Without it every failure reads the same, which is no use at all.
+        const extra = [body?.detail, body?.key, body?.status].filter(Boolean).join(' ')
+        throw new Error(
+          [body?.error ?? `could not delete the track (${res.status})`, extra]
+            .filter(Boolean)
+            .join(' — '),
+        )
       }
       return (await res.json()) as { objects_deleted: number }
     },
