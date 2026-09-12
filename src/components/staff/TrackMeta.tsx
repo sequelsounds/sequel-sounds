@@ -420,7 +420,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
                 <p className="font-light">No writers recorded. Add the first one below.</p>
               )}
               {writers.map((w, i) => (
-                <div key={i} className="grid grid-cols-[1fr_1fr_6rem_5rem_2rem] items-end gap-3">
+                <div key={i} className="grid grid-cols-[1fr_1fr_6rem_5rem_2.5rem] items-end gap-3">
                   {(['name', 'publisher', 'pro'] as const).map((k) => (
                     <label key={k}>
                       {i === 0 && <span className="field-label block capitalize">{k}</span>}
@@ -451,7 +451,10 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
                   <button
                     type="button"
                     aria-label="Remove writer"
-                    className="mb-2"
+                    title="Remove writer"
+                    // The same weight as the closes on the artwork and the
+                    // header, so a × means the same size wherever it appears.
+                    className="mb-0.5 grid h-9 w-9 place-items-center text-[1.6rem] leading-none"
                     onClick={() => setWriters((ws) => ws.filter((_, j) => j !== i))}
                   >
                     ×

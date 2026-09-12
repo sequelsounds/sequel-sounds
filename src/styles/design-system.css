@@ -284,6 +284,11 @@
        it. The rule below the strip is the same distance from the text as the
        active tab's own mark, so the two read as one line. */
     padding: 2px 0 8px;
+    /* And they are one line: without this the tab's 2px mark stacks directly
+       on top of the strip's 1px rule and you see a 3px step. Pulling the tab
+       down by the width of the rule makes the mark cover it, so the active
+       tab reads as a thickening of the same line rather than a second one. */
+    margin-bottom: -1px;
     color: var(--color-sequel-mid);
     border-bottom: 2px solid transparent;
     background: none;
