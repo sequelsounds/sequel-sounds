@@ -41,6 +41,12 @@ export default function TrackTable({ tracks, lean = false }: Props) {
   // table's order, which a row does not know.
   const [editing, setEditing] = useState<number | null>(null)
   const editingTrack = editing == null ? null : (tracks[editing] ?? null)
+  // Beside the dialog above rather than inside a row: a <tr> can hold
+  // nothing but cells, and this was riding in a sixth one on a table of
+  // five columns.
+  const [deleting, setDeleting] = useState<number | null>(null)
+  const deletingTrack = deleting == null ? null : (tracks[deleting] ?? null)
+  const remove = useDeleteTrack()
 
   return (
     <>
@@ -64,6 +70,7 @@ export default function TrackTable({ tracks, lean = false }: Props) {
               queue={queue}
               lean={lean}
               onEdit={() => setEditing(index)}
+              onDelete={() => setDeleting(index)}
             />
           ))}
         </tbody>
@@ -83,6 +90,25 @@ export default function TrackTable({ tracks, lean = false }: Props) {
           }
         />
       )}
+      {deletingTrack && (
+        <Confirm
+          title={`Delete “${deletingTrack.title}”?`}
+          body={`The audio, preview and artwork are removed from storage as well.${
+            playlistCount(deletingTrack) > 0
+              ? ` It is in ${plural(playlistCount(deletingTrack), 'playlist')}, and will be taken out of ${
+                  playlistCount(deletingTrack) === 1 ? 'it' : 'them'
+                }.`
+              : ''
+          }`}
+          confirmLabel="Delete track"
+          onConfirm={() => {
+            const id = deletingTrack.id
+            setDeleting(null)
+            remove.mutate(id)
+          }}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
     </>
   )
 }
@@ -93,17 +119,17 @@ function TrackRow({
   queue,
   lean,
   onEdit,
+  onDelete,
 }: {
   track: TrackWithUse
   index: number
   queue: PlayerTrack[]
   lean: boolean
   onEdit: () => void
+  onDelete: () => void
 }) {
   const player = usePlayer()
-  const remove = useDeleteTrack()
   const [copied, setCopied] = useState(false)
-  const [confirming, setConfirming] = useState(false)
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `track:${track.id}`,
     data: { type: 'track', track },
@@ -193,7 +219,7 @@ function TrackRow({
                 title="Delete track"
                 onClick={(e) => {
                   e.stopPropagation()
-                  setConfirming(true)
+                  onDelete()
                 }}
               >
                 <TrashIcon />
@@ -204,24 +230,6 @@ function TrackRow({
             {formatDuration(track.duration_seconds)}
           </td>
         </>
-      )}
-      {confirming && (
-        <td className="p-0!">
-          <Confirm
-            title={`Delete “${track.title}”?`}
-            body={`The audio, preview and artwork are removed from storage as well.${
-              playlistCount(track) > 0
-                ? ` It is in ${plural(playlistCount(track), 'playlist')}, and will be taken out of ${playlistCount(track) === 1 ? 'it' : 'them'}.`
-                : ''
-            }`}
-            confirmLabel="Delete track"
-            onConfirm={() => {
-              setConfirming(false)
-              remove.mutate(track.id)
-            }}
-            onCancel={() => setConfirming(false)}
-          />
-        </td>
       )}
     </tr>
   )
