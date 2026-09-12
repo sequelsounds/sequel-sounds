@@ -697,8 +697,10 @@
     z-index: 3;
     display: grid;
     place-items: center;
-    width: 1.25rem;
-    height: 2.5rem;
+    /* Narrower than the 1rem channel it sits in, so it never laps over the
+       pane's border beside it. */
+    width: 0.75rem;
+    height: 2rem;
     background-color: var(--color-sequel-brown);
     color: var(--color-sequel-silver);
     border: 0;
