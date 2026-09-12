@@ -263,11 +263,12 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
           ))}
         </div>
 
-        {/* Metadata is the tallest tab, so it sets the height and the rest
-            fill it. Without this the dialog resized on every tab change —
-            660px on Metadata, 318px on Notes, 268px on Tags — which read as
-            the dialog jumping about rather than the content changing. */}
-        <div className="flex min-h-[27rem] flex-1 overflow-auto px-7 py-6">
+        {/* One height for every tab, not a minimum. A minimum let the tallest
+            tab grow past it and the dialog resized on every tab change again —
+            it was 660px on Metadata, 318px on Notes, 268px on Tags before this
+            was pinned, which read as the dialog jumping rather than the
+            content changing. Anything taller scrolls inside. */}
+        <div className="flex h-[32rem] overflow-auto px-7 py-6">
           {tab === 'metadata' ? (
             <div className="flex w-full gap-7">
               {/* ---- artwork ---- */}
@@ -386,7 +387,12 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
 
                 <label className="block">
                   <span className="field-label block">Comments</span>
-                  <input
+                  {/* A production library writes a couple of thousand
+                      characters of keywords in here, so it scrolls rather
+                      than running off the end of one line. Same box as
+                      Lyrics and Notes: no grabber. */}
+                  <textarea
+                    rows={3}
                     className={`${field} mt-2`}
                     value={form.comments ?? ''}
                     onChange={(e) => set('comments', e.target.value)}

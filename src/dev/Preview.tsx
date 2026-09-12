@@ -237,7 +237,14 @@ export default function Preview() {
         isrc: 'GB22P1705219',
         track_no: 1,
         disc_no: 1,
-        comments: 'Library keyword dump lands here.',
+        // A real production-library comment, near enough: the ISRC, then a
+        // couple of thousand characters of keywords. This is the field that
+        // has to scroll.
+        comments:
+          'ISRC: GB22P1705219, ' +
+          'Famous Popular Tunes Well Known Tunes - New Arrangements Classical Songs Famous '.repeat(
+            12,
+          ),
         staff_notes: null,
         artwork_s3_key: t === tracks[0] ? darkArt : t === tracks[1] ? lightArt : null,
       })
