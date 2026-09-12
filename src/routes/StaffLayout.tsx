@@ -72,10 +72,13 @@ function Shell() {
           gridTemplateRows: '2rem 1fr 72px',
         }}
       >
-        {/* A 2rem strip across the top, above all three columns. */}
-        <div className="col-span-3 border-b border-sequel-line" />
+        {/* The strip starts after the nav, so the rail's edge runs unbroken
+            from the top of the window to the player. Placement is explicit
+            rather than by source order: the rail spans two rows, which auto
+            flow would otherwise have to guess at. */}
+        <div className="col-start-2 col-span-2 row-start-1 border-b border-sequel-line" />
         <Rail />
-        <main className="flex min-w-0 flex-col overflow-hidden">
+        <main className="col-start-2 row-start-2 flex min-w-0 flex-col overflow-hidden">
           <Outlet />
         </main>
         <Creator />

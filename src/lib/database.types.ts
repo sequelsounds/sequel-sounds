@@ -627,7 +627,7 @@ export type Database = {
           pro_number: string | null
           processing_error: string | null
           processing_status: Database["public"]["Enums"]["processing_status"]
-          project_id: string
+          project_id: string | null
           publisher: string | null
           release_date: string | null
           s3_key: string | null
@@ -676,7 +676,7 @@ export type Database = {
           pro_number?: string | null
           processing_error?: string | null
           processing_status?: Database["public"]["Enums"]["processing_status"]
-          project_id: string
+          project_id?: string | null | null
           publisher?: string | null
           release_date?: string | null
           s3_key?: string | null

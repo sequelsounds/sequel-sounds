@@ -115,8 +115,10 @@ Deno.serve(async (req) => {
   // Advisory duplicate detection: the earliest track in this project with the
   // same bytes. Never blocks and never deletes — the row and its file stay, and
   // staff decide. Two masters really can be byte-identical and both wanted.
+  // Scoped to the project, so a track belonging to none is simply not compared
+  // — there is no set to be a duplicate within.
   let duplicateOf: string | null = null
-  if (typeof f.content_hash === 'string') {
+  if (typeof f.content_hash === 'string' && track.project_id) {
     const { data: earlier } = await admin
       .from('tracks')
       .select('id')

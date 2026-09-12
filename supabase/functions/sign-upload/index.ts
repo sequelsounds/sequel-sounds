@@ -128,7 +128,9 @@ Deno.serve(async (req) => {
   )
 
   // Which project is this upload for, and is the caller allowed to say so?
-  let projectId: string
+  // Null is legitimate for staff: a playlist that is not attached to a project
+  // holds tracks that belong to no project either.
+  let projectId: string | null = null
   let inboxId: string | null = null
 
   if (token) {
@@ -160,32 +162,39 @@ Deno.serve(async (req) => {
       : { data: null }
     if (!staffRow) return json({ error: 'not authorised' }, 401, origin)
 
-    // Staff name the project; it is checked to exist rather than trusted, so
-    // a typo fails here instead of writing a track with a dangling parent.
-    if (!body.project_id) return json({ error: 'project_id is required' }, 400, origin)
-    const { data: project, error: projectError } = await admin
-      .from('projects_mirror')
-      .select('id')
-      .eq('id', body.project_id)
-      .maybeSingle()
-    if (projectError) return json({ error: 'lookup failed' }, 500, origin)
-    if (!project) return json({ error: 'unknown project' }, 404, origin)
-    projectId = project.id
+    // Staff may name a project, and it is checked to exist rather than
+    // trusted, so a typo fails here instead of writing a track with a
+    // dangling parent. Omitting it is allowed: see above.
+    if (body.project_id) {
+      const { data: project, error: projectError } = await admin
+        .from('projects_mirror')
+        .select('id')
+        .eq('id', body.project_id)
+        .maybeSingle()
+      if (projectError) return json({ error: 'lookup failed' }, 500, origin)
+      if (!project) return json({ error: 'unknown project' }, 404, origin)
+      projectId = project.id
+    }
   }
 
   // Cheap duplicate pre-check. Advisory only: it still signs the upload, so a
   // partner is never blocked by a guess — the browser uses this to warn before
   // pushing tens of megabytes that the project already has. The authoritative
   // check is the Lambda's content hash, which sees the actual bytes.
-  const { data: existing } = await admin
-    .from('tracks')
-    .select('id, created_at')
-    .eq('project_id', projectId)
-    .eq('original_filename', filename)
-    .eq('size_bytes', size_bytes)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
+  //
+  // It is scoped to a project, so a track belonging to none has nothing to be
+  // compared against here; the hash still catches it later.
+  const { data: existing } = projectId
+    ? await admin
+        .from('tracks')
+        .select('id, created_at')
+        .eq('project_id', projectId)
+        .eq('original_filename', filename)
+        .eq('size_bytes', size_bytes)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+    : { data: null }
 
   const aws = new AwsClient({
     accessKeyId: cfg.accessKeyId,

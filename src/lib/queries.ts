@@ -265,6 +265,7 @@ export function useRecentProjects() {
         .gt('created_at', oldest)
       const latest = new Map<string, string>()
       for (const t of fresh ?? []) {
+        if (!t.project_id) continue
         const prev = latest.get(t.project_id)
         if (!prev || t.created_at > prev) latest.set(t.project_id, t.created_at)
       }
@@ -301,7 +302,7 @@ export function useRecordVisit(projectId: string | undefined) {
 export type SearchResults = {
   projects: { id: string; name: string; client_name: string | null }[]
   playlists: { id: string; name: string; project_id: string | null }[]
-  tracks: { id: string; title: string; artist: string | null; project_id: string }[]
+  tracks: { id: string; title: string; artist: string | null; project_id: string | null }[]
 }
 
 export function useSearch(q: string) {
@@ -336,7 +337,7 @@ export function useSearch(q: string) {
 export function useTrackActions() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (input: { id: string } & Partial<Tables<'tracks'>>) => {
+    mutationFn: async (input: { id: string } & Partial<Omit<Tables<'tracks'>, 'project_id'>>) => {
       const { id, ...patch } = input
       const { error } = await supabase.from('tracks').update(patch).eq('id', id)
       if (error) throw error

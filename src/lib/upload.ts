@@ -82,18 +82,21 @@ export function signUpload(token: string, file: File): Promise<SignedUpload> {
 
 /**
  * The same presign, for staff uploading into a playlist rather than through an
- * inbox link. Their session is the authorisation, so the project has to be
- * named explicitly — there is no inbox to infer it from. The Edge Function
- * checks both the session and that the project exists.
+ * inbox link. Their session is the authorisation, so the project is named
+ * explicitly — there is no inbox to infer it from. It may be null: a playlist
+ * that is not attached to a project holds tracks that belong to none either.
+ * The Edge Function checks the session, and the project when one is given.
  */
 export function signUploadAsStaff(
   file: File,
-  projectId: string,
+  projectId: string | null,
   accessToken: string,
 ): Promise<SignedUpload> {
-  return requestSignature(file, { project_id: projectId }, {
-    Authorization: `Bearer ${accessToken}`,
-  })
+  return requestSignature(
+    file,
+    projectId ? { project_id: projectId } : {},
+    { Authorization: `Bearer ${accessToken}` },
+  )
 }
 
 /**

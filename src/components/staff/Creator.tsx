@@ -309,12 +309,10 @@ export default function Creator() {
         pid = await actions.createPlaylist.mutateAsync({ projectId: routeProjectId })
         open(pid)
       }
-      // tracks.project_id is not null, so an upload needs somewhere to live.
-      const projectId = data?.project_id ?? routeProjectId
-      if (!projectId) {
-        setNotice('Attach this playlist to a project first — uploads belong to a project.')
-        return
-      }
+      // A playlist attached to a project puts its uploads in that project; one
+      // that is not gives them no project at all, which is a real state — the
+      // track lives in the library and in this playlist, and in no inbox.
+      const projectId = data?.project_id ?? routeProjectId ?? null
 
       const { data: sessionData } = await supabase.auth.getSession()
       const accessToken = sessionData.session?.access_token
@@ -535,7 +533,7 @@ export default function Creator() {
         setFileOver(false)
         await uploadFiles(await filesFromDrop(e.dataTransfer))
       }}
-      className={`relative z-[2] flex min-h-0 min-w-0 flex-col overflow-hidden bg-sequel-white shadow-[-6px_0_24px_rgba(48,47,44,0.18)] ${
+      className={`relative col-start-3 row-start-2 z-[2] flex min-h-0 min-w-0 flex-col overflow-hidden bg-sequel-white shadow-[-6px_0_24px_rgba(48,47,44,0.18)] ${
         fileOver ? 'outline outline-2 -outline-offset-2 outline-sequel-brown' : ''
       }`}
     >

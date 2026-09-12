@@ -31,7 +31,7 @@ export default function Rail() {
     // Colour is deliberately not copied: that component sets Sequel Silver
     // text for its own dark ground, which would be invisible on this rail's
     // light one, and the approved mockup is light with dark text.
-    <aside className="flex flex-col gap-[18px] overflow-auto border-r border-sequel-line pb-8 pl-12 pr-8 pt-8 text-[14px] font-normal leading-[20px]">
+    <aside className="col-start-1 row-start-1 row-span-2 flex flex-col gap-[18px] overflow-auto border-r border-sequel-line pb-8 pl-12 pr-8 pt-8 text-[14px] font-normal leading-[20px]">
       {/* The mark alone, as in Webflow's App Nav (app_logo_wrap is 4rem
           square and holds nothing but the image). */}
       <Link to="/" className="block w-16 text-sequel-ink no-underline">
@@ -83,7 +83,13 @@ export default function Rail() {
             {hits && hits.tracks.length > 0 && (
               <Group title="Tracks">
                 {hits.tracks.map((t) => (
-                  <button key={t.id} type="button" onClick={() => go(`/projects/${t.project_id}`)}>
+                  <button
+                    key={t.id}
+                    type="button"
+                    // A track uploaded into an unattached playlist has no
+                    // project to open; the library is where it lives.
+                    onClick={() => go(t.project_id ? `/projects/${t.project_id}` : '/library')}
+                  >
                     {t.title}
                     {t.artist && <span className="ml-2 text-sequel-mid">{t.artist}</span>}
                   </button>
