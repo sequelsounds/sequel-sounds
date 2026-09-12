@@ -5,7 +5,6 @@ import { useCreator } from '../lib/creator'
 import { formatDate, plural } from '../lib/format'
 import { splitProjectName } from '../lib/projectName'
 import {
-  usePlaylistActions,
   usePlaylists,
   type PlaylistSummary,
 } from '../lib/queries'
@@ -15,7 +14,6 @@ export default function Playlists() {
   const playlists = usePlaylists()
   const creator = useCreator()
   const navigate = useNavigate()
-  const actions = usePlaylistActions()
 
   const openPlaylist = (p: PlaylistSummary) => {
     creator.open(p.id)
@@ -45,18 +43,6 @@ export default function Playlists() {
         <div className="page-eyebrow">Everything you have put together…</div>
         <div className="title-row">
           <h1 className="page-title min-w-0 truncate">Playlists</h1>
-          <button
-            type="button"
-            className="btn btn-mono btn-outline ml-4"
-            onClick={async () => {
-              const id = await actions.createPlaylist.mutateAsync({
-                projectId: null,
-              })
-              creator.open(id)
-            }}
-          >
-            New playlist
-          </button>
         </div>
         <div className="page-subtitle">
           {playlists.data
