@@ -111,7 +111,7 @@ export default function Project() {
           <div className="flex shrink-0 gap-2">
             <button
               type="button"
-              className="btn btn-tool btn-outline"
+              className="btn btn-mono btn-outline"
               disabled={!project.data?.inboxes?.token}
               onClick={() => void copyInbox()}
             >
@@ -119,7 +119,7 @@ export default function Project() {
             </button>
             {trackUrl && (
               <a
-                className="btn btn-tool btn-quiet"
+                className="btn btn-mono btn-quiet"
                 href={trackUrl}
                 target="_blank"
                 rel="noreferrer"

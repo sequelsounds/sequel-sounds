@@ -44,10 +44,10 @@ export default function Playlists() {
       <div className="header-band">
         <div className="page-eyebrow">Everything you have put together…</div>
         <div className="title-row">
-          <h1 className="page-title">Playlists</h1>
+          <h1 className="page-title min-w-0 truncate">Playlists</h1>
           <button
             type="button"
-            className="btn btn-tool btn-outline"
+            className="btn btn-mono btn-outline ml-4"
             onClick={async () => {
               const id = await actions.createPlaylist.mutateAsync({
                 projectId: null,

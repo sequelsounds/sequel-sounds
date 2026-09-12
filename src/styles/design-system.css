@@ -270,6 +270,9 @@
   }
 
   .btn-mono {
+    /* A fixed 11 x 2rem, so it must not be squeezed by a flex row it sits
+       in — without this the label wraps inside a button half its width. */
+    flex: none;
     width: 11rem;
     height: 2rem;
     padding: 0 1.2rem;
