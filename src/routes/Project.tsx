@@ -3,7 +3,12 @@ import { useParams } from 'react-router-dom'
 import Search from '../components/staff/Search'
 import RowMenu from '../components/staff/RowMenu'
 import TrackTable from '../components/staff/TrackTable'
-import { MailIcon, PencilIcon, ShareIcon } from '../components/staff/icons'
+import {
+  MailIcon,
+  PencilIcon,
+  ShareIcon,
+  TrashIcon,
+} from '../components/staff/icons'
 import { useCreator } from '../lib/creator'
 import { formatDate, plural } from '../lib/format'
 import {
@@ -245,23 +250,24 @@ export default function Project() {
                 >
                   <ShareIcon />
                 </button>
-                <RowMenu
-                  items={[
-                    {
-                      label: 'Delete playlist',
-                      onSelect: () => {
-                        if (
-                          !confirm(
-                            `Delete “${p.name}”? The tracks stay in the project.`,
-                          )
-                        )
-                          return
-                        void actions.deletePlaylist.mutateAsync(p.id)
-                        if (open?.key === p.id) setPicked(null)
-                      },
-                    },
-                  ]}
-                />
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Delete playlist"
+                  title="Delete playlist"
+                  onClick={() => {
+                    if (
+                      !confirm(
+                        `Delete “${p.name}”? The tracks stay in the project.`,
+                      )
+                    )
+                      return
+                    void actions.deletePlaylist.mutateAsync(p.id)
+                    if (open?.key === p.id) setPicked(null)
+                  }}
+                >
+                  <TrashIcon />
+                </button>
               </div>
             </div>
           ))}

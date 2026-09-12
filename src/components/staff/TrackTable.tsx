@@ -8,8 +8,14 @@ import {
   type TrackWithUse,
 } from '../../lib/queries'
 import Artwork from './Artwork'
-import { GripIcon, InfoIcon, PauseIcon, PlayIcon, ShareIcon } from './icons'
-import RowMenu from './RowMenu'
+import {
+  GripIcon,
+  InfoIcon,
+  PauseIcon,
+  PlayIcon,
+  ShareIcon,
+  TrashIcon,
+} from './icons'
 import TrackMeta from './TrackMeta'
 
 type Props = {
@@ -178,25 +184,27 @@ function TrackRow({
               >
                 <ShareIcon />
               </button>
-              <RowMenu
-                items={[
-                  {
-                    label: 'Delete track…',
-                    onSelect: () => {
-                      const uses = playlistCount(track)
-                      const where =
-                        uses > 0 ? ` It is in ${plural(uses, 'playlist')}.` : ''
-                      if (
-                        !confirm(
-                          `Delete “${track.title}”?${where} The audio is removed from storage as well, and this cannot be undone.`,
-                        )
-                      )
-                        return
-                      remove.mutate(track.id)
-                    },
-                  },
-                ]}
-              />
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Delete track"
+                title="Delete track"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const uses = playlistCount(track)
+                  const where =
+                    uses > 0 ? ` It is in ${plural(uses, 'playlist')}.` : ''
+                  if (
+                    !confirm(
+                      `Delete “${track.title}”?${where} The audio is removed from storage as well, and this cannot be undone.`,
+                    )
+                  )
+                    return
+                  remove.mutate(track.id)
+                }}
+              >
+                <TrashIcon />
+              </button>
             </div>
           </td>
           <td className="secondary pr-5 text-right">
