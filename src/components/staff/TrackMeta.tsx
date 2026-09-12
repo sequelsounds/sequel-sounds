@@ -66,6 +66,29 @@ const SHORT: { key: FieldKey; label: string; type?: string }[] = [
 const NUMERIC = new Set<string>(['year', 'bpm', 'track_no', 'disc_no'])
 const SKIP = new Set<string>(['id', 'artwork_s3_key', 'writers', 'embedded_tags'])
 
+/** Every key the form holds, so the shape never changes once mounted. */
+const FORM_KEYS = [
+  'title', 'artist', 'album', 'composer', 'publisher', 'label', 'grouping',
+  'genre', 'year', 'release_date', 'bpm', 'musical_key', 'isrc', 'track_no',
+  'disc_no', 'comments', 'staff_notes', 'lyrics',
+] as const
+
+/**
+ * The list row already carries most of these, so the dialog opens filled
+ * rather than on a spinner. Without this it rendered a one-line "Loading…"
+ * body and then jumped from roughly 250px to 660px when the query landed —
+ * centred, so it grew from the middle and read as the dialog changing shape.
+ */
+function seedFrom(track: Track): Record<string, string> {
+  const known = track as unknown as Record<string, unknown>
+  const seed: Record<string, string> = {}
+  for (const k of FORM_KEYS) {
+    const v = known[k]
+    seed[k] = v == null ? '' : String(v)
+  }
+  return seed
+}
+
 type Writer = { name?: string; publisher?: string; pro?: string; split?: number | string }
 
 export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
@@ -73,7 +96,10 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
   const save = useTrackActions()
 
   const [tab, setTab] = useState<Tab>('metadata')
-  const [form, setForm] = useState<Record<string, string> | null>(null)
+  const [form, setForm] = useState<Record<string, string>>(() => seedFrom(track))
+  // Keys the person has typed into. The server's copy must not overwrite an
+  // edit made while it was still in flight.
+  const touched = useRef<Set<string>>(new Set())
   const [writers, setWriters] = useState<Writer[]>([])
   const [artKey, setArtKey] = useState<string | null>(track.artwork_s3_key)
   const [artPreview, setArtPreview] = useState<string | null>(null)
@@ -83,16 +109,19 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
   const [idCopied, setIdCopied] = useState(false)
   const artInput = useRef<HTMLInputElement>(null)
 
-  // Server truth fills the form once it lands. Stepping to another track
-  // remounts this via its key, so nothing carries over.
+  // The full row fills in the handful the list does not carry — grouping,
+  // year, release date, the disc numbers, comments. None of them change the
+  // dialog's height, so nothing moves when it arrives.
   useEffect(() => {
     if (!detail.data) return
-    const next: Record<string, string> = {}
-    for (const [k, v] of Object.entries(detail.data)) {
-      if (SKIP.has(k)) continue
-      next[k] = v == null ? '' : String(v)
-    }
-    setForm(next)
+    setForm((current) => {
+      const next = { ...current }
+      for (const [k, v] of Object.entries(detail.data)) {
+        if (SKIP.has(k) || touched.current.has(k)) continue
+        next[k] = v == null ? '' : String(v)
+      }
+      return next
+    })
     setArtKey(detail.data.artwork_s3_key)
     setWriters(Array.isArray(detail.data.writers) ? (detail.data.writers as Writer[]) : [])
   }, [detail.data])
@@ -106,7 +135,10 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
     }
   }, [artPreview])
 
-  const set = (k: string, v: string) => setForm((f) => (f ? { ...f, [k]: v } : f))
+  const set = (k: string, v: string) => {
+    touched.current.add(k)
+    setForm((f) => ({ ...f, [k]: v }))
+  }
 
   const uploadArtwork = async (file: File | undefined) => {
     if (!file) return
@@ -133,7 +165,6 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form) return
     const patch: Record<string, unknown> = {}
     for (const key of Object.keys(form)) {
       const raw = form[key].trim()
@@ -225,9 +256,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
         </div>
 
         <div className="flex min-h-0 flex-1 overflow-auto px-7 py-6">
-          {!form ? (
-            <p className="font-light">Loading…</p>
-          ) : tab === 'metadata' ? (
+          {tab === 'metadata' ? (
             <div className="flex w-full gap-7">
               {/* ---- artwork ---- */}
               <div className="w-48 shrink-0">
@@ -351,6 +380,20 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
                 </label>
               </div>
             </div>
+          ) : tab === 'lyrics' ? (
+            <label className="block w-full">
+              <span className="field-label block">Lyrics</span>
+              {/* The one place a single line will not do. Resize is off, so
+                  it is a plain box like every other field rather than one
+                  with a grabber in the corner. */}
+              <textarea
+                rows={14}
+                className={`${field} mt-2`}
+                placeholder="Type or paste the lyrics."
+                value={form.lyrics ?? ''}
+                onChange={(e) => set('lyrics', e.target.value)}
+              />
+            </label>
           ) : tab === 'writers' ? (
             <div className="w-full space-y-3">
               {writers.length === 0 && (
@@ -431,8 +474,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
             </div>
           ) : (
             <p className="font-light">
-              {tab === 'lyrics' ? 'Lyrics' : 'Tags'} are not kept in Sequel Studio. Both are out of
-              scope in the product spec.
+              Tags are not kept in Sequel Studio — the spec leaves the taxonomy until later.
             </p>
           )}
         </div>
@@ -459,7 +501,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
             </button>
             <button
               type="submit"
-              disabled={save.isPending || !form}
+              disabled={save.isPending}
               className="btn btn-tool btn-dark"
             >
               {save.isPending ? 'Saving…' : 'Save'}

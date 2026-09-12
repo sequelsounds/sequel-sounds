@@ -67,7 +67,8 @@ See the layout reference above for the approved screen.
 
 ## Not in scope
 
-- Watermarking, mailouts, contact management, public search, tag taxonomy (later), lyrics, custom fields.
+- Watermarking, mailouts, contact management, public search, tag taxonomy (later), custom fields.
+- **Lyrics moved into scope 12 Sep 2026** — `tracks.lyrics`, typed by staff on the Lyrics tab of the track editor. The Lambda never writes it: an empty tag read would wipe what someone entered.
 
 ## Priorities
 

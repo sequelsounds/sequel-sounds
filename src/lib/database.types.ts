@@ -619,6 +619,7 @@ export type Database = {
           iswc: string | null
           kind: Database["public"]["Enums"]["track_kind"]
           label: string | null
+          lyrics: string | null
           mime_type: string | null
           musical_key: string | null
           notes: string | null
@@ -668,6 +669,7 @@ export type Database = {
           iswc?: string | null
           kind?: Database["public"]["Enums"]["track_kind"]
           label?: string | null
+          lyrics?: string | null
           mime_type?: string | null
           musical_key?: string | null
           notes?: string | null
@@ -717,6 +719,7 @@ export type Database = {
           iswc?: string | null
           kind?: Database["public"]["Enums"]["track_kind"]
           label?: string | null
+          lyrics?: string | null
           mime_type?: string | null
           musical_key?: string | null
           notes?: string | null

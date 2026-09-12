@@ -129,6 +129,12 @@
     font-weight: var(--field-font-weight);
   }
 
+  /* No grabber in the corner. A field that can be dragged into a different
+     shape is the one thing on the page that does not hold its line. */
+  textarea.field-boxed {
+    resize: none;
+  }
+
   .field-boxed::placeholder {
     color: color-mix(in srgb, var(--surface-fg) 55%, transparent);
   }
