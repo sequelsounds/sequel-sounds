@@ -1,13 +1,4 @@
 {
-  "_comment": [
-    "The statement the Edge Functions' IAM key needs on top of its object",
-    "permissions. Presigning only ever touches one key at a time, so the key",
-    "was never granted s3:ListBucket — and delete-track lists tracks/<id>/",
-    "before it deletes, so that it removes superseded artwork nothing in the",
-    "database references any more. Without this it fails with list failed (403).",
-    "ListBucket is granted on the BUCKET arn, not on objects; the condition",
-    "keeps it to the tracks prefix."
-  ],
   "Version": "2012-10-17",
   "Statement": [
     {
