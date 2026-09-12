@@ -906,10 +906,22 @@
     padding-right: 1.25rem;
   }
 
-  /* The head of the right column: what is open, and who sent it. */
-  .detail-head {
-    padding: 18px 1.25rem 14px;
+  /* Each pane's head. A fixed height on both, so the two rules line up
+     across the gutter however much either title has to say — the thing
+     that makes DISCO's two panels read as one row of two. Sticky, so they
+     stay level while the lists below them scroll. */
+  .pane-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    height: 4.5rem;
+    padding: 14px 1.25rem;
     border-bottom: 1px solid var(--color-sequel-line);
+    background-color: var(--color-sequel-silver);
   }
 
   .detail-meta {
@@ -919,8 +931,10 @@
     color: var(--color-sequel-mid);
   }
 
+  /* The sender's note sits under the head rather than inside it, so the
+     head can keep a fixed height. */
   .detail-from {
-    margin-top: 14px;
+    margin: 14px 1.25rem;
     padding: 12px 14px;
     background-color: var(--color-sequel-white);
     font-size: 0.8rem;

@@ -222,11 +222,17 @@ export default function Project() {
 
       <div className="split">
         <div className="split-list">
-          <div className="split-group">
-            <span>Playlists</span>
+          <div className="pane-head">
+            <div className="min-w-0">
+              <h2 className="submission-title truncate">{title}</h2>
+              <div className="detail-meta">
+                {plural(playlists.data?.length ?? 0, 'playlist')} ·{' '}
+                {plural(submissions.length, 'submission')}
+              </div>
+            </div>
             <button
               type="button"
-              className="underline"
+              className="shrink-0 font-mono text-[0.7rem] uppercase underline"
               onClick={async () => {
                 const newId = await actions.createPlaylist.mutateAsync({
                   projectId: id ?? null,
@@ -237,6 +243,9 @@ export default function Project() {
             >
               New
             </button>
+          </div>
+          <div className="split-group">
+            <span>Playlists</span>
           </div>
           {playlists.data?.length === 0 && (
             <p className="px-5 pb-2 text-[0.8rem] text-sequel-mid">None yet.</p>
@@ -381,37 +390,43 @@ export default function Project() {
 
           {openSubmission && (
             <>
-              <div className="detail-head">
-                <h2 className="submission-title">{openSubmission.company}</h2>
-                <div className="detail-meta">
-                  {plural(openSubmission.tracks.length, 'track')} ·{' '}
-                  {formatDate(openSubmission.latest)}
-                </div>
-                {(openSubmission.email || openSubmission.note) && (
-                  <div className="detail-from">
-                    {openSubmission.email && (
-                      <div>
-                        From <strong>{openSubmission.company}</strong>
-                        <span className="ml-2 text-sequel-mid">
-                          {openSubmission.email}
-                        </span>
-                      </div>
-                    )}
-                    {openSubmission.note && (
-                      <p className="mt-2">“{openSubmission.note}”</p>
-                    )}
+              <div className="pane-head">
+                <div className="min-w-0">
+                  <h2 className="submission-title truncate">
+                    {openSubmission.company}
+                  </h2>
+                  <div className="detail-meta">
+                    {plural(openSubmission.tracks.length, 'track')} ·{' '}
+                    {formatDate(openSubmission.latest)}
                   </div>
-                )}
+                </div>
               </div>
+              {(openSubmission.email || openSubmission.note) && (
+                <div className="detail-from">
+                  {openSubmission.email && (
+                    <div>
+                      From <strong>{openSubmission.company}</strong>
+                      <span className="ml-2 text-sequel-mid">
+                        {openSubmission.email}
+                      </span>
+                    </div>
+                  )}
+                  {openSubmission.note && (
+                    <p className="mt-2">“{openSubmission.note}”</p>
+                  )}
+                </div>
+              )}
               <TrackTable tracks={openSubmission.tracks} lean />
             </>
           )}
 
           {open?.kind === 'playlist' && openPlaylist.data && (
             <>
-              <div className="detail-head flex items-start justify-between gap-4">
+              <div className="pane-head">
                 <div className="min-w-0">
-                  <h2 className="submission-title">{openPlaylist.data.name}</h2>
+                  <h2 className="submission-title truncate">
+                    {openPlaylist.data.name}
+                  </h2>
                   <div className="detail-meta">
                     {plural(playlistTracks.length, 'track')} ·{' '}
                     {formatDate(openPlaylist.data.updated_at)}
