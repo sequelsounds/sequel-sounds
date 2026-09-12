@@ -678,7 +678,7 @@ export default function Creator() {
           {/* A playlist before it is one. The same header the real thing
               gets, so naming it, saving it and dropping into it all happen
               in the place they will go on happening. */}
-          <div className="flex items-start gap-[10px] border-b border-sequel-line px-[18px] py-[14px]">
+          <div className="flex items-center gap-[10px] border-b border-sequel-line px-[18px] py-[14px]">
             <div className="min-w-0 flex-1">
               <input
                 className="creator-title"
@@ -690,13 +690,13 @@ export default function Creator() {
                   if (e.key === 'Enter') void saveDraft()
                 }}
               />
-              <small className="mt-[3px] block text-xs uppercase tracking-[.04em] text-sequel-mid">
+              <small className="mt-px block text-[11px] uppercase tracking-[.04em] text-sequel-mid">
                 0 tracks
               </small>
             </div>
             <button
               type="button"
-              className="btn btn-tool btn-outline"
+              className="btn btn-tool btn-outline h-8 py-0"
               disabled={!draftName.trim()}
               onClick={() => void saveDraft()}
             >
@@ -723,7 +723,7 @@ export default function Creator() {
         <div className="p-[18px] text-[13px] text-sequel-mid">Loading…</div>
       ) : (
         <>
-          <div className="flex items-start gap-[10px] border-b border-sequel-line px-[18px] py-[14px]">
+          <div className="flex items-center gap-[10px] border-b border-sequel-line px-[18px] py-[14px]">
             <div className="min-w-0 flex-1">
               <input
                 className="creator-title"
@@ -735,7 +735,7 @@ export default function Creator() {
                   if (e.key === 'Enter') e.currentTarget.blur()
                 }}
               />
-              <small className="mt-[3px] block text-xs uppercase tracking-[.04em] text-sequel-mid">
+              <small className="mt-px block text-[11px] uppercase tracking-[.04em] text-sequel-mid">
                 {plural(rows.length, 'track')} | {formatDuration(totalSeconds)}
               </small>
             </div>
@@ -749,7 +749,7 @@ export default function Creator() {
               </button>
             ) : (
               saved && (
-                <span className="mt-[6px] shrink-0 font-mono text-[0.7rem] uppercase text-sequel-mid">
+                <span className="shrink-0 font-mono text-[0.7rem] uppercase text-sequel-mid">
                   Saved
                 </span>
               )
