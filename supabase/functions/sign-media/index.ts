@@ -65,8 +65,13 @@ function readConfig() {
   return { cfg, problems }
 }
 
-/** Only keys under a track prefix are ever signed. */
-const KEY_RE = /^tracks\/[0-9a-f-]{36}\/(original\.[a-z0-9]+|preview\.(mp3|mp4)|artwork\.jpg|peaks\.json)$/
+/**
+ * Only keys under a track prefix are ever signed. `artwork-<uuid>.<ext>` is
+ * the staff-replaced cover: sign-upload mints a fresh name each time rather
+ * than overwriting the Lambda's artwork.jpg, so both have to be readable.
+ */
+const KEY_RE =
+  /^tracks\/[0-9a-f-]{36}\/(original\.[a-z0-9]+|preview\.(mp3|mp4)|artwork(-[0-9a-f-]{36})?\.(jpg|jpeg|png|webp)|peaks\.json)$/
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin')

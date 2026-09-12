@@ -59,7 +59,14 @@ alphabetical, the way the generator emits it.
   metadata from the "i" button on a track row.
 - **Staff upload too.** `sign-upload` takes either an inbox token or a staff
   session; the staff path names the project explicitly. Dropping files on the
-  Playlist Creator uploads them and adds them to the playlist.
+  Playlist Creator uploads them and adds them to the playlist. `purpose:
+  'artwork'` is the third mode — staff only, images only, and it mints a fresh
+  `artwork-<uuid>.<ext>` rather than overwriting the Lambda's `artwork.jpg`,
+  because reads are presigned and cached for an hour.
+- **Library tags are the library's, not ours.** Production libraries write
+  `TITLE --- sales copy` into the title frame and dump keywords into the
+  comment. Nothing in the pipeline rewrites that; DISCO does not either.
+  Staff fix it from the "i" button.
 - **Browser-side metadata is a first pass.** The Lambda re-reads tags server-side
   and is authoritative. Never make an upload depend on a browser tag read.
 - **Nothing blocks an upload on a guess.** Duplicate detection is advisory at

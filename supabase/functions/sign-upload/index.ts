@@ -18,6 +18,10 @@ const ALLOWED_EXT = new Set([
   'mov', 'mp4', 'm4v',
 ])
 
+// Artwork staff replace by hand. Small, and images only.
+const ARTWORK_EXT = new Set(['jpg', 'jpeg', 'png', 'webp'])
+const MAX_ARTWORK_BYTES = 10 * 1024 * 1024
+
 const MAX_BYTES = 2 * 1024 * 1024 * 1024 // 2 GB — single PUT tops out at 5 GB
 const URL_TTL_SECONDS = 900
 
@@ -46,9 +50,28 @@ function json(body: unknown, status: number, origin: string | null) {
 }
 
 /** Extension from the filename, allowlisted. The raw name never enters the key. */
-function extensionOf(filename: string): string | null {
+function extensionOf(filename: string, allowed: Set<string> = ALLOWED_EXT): string | null {
   const ext = filename.toLowerCase().split('.').pop() ?? ''
-  return ALLOWED_EXT.has(ext) ? ext : null
+  return allowed.has(ext) ? ext : null
+}
+
+/** Staff, proved by their session. The publishable key resolves to no user. */
+async function staffUserId(
+  req: Request,
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+): Promise<string | null> {
+  const bearer = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
+  if (!bearer) return null
+  const { data } = await admin.auth.getUser(bearer)
+  const userId = data?.user?.id ?? null
+  if (!userId) return null
+  const { data: staffRow } = await admin
+    .from('staff')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  return staffRow ? userId : null
 }
 
 /** Config sanity, so a mistyped secret fails loudly instead of as a bad signature. */
@@ -98,6 +121,8 @@ Deno.serve(async (req) => {
     content_type?: string
     size_bytes?: number
     project_id?: string
+    purpose?: string
+    track_id?: string
   }
   try {
     body = await req.json()
@@ -109,6 +134,62 @@ Deno.serve(async (req) => {
   if (!filename || !content_type || typeof size_bytes !== 'number') {
     return json({ error: 'filename, content_type and size_bytes are required' }, 400, origin)
   }
+
+  // Service role: the checks below are the authorisation, so this has to read
+  // past RLS to find the inbox or the staff row in the first place.
+  const admin = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    { auth: { persistSession: false } },
+  )
+
+  const aws = new AwsClient({
+    accessKeyId: cfg.accessKeyId,
+    secretAccessKey: cfg.secretAccessKey,
+    region: cfg.region,
+    service: 's3',
+  })
+
+  const presign = async (key: string) => {
+    const target = new URL(`https://${cfg.bucket}.s3.${cfg.region}.amazonaws.com/${key}`)
+    target.searchParams.set('X-Amz-Expires', String(URL_TTL_SECONDS))
+    const signed = await aws.sign(target.toString(), { method: 'PUT', aws: { signQuery: true } })
+    return signed.url
+  }
+
+  // ---------------------------------------------------------------- artwork
+  // Replacing a track's cover by hand. Staff only, and deliberately no token
+  // path: a partner has no business restyling a track after sending it.
+  if (body.purpose === 'artwork') {
+    if (!(await staffUserId(req, admin))) {
+      return json({ error: 'not authorised' }, 401, origin)
+    }
+    if (!content_type.startsWith('image/')) {
+      return json({ error: 'artwork must be an image' }, 415, origin)
+    }
+    if (size_bytes <= 0 || size_bytes > MAX_ARTWORK_BYTES) {
+      return json({ error: `artwork must be under ${MAX_ARTWORK_BYTES} bytes` }, 413, origin)
+    }
+    const artExt = extensionOf(filename, ARTWORK_EXT)
+    if (!artExt) return json({ error: 'artwork must be jpg, png or webp' }, 415, origin)
+    if (!body.track_id) return json({ error: 'track_id is required' }, 400, origin)
+
+    const { data: track, error: trackError } = await admin
+      .from('tracks')
+      .select('id')
+      .eq('id', body.track_id)
+      .maybeSingle()
+    if (trackError) return json({ error: 'lookup failed' }, 500, origin)
+    if (!track) return json({ error: 'unknown track' }, 404, origin)
+
+    // A fresh name each time rather than overwriting artwork.jpg: reads are
+    // presigned and cached for an hour, so reusing the key would keep serving
+    // the old picture — and the Lambda's own artwork stays where it was.
+    const key = `tracks/${track.id}/artwork-${crypto.randomUUID()}.${artExt}`
+    return json({ key, upload_url: await presign(key), expires_in: URL_TTL_SECONDS }, 200, origin)
+  }
+
+  // ------------------------------------------------------------ audio/video
   if (!content_type.startsWith('audio/') && !content_type.startsWith('video/')) {
     return json({ error: 'only audio and video files are accepted' }, 415, origin)
   }
@@ -118,14 +199,6 @@ Deno.serve(async (req) => {
 
   const ext = extensionOf(filename)
   if (!ext) return json({ error: 'unsupported file type' }, 415, origin)
-
-  // Service role: the token check below is the authorisation, so it has to read
-  // past RLS to find the inbox in the first place.
-  const admin = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    { auth: { persistSession: false } },
-  )
 
   // Which project is this upload for, and is the caller allowed to say so?
   // Null is legitimate for staff: a playlist that is not attached to a project
@@ -149,18 +222,9 @@ Deno.serve(async (req) => {
     inboxId = inbox.id
   } else {
     // No token: the only other caller is staff, proved by their session.
-    // The publishable key satisfies the platform's JWT gate but resolves to
-    // no user, so it cannot get past this.
-    const bearer = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
-    const { data: userData } = bearer
-      ? await admin.auth.getUser(bearer)
-      : { data: { user: null } }
-    const userId = userData?.user?.id ?? null
-
-    const { data: staffRow } = userId
-      ? await admin.from('staff').select('user_id').eq('user_id', userId).maybeSingle()
-      : { data: null }
-    if (!staffRow) return json({ error: 'not authorised' }, 401, origin)
+    if (!(await staffUserId(req, admin))) {
+      return json({ error: 'not authorised' }, 401, origin)
+    }
 
     // Staff may name a project, and it is checked to exist rather than
     // trusted, so a typo fails here instead of writing a track with a
@@ -196,29 +260,14 @@ Deno.serve(async (req) => {
         .maybeSingle()
     : { data: null }
 
-  const aws = new AwsClient({
-    accessKeyId: cfg.accessKeyId,
-    secretAccessKey: cfg.secretAccessKey,
-    region: cfg.region,
-    service: 's3',
-  })
-
   const trackId = crypto.randomUUID()
   const key = `tracks/${trackId}/original.${ext}`
-
-  const target = new URL(`https://${cfg.bucket}.s3.${cfg.region}.amazonaws.com/${key}`)
-  target.searchParams.set('X-Amz-Expires', String(URL_TTL_SECONDS))
-
-  const signed = await aws.sign(target.toString(), {
-    method: 'PUT',
-    aws: { signQuery: true },
-  })
 
   return json(
     {
       track_id: trackId,
       key,
-      upload_url: signed.url,
+      upload_url: await presign(key),
       expires_in: URL_TTL_SECONDS,
       project_id: projectId,
       inbox_id: inboxId,

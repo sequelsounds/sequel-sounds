@@ -126,3 +126,35 @@ export function putToS3(
     xhr.send(file)
   })
 }
+
+/**
+ * A presigned PUT for replacing a track's artwork. Staff only, and the key is
+ * minted server-side with a fresh name each time, so a replaced cover is never
+ * served from a cached URL for the old one.
+ */
+export async function signArtworkUpload(
+  file: File,
+  trackId: string,
+  accessToken: string,
+): Promise<{ key: string; upload_url: string }> {
+  const res = await fetch(`${FUNCTIONS_URL}/sign-upload`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      purpose: 'artwork',
+      track_id: trackId,
+      filename: file.name,
+      content_type: file.type || 'image/jpeg',
+      size_bytes: file.size,
+    }),
+  })
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}))
+    throw new Error(detail.error ?? `could not start upload (${res.status})`)
+  }
+  return res.json()
+}
