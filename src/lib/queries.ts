@@ -361,10 +361,12 @@ export type TrackDetail = Pick<
   | 'comments'
   | 'staff_notes'
   | 'artwork_s3_key'
+  | 'writers'
+  | 'embedded_tags'
 >
 
 export const TRACK_DETAIL_COLS =
-  'id, title, artist, album, composer, publisher, label, grouping, genre, year, release_date, bpm, musical_key, isrc, track_no, disc_no, comments, staff_notes, artwork_s3_key'
+  'id, title, artist, album, composer, publisher, label, grouping, genre, year, release_date, bpm, musical_key, isrc, track_no, disc_no, comments, staff_notes, artwork_s3_key, writers, embedded_tags'
 
 export function useTrackDetail(id: string) {
   return useQuery({

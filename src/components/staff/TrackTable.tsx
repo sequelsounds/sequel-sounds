@@ -20,7 +20,13 @@ type Props = {
  */
 export default function TrackTable({ tracks, showProject = false }: Props) {
   const queue = useMemo(() => tracks.map(toPlayerTrack), [tracks])
+  // Held here rather than per row: the arrows in the dialog step through this
+  // table's order, which a row does not know.
+  const [editing, setEditing] = useState<number | null>(null)
+  const editingTrack = editing == null ? null : (tracks[editing] ?? null)
+
   return (
+    <>
     <table className="track-table">
       <colgroup>
         <col style={{ width: 34 }} />
@@ -38,10 +44,23 @@ export default function TrackTable({ tracks, showProject = false }: Props) {
             index={index}
             queue={queue}
             showProject={showProject}
+            onEdit={() => setEditing(index)}
           />
         ))}
       </tbody>
     </table>
+    {editingTrack && (
+      <TrackMeta
+        // Keyed so stepping to another track rebuilds the form rather than
+        // leaving the previous track's edits in the fields.
+        key={editingTrack.id}
+        track={editingTrack}
+        onClose={() => setEditing(null)}
+        onPrev={editing! > 0 ? () => setEditing(editing! - 1) : undefined}
+        onNext={editing! < tracks.length - 1 ? () => setEditing(editing! + 1) : undefined}
+      />
+    )}
+    </>
   )
 }
 
@@ -50,14 +69,15 @@ function TrackRow({
   index,
   queue,
   showProject,
+  onEdit,
 }: {
   track: TrackWithUse
   index: number
   queue: PlayerTrack[]
   showProject: boolean
+  onEdit: () => void
 }) {
   const player = usePlayer()
-  const [editing, setEditing] = useState(false)
   const [copied, setCopied] = useState(false)
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `track:${track.id}`,
@@ -116,7 +136,7 @@ function TrackRow({
             title="Track details"
             onClick={(e) => {
               e.stopPropagation()
-              setEditing(true)
+              onEdit()
             }}
           >
             <InfoIcon />
@@ -137,7 +157,6 @@ function TrackRow({
         </div>
       </td>
       <td className="secondary pr-5 text-right">{formatDuration(track.duration_seconds)}</td>
-      {editing && <TrackMeta track={track} onClose={() => setEditing(false)} />}
     </tr>
   )
 }
