@@ -13,12 +13,22 @@ below, 1rem between links, no horizontal padding — `nav_sidebar`'s own 3rem
 left inset is what positions them — and `app_logo_wrap` 6rem clear of the
 first link.
 
-One value is not copied. `nav_text_app` records `line-height: 0.8px`, which
-is a typo in that file: a 0.8px line box collapses the text onto itself. It
-almost certainly means 0.8rem or a unitless 0.8. Ours uses a real one.
+The colour **is** copied, contrary to what this file said for a few hours.
+Resolving the variables rather than assuming: `nav_text_app` is
+`--_colors---sequel-brown` `#372b29` and `nav_sidebar` is
+`--_colors---sequel-silver` `#f1f0ee`. That component stands on exactly the
+same two colours this rail does. The earlier claim that it was silver text
+on a dark ground was wrong, and it had leaked into `CLAUDE.md` as well —
+which is what a guess dressed as a measurement costs.
 
-Colour is still not copied either, for the reason recorded below: that
-component sets Sequel Silver for its own dark ground.
+So the links are Sequel Brown, not a muted grey, and a current page is
+marked by weight rather than by fading every other link.
+
+`line-height: 0.8px` is the one value not copied literally, and it is a
+load-bearing typo: it collapses the line box so each link is about 17px
+tall, which with the 1rem margin puts them on a 33px pitch. Copying 0.8px
+would be fragile, so the same pitch is reached with a real line-height and
+a smaller margin.
 
 ## Staff are an allowlist table, not "anyone signed in"
 

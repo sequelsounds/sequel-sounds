@@ -10,12 +10,11 @@ export default function Rail() {
   const recent = useRecentProjects()
 
   return (
-    // Width, font-size/line-height and padding match Sequel Track's own App
-    // Nav component in Webflow (nav_sidebar: 16rem, Creato 14/20, 2rem top
-    // /right/bottom, 3rem left) — read from the live styles, not guessed.
-    // Colour is deliberately not copied: that component sets Sequel Silver
-    // text for its own dark ground, which would be invisible on this rail's
-    // light one, and the approved mockup is light with dark text.
+    // Matches Sequel Track's own App Nav in Webflow, read from the live
+    // styles: nav_sidebar is 16rem wide with 2rem top/right/bottom and 3rem
+    // left padding, on Sequel Silver. Its links are Sequel Brown — the same
+    // two colours this rail already stands on, resolved from the variables
+    // rather than inferred from the component's name.
     <aside className="col-start-1 row-start-1 row-span-2 flex flex-col gap-[18px] overflow-auto border-r border-sequel-line pb-8 pl-12 pr-8 pt-8 text-[14px] font-normal leading-[20px]">
       {/* The mark alone, as in Webflow's App Nav (app_logo_wrap is 4rem
           square and holds nothing but the image). */}

@@ -32,6 +32,11 @@ alphabetical, the way the generator emits it.
   the site at `sequelsounds.app` (id `68e6c2e8dbcd39de2547a97d`) is queryable,
   and computed styles off the live page settle colour, spacing and type
   questions exactly. See `docs/decisions.md`.
+- **Resolve the variables, do not infer them.** A Webflow style returns a
+  colour as `{"id": "variable-…"}`, not a value. Look it up with
+  `data_variable_tool`. Guessing what a variable "must" be is how the nav
+  ended up documented as silver-on-dark when it is Sequel Brown on Sequel
+  Silver — and the wrong guess then sat in two files for hours.
 
 ## Conventions
 

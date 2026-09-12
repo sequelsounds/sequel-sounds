@@ -263,20 +263,25 @@
     color: var(--color-sequel-ink);
   }
 
-  /* Read off Webflow's App Nav (nav_text_app / nav_links_app): 0.8rem at
-     weight 400, 0.5rem above and below, 1rem between links, and no
-     horizontal padding — the sidebar's own 3rem left inset positions them.
-     Its line-height is recorded as 0.8px, which is a typo in that file; a
-     0.8px line box would collapse the text on top of itself, so this uses a
-     real one. */
+  /* Webflow's App Nav, with the variables resolved rather than assumed:
+     nav_text_app is Sequel Brown on nav_sidebar's Sequel Silver — the same
+     two colours this rail already stands on, so the links are brown, not a
+     muted grey.
+
+     The rhythm is theirs too. nav_text_app records line-height 0.8px, which
+     is a typo, but it is a load-bearing one: it collapses the line box so
+     each link is about 17px tall and the 1rem margin below puts them on a
+     33px pitch. Copying 0.8px literally would be fragile, so this reaches
+     the same pitch with a real line-height and a smaller margin.
+  */
   .nav-link {
     display: block;
     padding: 0.5rem 0;
-    margin-bottom: 1rem;
+    margin-bottom: 0.25rem;
     font-size: 0.8rem;
     font-weight: 400;
-    line-height: 1.25rem;
-    color: var(--color-sequel-mid);
+    line-height: 1;
+    color: var(--color-sequel-brown);
     text-decoration: none;
   }
 
@@ -284,8 +289,10 @@
     color: var(--color-sequel-ink);
   }
 
+  /* Webflow draws every link the same. A current page still has to say so,
+     so it says it with weight rather than by fading the other eleven. */
+
   .nav-link[aria-current='page'] {
-    color: var(--color-sequel-ink);
     font-weight: 500;
   }
 
