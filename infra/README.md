@@ -12,9 +12,13 @@ The bucket's CORS rules. A new origin has to be added here as well as in
 
 ## s3-list-policy.json
 
-What `delete-track` needs from the Edge Functions' IAM key, which was
-provisioned for presigning and so has neither permission. Attach it as an
-inline policy on the user that owns `S3_ACCESS_KEY_ID`.
+What `delete-track` needs from the Edge Functions' IAM key. The user is
+**`sequel-sounds-signer`**, whose original inline policy
+`sequel-sounds-media-tracks-rw` grants only PutObject, GetObject and the two
+multipart actions on `tracks/*` — everything presigning needs and nothing
+more. This file is attached alongside it as `sequel-studio-delete-track`
+rather than folded into it, so the path the whole app depends on stays as
+it was.
 
 `s3:ListBucket` is granted on the **bucket** arn and `s3:DeleteObject` on
 `bucket/tracks/*`. Getting those the same way round is the usual mistake:
