@@ -162,3 +162,14 @@ export function TrashIcon(props: IconProps) {
     </Svg>
   )
 }
+
+export function UploadFileIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7l-4-4Z" />
+      <path d="M14 3v4h4" />
+      <path d="M12 17v-6" />
+      <path d="M9.5 13.5 12 11l2.5 2.5" />
+    </Svg>
+  )
+}

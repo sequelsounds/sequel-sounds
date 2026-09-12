@@ -38,7 +38,7 @@ import { runQueue } from '../../lib/uploadQueue'
 import { useSession } from '../../lib/auth'
 import Artwork from './Artwork'
 import Confirm from './Confirm'
-import { MenuIcon } from './icons'
+import { MenuIcon, UploadFileIcon } from './icons'
 import Menu from './Menu'
 import Switch from './Switch'
 
@@ -1146,15 +1146,17 @@ function EndDrop({ empty, onClick }: { empty: boolean; onClick: () => void }) {
       type="button"
       ref={setNodeRef}
       onClick={onClick}
-      className={`mx-[18px] my-[10px] block w-[calc(100%-36px)] cursor-pointer border border-dashed p-4 text-center text-[13px] ${
+      className={`mx-[18px] my-[10px] flex w-[calc(100%-36px)] cursor-pointer flex-col items-center justify-center gap-3 border border-dashed px-4 py-10 text-center text-[13px] ${
         isOver
-          ? 'border-sequel-brown text-sequel-ink'
+          ? 'border-sequel-brown bg-sequel-well text-sequel-ink'
           : 'border-sequel-grey text-sequel-mid'
       }`}
     >
-      {empty
-        ? 'Drop files here from your desktop, or click to choose them'
-        : 'Drop files or tracks here, or click to upload'}
+      <UploadFileIcon size="1.5rem" />
+      <span>
+        {empty ? 'Drag files here, or ' : 'Drag files or tracks here, or '}
+        <span className="underline">click to upload</span>
+      </span>
     </button>
   )
 }
