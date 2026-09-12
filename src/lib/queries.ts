@@ -56,7 +56,7 @@ export function playlistCount(track: TrackWithUse): number {
 
 export type ProjectSummary = Pick<
   Tables<'projects_mirror'>,
-  'id' | 'xano_id' | 'name' | 'client_name' | 'status' | 'created_at'
+  'id' | 'xano_id' | 'name' | 'client_name' | 'sequel_no' | 'status' | 'created_at'
 > & { tracks: { count: number }[]; playlists: { count: number }[] }
 
 export function useProjects() {
@@ -65,7 +65,7 @@ export function useProjects() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects_mirror')
-        .select('id, xano_id, name, client_name, status, created_at, tracks(count), playlists(count)')
+        .select('id, xano_id, name, client_name, sequel_no, status, created_at, tracks(count), playlists(count)')
         .order('name')
       if (error) throw error
       return data as unknown as ProjectSummary[]
@@ -75,7 +75,7 @@ export function useProjects() {
 
 export type ProjectDetail = Pick<
   Tables<'projects_mirror'>,
-  'id' | 'xano_id' | 'xano_uuid' | 'name' | 'client_name' | 'status' | 'brief'
+  'id' | 'xano_id' | 'xano_uuid' | 'name' | 'client_name' | 'sequel_no' | 'status' | 'brief'
 > & { inboxes: { token: string; is_active: boolean } | null }
 
 export function useProject(id: string | undefined) {
@@ -85,7 +85,7 @@ export function useProject(id: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects_mirror')
-        .select('id, xano_id, xano_uuid, name, client_name, status, brief, inboxes(token, is_active)')
+        .select('id, xano_id, xano_uuid, name, client_name, sequel_no, status, brief, inboxes(token, is_active)')
         .eq('id', id!)
         .single()
       if (error) throw error

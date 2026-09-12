@@ -5,7 +5,6 @@ import Search from '../components/staff/Search'
 import TrackTable from '../components/staff/TrackTable'
 import { useCreator } from '../lib/creator'
 import { formatDate, plural } from '../lib/format'
-import { splitProjectName } from '../lib/projectName'
 import {
   usePlaylistActions,
   usePlaylists,
@@ -79,7 +78,8 @@ export default function Project() {
     () => groupSubmissions(tracks.data ?? []),
     [tracks.data],
   )
-  const { number, title } = splitProjectName(project.data?.name ?? '')
+  const title = project.data?.name ?? ''
+  const sequelNo = project.data?.sequel_no ?? ''
   const trackUrl = trackProjectUrl(project.data?.xano_uuid ?? null)
 
   const copyInbox = async () => {
@@ -129,7 +129,7 @@ export default function Project() {
             )}
           </div>
         </div>
-        <div className="page-subtitle">{number || ' '}</div>
+        <div className="page-subtitle">{sequelNo || ' '}</div>
       </div>
 
       {/* tab_bar_app: the search first at 40%, then the divider, then what

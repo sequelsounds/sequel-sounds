@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import Search from '../components/staff/Search'
 import { plural } from '../lib/format'
-import { splitProjectName } from '../lib/projectName'
 import { useProjects } from '../lib/queries'
 
 export default function Projects() {
@@ -38,23 +37,22 @@ export default function Projects() {
           <table className="track-table">
             <colgroup>
               <col />
+              <col style={{ width: 150 }} />
               <col style={{ width: '22%' }} />
               <col style={{ width: 130 }} />
-              <col style={{ width: 110 }} />
               <col style={{ width: 110 }} />
             </colgroup>
             <thead>
               <tr>
                 <th className="pl-7">Project</th>
+                <th>Sequel no</th>
                 <th>Client</th>
                 <th>Inbox</th>
                 <th>Playlists</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((p) => {
-                const { number, title } = splitProjectName(p.name)
                 const tracks = p.tracks[0]?.count ?? 0
                 const playlists = p.playlists[0]?.count ?? 0
                 return (
@@ -64,11 +62,9 @@ export default function Projects() {
                     onClick={() => navigate(`/projects/${p.id}`)}
                   >
                     <td className="pl-7">
-                      <span className="sentence-case font-sans">{title}</span>
-                      {number && (
-                        <span className="secondary ml-2 text-xs">{number}</span>
-                      )}
+                      <span className="sentence-case font-sans">{p.name}</span>
                     </td>
+                    <td className="secondary">{p.sequel_no ?? '—'}</td>
                     <td className="secondary">{p.client_name ?? ''}</td>
                     <td className="secondary">
                       {tracks > 0 ? plural(tracks, 'track') : '—'}
@@ -76,7 +72,6 @@ export default function Projects() {
                     <td className="secondary">
                       {playlists > 0 ? playlists : '—'}
                     </td>
-                    <td className="secondary">{p.status ?? ''}</td>
                   </tr>
                 )
               })}

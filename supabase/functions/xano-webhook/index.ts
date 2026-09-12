@@ -191,6 +191,8 @@ Deno.serve(async (req) => {
           xano_uuid: uuid(record.uuid),
           name,
           client_name: text(record.client_name),
+          // The Sequel number, e.g. 122-KNO-26-II. Xano has always sent it.
+          sequel_no: text(record.sequel_no),
           status: text(record.status),
           brief: text(record.brief),
           starts_on: date(record.starts_on),

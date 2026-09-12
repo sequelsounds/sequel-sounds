@@ -96,19 +96,20 @@ const project: ProjectDetail = {
   id: P1,
   xano_id: '4821',
   xano_uuid: '0b7a1e2c-3d4f-4a5b-8c6d-7e8f9a0b1c2d',
-  name: '256-OLD-26-II Nachips',
+  name: 'Nachips',
   client_name: 'Old El Paso · Hogarth',
+  sequel_no: '256-OLD-26-II',
   status: 'active',
   brief: null,
   inboxes: { token: 'previewtoken', is_active: true },
 }
 
 const projectSummaries: ProjectSummary[] = [
-  { id: P1, xano_id: '4821', name: '256-OLD-26-II Nachips', client_name: 'Old El Paso · Hogarth', status: 'active', created_at: '2026-09-01', tracks: [{ count: tracks.length }], playlists: [{ count: 2 }] },
-  { id: 'p2', xano_id: '4822', name: 'Bango Bisma', client_name: 'Bango', status: 'active', created_at: '2026-08-20', tracks: [{ count: 12 }], playlists: [{ count: 1 }] },
-  { id: 'p3', xano_id: '4823', name: "Hellmann's Habs", client_name: 'Unilever · Ogilvy', status: 'active', created_at: '2026-08-02', tracks: [{ count: 48 }], playlists: [{ count: 3 }] },
-  { id: 'p4', xano_id: '4824', name: '227-KNO-26-II Flavour Unlocked', client_name: 'Knorr', status: 'active', created_at: '2026-07-14', tracks: [{ count: 30 }], playlists: [{ count: 2 }] },
-  { id: 'p5', xano_id: '4825', name: 'Sunsilk', client_name: 'Unilever', status: 'closed', created_at: '2026-06-01', tracks: [{ count: 7 }], playlists: [{ count: 0 }] },
+  { id: P1, xano_id: '4821', name: 'Nachips', client_name: 'Old El Paso · Hogarth', sequel_no: '256-OLD-26-II', status: 'active', created_at: '2026-09-01', tracks: [{ count: tracks.length }], playlists: [{ count: 2 }] },
+  { id: 'p2', xano_id: '4822', name: 'Bango Bisma', client_name: 'Bango', sequel_no: '61-COM-25-II', status: 'active', created_at: '2026-08-20', tracks: [{ count: 12 }], playlists: [{ count: 1 }] },
+  { id: 'p3', xano_id: '4823', name: "Hellmann's Habs", client_name: 'Unilever · Ogilvy', sequel_no: '118-HEL-26-II', status: 'active', created_at: '2026-08-02', tracks: [{ count: 48 }], playlists: [{ count: 3 }] },
+  { id: 'p4', xano_id: '4824', name: 'Flavour Unlocked', client_name: 'Knorr', sequel_no: '227-KNO-26-II', status: 'active', created_at: '2026-07-14', tracks: [{ count: 30 }], playlists: [{ count: 2 }] },
+  { id: 'p5', xano_id: '4825', name: 'Sunsilk', client_name: 'Unilever', sequel_no: null, status: 'closed', created_at: '2026-06-01', tracks: [{ count: 7 }], playlists: [{ count: 0 }] },
 ]
 
 const recent: RecentProject[] = [

@@ -444,6 +444,7 @@ export type Database = {
           id: string
           name: string
           raw: Json | null
+          sequel_no: string | null
           starts_on: string | null
           status: string | null
           synced_at: string
@@ -458,6 +459,7 @@ export type Database = {
           id?: string
           name: string
           raw?: Json | null
+          sequel_no?: string | null
           starts_on?: string | null
           status?: string | null
           synced_at?: string
@@ -472,6 +474,7 @@ export type Database = {
           id?: string
           name?: string
           raw?: Json | null
+          sequel_no?: string | null
           starts_on?: string | null
           status?: string | null
           synced_at?: string
