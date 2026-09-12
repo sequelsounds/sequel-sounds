@@ -196,6 +196,20 @@ export default function Preview() {
     c.setQueryData(['playlist', PL1], playlist)
     c.setQueryData(['recent', undefined], recent)
     c.setQueryData(['peaks', tracks[0].id], peaks)
+    // One track carries artwork so the dialog's picture state — the image,
+    // and the × that clears it — can be looked at without a signed URL.
+    const artKey = `tracks/${'0'.repeat(8)}-0000-0000-0000-${'0'.repeat(12)}/artwork.jpg`
+    c.setQueryData(
+      ['media', artKey, null],
+      'data:image/svg+xml,' +
+        encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">' +
+            '<rect width="300" height="300" fill="%23372b29"/>' +
+            '<text x="150" y="185" font-size="140" font-style="italic" font-family="Georgia" fill="%23c98a9a" text-anchor="middle">II</text>' +
+            '</svg>',
+        ),
+    )
+
     // The details dialog fetches the full row per track; seed the ones the
     // fixture can open so the form is not stuck on "Loading…".
     for (const t of tracks) {
@@ -218,7 +232,7 @@ export default function Preview() {
         disc_no: 1,
         comments: 'Library keyword dump lands here.',
         staff_notes: null,
-        artwork_s3_key: null,
+        artwork_s3_key: t === tracks[0] ? artKey : null,
       })
     }
     return c

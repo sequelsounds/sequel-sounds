@@ -295,7 +295,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
                           setArtKey(null)
                           setArtPreview(null)
                         }}
-                        className="absolute right-2 top-2 grid h-9 w-9 place-items-center bg-sequel-brown text-[1.6rem] leading-none text-sequel-silver"
+                        className="absolute right-0 top-0 grid h-9 w-9 place-items-center bg-sequel-brown text-[1.6rem] leading-none text-sequel-silver"
                       >
                         ×
                       </button>
