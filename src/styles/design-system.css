@@ -346,8 +346,16 @@
 
   .track-row .grip {
     color: var(--color-sequel-ink);
-    text-align: center;
     cursor: grab;
+    /* The drawn handle is 10px wide; the default 12px each side left it no
+       room in a 34px column. */
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .track-row .grip-glyph {
+    display: grid;
+    place-items: center;
   }
 
   .track-row .play-btn {
@@ -378,7 +386,7 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 8px;
+    gap: 14px;
   }
 
   .row-actions button {
@@ -386,6 +394,10 @@
     place-items: center;
     width: 24px;
     height: 24px;
+    /* Never let the cell squeeze these. In a fixed-layout table a column too
+       narrow for its content silently shrinks flex items instead of
+       overflowing, which had both marks rendering at 18px and touching. */
+    flex-shrink: 0;
     padding: 0;
     border: 0;
     background: none;

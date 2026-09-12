@@ -4,6 +4,7 @@ import { formatDuration, plural } from '../../lib/format'
 import { toPlayerTrack, usePlayer, type PlayerTrack } from '../../lib/player'
 import { playlistCount, type TrackWithUse } from '../../lib/queries'
 import Artwork from './Artwork'
+import GripIcon from './GripIcon'
 import InfoIcon from './InfoIcon'
 import ShareIcon from './ShareIcon'
 import TrackMeta from './TrackMeta'
@@ -28,7 +29,7 @@ export default function TrackTable({ tracks, showProject = false }: Props) {
         <col style={{ width: 56 }} />
         <col />
         {showProject && <col style={{ width: 180 }} />}
-        <col style={{ width: 68 }} />
+        <col style={{ width: 86 }} />
         <col style={{ width: 80 }} />
       </colgroup>
       <tbody>
@@ -76,7 +77,9 @@ function TrackRow({
       className={`track-row ${current ? 'is-playing' : ''} ${isDragging ? 'opacity-40' : ''}`}
     >
       <td className="grip">
-        <span className="grip-glyph">⋮⋮</span>
+        <span className="grip-glyph">
+          <GripIcon />
+        </span>
         <button
           type="button"
           className="play-btn"
