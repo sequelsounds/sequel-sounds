@@ -20,15 +20,16 @@ import type { Tables } from '../../lib/database.types'
 import { formatDuration, plural } from '../../lib/format'
 import { toPlayerTrack, usePlayer, type PlayerTrack } from '../../lib/player'
 import {
+  type PlaylistDetail,
+  type Track,
+  type TrackWithUse,
+  useDeleteTrack,
   useLibraryTracks,
   usePlaylist,
   usePlaylistActions,
   usePlaylists,
   useProjectSearch,
   useProjectTracks,
-  type PlaylistDetail,
-  type Track,
-  type TrackWithUse,
 } from '../../lib/queries'
 import { filesFromDrop, isMediaFile } from '../../lib/dropFiles'
 import { readTagsAll, type FileTags } from '../../lib/tags'
@@ -38,7 +39,7 @@ import { runQueue } from '../../lib/uploadQueue'
 import { useSession } from '../../lib/auth'
 import Artwork from './Artwork'
 import Confirm from './Confirm'
-import { MenuIcon, UploadFileIcon } from './icons'
+import { MenuIcon, TrashIcon, UploadFileIcon } from './icons'
 import Menu from './Menu'
 import Switch from './Switch'
 
@@ -115,6 +116,7 @@ export default function Creator() {
   const playlist = usePlaylist(playlistId)
   const projectPlaylists = usePlaylists(routeProjectId ?? undefined)
   const actions = usePlaylistActions()
+  const removeTrack = useDeleteTrack()
   const player = usePlayer()
   const qc = useQueryClient()
 
@@ -131,6 +133,7 @@ export default function Creator() {
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
   const [destroying, setDestroying] = useState(false)
+  const [deletingTrack, setDeletingTrack] = useState<Track | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   const data = playlist.data ?? null
@@ -807,6 +810,9 @@ export default function Creator() {
                         playing={player.isCurrent(row.track_id)}
                         onPlay={() => index >= 0 && player.play(queue, index)}
                         onRemove={() => remove(row)}
+                        onDeleteTrack={() =>
+                          row.track && setDeletingTrack(row.track)
+                        }
                       />
                     )
                   })}
@@ -932,6 +938,19 @@ export default function Creator() {
           </div>
         </>
       )}
+      {deletingTrack && (
+        <Confirm
+          title={`Delete “${deletingTrack.title}”?`}
+          body="The audio, preview and artwork are removed from storage as well, and it comes out of every playlist it is in — not just this one."
+          confirmLabel="Delete track"
+          onConfirm={() => {
+            const id = deletingTrack.id
+            setDeletingTrack(null)
+            removeTrack.mutate(id)
+          }}
+          onCancel={() => setDeletingTrack(null)}
+        />
+      )}
       {destroying && data && (
         <Confirm
           title={`Delete “${data.name}”?`}
@@ -1048,6 +1067,7 @@ function CreatorTrack({
   playing,
   onPlay,
   onRemove,
+  onDeleteTrack,
 }: {
   row: Row
   number: number
@@ -1055,6 +1075,7 @@ function CreatorTrack({
   playing: boolean
   onPlay: () => void
   onRemove: () => void
+  onDeleteTrack: () => void
 }) {
   const {
     attributes,
@@ -1076,7 +1097,7 @@ function CreatorTrack({
       {...attributes}
       {...listeners}
       onClick={onPlay}
-      className={`creator-track ${isOver ? 'is-over' : ''} ${isDragging ? 'opacity-40' : ''} ${
+      className={`creator-track group/row ${isOver ? 'is-over' : ''} ${isDragging ? 'opacity-40' : ''} ${
         playing ? 'bg-sequel-playing' : ''
       }`}
     >
@@ -1089,11 +1110,20 @@ function CreatorTrack({
           so the label said the same thing a second time, on the rows with
           the least width to spare. */}
       <span className="flex-1 truncate">{track?.title ?? 'Missing track'}</span>
-      {editing && (
+      {/* Both arrive under the pointer, and stay put while Edit all is on.
+          They are different things and say so: × takes the track out of
+          this list, the bin deletes the track itself — which is what you
+          want the moment after dropping the wrong file. */}
+      <span
+        className={`shrink-0 items-center gap-1 ${
+          editing ? 'flex' : 'hidden group-hover/row:flex'
+        }`}
+      >
         <button
           type="button"
           aria-label="Remove from playlist"
-          className="px-1 text-sequel-mid hover:text-inherit"
+          title="Remove from this playlist"
+          className="px-1 text-lg leading-none"
           onClick={(e) => {
             e.stopPropagation()
             onRemove()
@@ -1101,7 +1131,21 @@ function CreatorTrack({
         >
           ×
         </button>
-      )}
+        {track && (
+          <button
+            type="button"
+            aria-label="Delete track"
+            title="Delete the track itself"
+            className="icon-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteTrack()
+            }}
+          >
+            <TrashIcon />
+          </button>
+        )}
+      </span>
     </div>
   )
 }
