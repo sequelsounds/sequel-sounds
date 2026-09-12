@@ -241,12 +241,6 @@ export default function Project() {
             onClick={() => setTab('playlists')}
           >
             Playlists
-            {tracks.data && (
-              <span className="count">
-                {plural(playlists.data?.length ?? 0, 'playlist')} ·{' '}
-                {plural(submissions.length, 'submission')}
-              </span>
-            )}
           </button>
           <button
             type="button"
