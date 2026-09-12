@@ -26,7 +26,7 @@ import { contentTypeFor, putToS3, signUploadAsStaff } from '../../lib/upload'
 import { runQueue } from '../../lib/uploadQueue'
 import { useSession } from '../../lib/auth'
 import Artwork from './Artwork'
-import { MenuIcon } from './icons'
+import { ChevronIcon, MenuIcon } from './icons'
 import Menu from './Menu'
 import Switch from './Switch'
 
@@ -92,7 +92,7 @@ function normalise(rows: Row[], sections: Section[]): Row[] {
 }
 
 export default function Creator() {
-  const { playlistId, open, setDropHandler } = useCreator()
+  const { playlistId, open, setCollapsed, setDropHandler } = useCreator()
   const routeProjectId = useMatch('/projects/:id')?.params.id ?? null
   const playlist = usePlaylist(playlistId)
   const projectPlaylists = usePlaylists(routeProjectId ?? undefined)
@@ -534,7 +534,7 @@ export default function Creator() {
         setFileOver(false)
         await uploadFiles(await filesFromDrop(e.dataTransfer))
       }}
-      className={`relative col-start-3 row-start-2 z-[2] flex min-h-0 min-w-0 flex-col overflow-hidden bg-sequel-silver shadow-[-6px_0_24px_rgba(48,47,44,0.18)] ${
+      className={`relative flex h-full w-96 min-h-0 flex-col overflow-hidden bg-sequel-silver ${
         fileOver ? 'outline outline-2 -outline-offset-2 outline-sequel-brown' : ''
       }`}
     >
@@ -552,6 +552,15 @@ export default function Creator() {
       />
       <div className="flex items-center justify-between bg-sequel-brown px-[18px] py-[14px] text-sequel-silver">
         <h2 className="font-title text-[15px] font-semibold uppercase tracking-[.06em]">Playlist Creator</h2>
+        <button
+          type="button"
+          title="Hide the Playlist Creator"
+          aria-label="Hide the Playlist Creator"
+          onClick={() => setCollapsed(true)}
+          className="mr-2 grid h-6 w-6 place-items-center"
+        >
+          <ChevronIcon className="-rotate-90" />
+        </button>
         <button
           type="button"
           title="New playlist"

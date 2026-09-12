@@ -10,17 +10,28 @@ import { createContext, use, useCallback, useMemo, useRef, useState, type ReactN
  * that sees them lives in the layout; the panel registers its handler here.
  */
 const STORAGE_KEY = 'sequel.creator.playlist'
+const COLLAPSED_KEY = 'sequel.creator.collapsed'
 
 type DropHandler = (e: DragEndEvent) => void
 
 type CreatorApi = {
   playlistId: string | null
+  collapsed: boolean
+  setCollapsed: (v: boolean) => void
   open: (id: string | null) => void
   setDropHandler: (h: DropHandler | null) => void
   handleDrop: DropHandler
 }
 
 const CreatorContext = createContext<CreatorApi | null>(null)
+
+function loadCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 function loadStored(): string | null {
   try {
@@ -32,10 +43,23 @@ function loadStored(): string | null {
 
 export function CreatorProvider({ children }: { children: ReactNode }) {
   const [playlistId, setPlaylistId] = useState<string | null>(loadStored)
+  const [collapsed, setCollapsedState] = useState<boolean>(loadCollapsed)
   const handler = useRef<DropHandler | null>(null)
 
+  const setCollapsed = useCallback((v: boolean) => {
+    setCollapsedState(v)
+    try {
+      localStorage.setItem(COLLAPSED_KEY, v ? '1' : '0')
+    } catch {
+      // Not remembering is fine.
+    }
+  }, [])
+
+  // Opening a playlist while the panel is away brings it back — otherwise
+  // clicking Edit in creator looks like it did nothing.
   const open = useCallback((id: string | null) => {
     setPlaylistId(id)
+    if (id) setCollapsed(false)
     try {
       if (id) localStorage.setItem(STORAGE_KEY, id)
       else localStorage.removeItem(STORAGE_KEY)
@@ -51,8 +75,8 @@ export function CreatorProvider({ children }: { children: ReactNode }) {
   const handleDrop = useCallback<DropHandler>((e) => handler.current?.(e), [])
 
   const api = useMemo(
-    () => ({ playlistId, open, setDropHandler, handleDrop }),
-    [playlistId, open, setDropHandler, handleDrop],
+    () => ({ playlistId, collapsed, setCollapsed, open, setDropHandler, handleDrop }),
+    [playlistId, collapsed, setCollapsed, open, setDropHandler, handleDrop],
   )
   return <CreatorContext value={api}>{children}</CreatorContext>
 }

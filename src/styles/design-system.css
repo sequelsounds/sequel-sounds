@@ -680,6 +680,23 @@
     left: 18px;
   }
 
+  /* The handle left behind when the Creator is away: the same brown bar as
+     its header, pinned to the edge it slid out through. */
+  .creator-tab {
+    position: fixed;
+    right: 0;
+    top: 2rem;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 3rem;
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+    border: 0;
+    cursor: pointer;
+  }
+
   .menu {
     position: absolute;
     right: 0;

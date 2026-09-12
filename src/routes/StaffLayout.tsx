@@ -12,6 +12,7 @@ import {
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Creator from '../components/staff/Creator'
+import { ChevronIcon } from '../components/staff/icons'
 import Player from '../components/staff/Player'
 import Rail from '../components/staff/Rail'
 import { CreatorProvider, useCreator } from '../lib/creator'
@@ -68,8 +69,12 @@ function Shell() {
       <div
         className="grid h-screen overflow-hidden bg-sequel-silver text-[14px] leading-[1.4] text-sequel-ink"
         style={{
-          gridTemplateColumns: '16rem minmax(0, 1fr) 24rem',
+          // The Creator's column is what animates. Its panel keeps its full
+          // 24rem the whole way and is clipped by the wrapper, so nothing
+          // inside reflows while it slides away.
+          gridTemplateColumns: `16rem minmax(0, 1fr) ${creator.collapsed ? '0rem' : '24rem'}`,
           gridTemplateRows: '2rem 1fr 72px',
+          transition: 'grid-template-columns 280ms cubic-bezier(.25,.46,.45,.94)',
         }}
       >
         {/* The strip starts after the nav, so the rail's edge runs unbroken
@@ -81,7 +86,26 @@ function Shell() {
         <main className="col-start-2 row-start-2 flex min-w-0 flex-col overflow-hidden">
           <Outlet />
         </main>
-        <Creator />
+        <div
+          className={`col-start-3 row-start-2 z-[2] overflow-hidden ${
+            creator.collapsed
+              ? ''
+              : 'shadow-[-6px_0_24px_rgba(48,47,44,0.18)]'
+          }`}
+        >
+          <Creator />
+        </div>
+        {creator.collapsed && (
+          <button
+            type="button"
+            className="creator-tab"
+            title="Show the Playlist Creator"
+            aria-label="Show the Playlist Creator"
+            onClick={() => creator.setCollapsed(false)}
+          >
+            <ChevronIcon className="rotate-90" />
+          </button>
+        )}
         <Player />
       </div>
       <DragOverlay dropAnimation={null}>
