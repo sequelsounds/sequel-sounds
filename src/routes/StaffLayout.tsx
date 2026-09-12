@@ -69,11 +69,16 @@ function Shell() {
         className="grid h-screen overflow-hidden bg-sequel-silver text-[14px] leading-[1.4] text-sequel-ink"
         style={{
           gridTemplateColumns: '16rem minmax(0, 1fr) 24rem',
-          gridTemplateRows: '1fr 72px',
+          gridTemplateRows: '2rem 1fr 72px',
         }}
       >
+        {/* The strip starts after the nav, so the rail's edge runs unbroken
+            from the top of the window to the player. Placement is explicit
+            rather than by source order: the rail spans two rows, which auto
+            flow would otherwise have to guess at. */}
+        <div className="col-start-2 col-span-2 row-start-1 border-b border-sequel-line" />
         <Rail />
-        <main className="col-start-2 row-start-1 flex min-w-0 flex-col overflow-hidden">
+        <main className="col-start-2 row-start-2 flex min-w-0 flex-col overflow-hidden">
           <Outlet />
         </main>
         <Creator />
