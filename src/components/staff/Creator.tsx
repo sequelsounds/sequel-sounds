@@ -1,8 +1,19 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useDroppable, type DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useMatch } from 'react-router-dom'
 import { useCreator } from '../../lib/creator'
 import type { Tables } from '../../lib/database.types'
@@ -26,6 +37,7 @@ import { contentTypeFor, putToS3, signUploadAsStaff } from '../../lib/upload'
 import { runQueue } from '../../lib/uploadQueue'
 import { useSession } from '../../lib/auth'
 import Artwork from './Artwork'
+import Confirm from './Confirm'
 import { MenuIcon } from './icons'
 import Menu from './Menu'
 import Switch from './Switch'
@@ -65,10 +77,14 @@ type DragData =
  */
 function sortRows(playlist: PlaylistDetail): Row[] {
   const rank = new Map(
-    [...playlist.playlist_sections].sort((a, b) => a.position - b.position).map((s, i) => [s.id, i]),
+    [...playlist.playlist_sections]
+      .sort((a, b) => a.position - b.position)
+      .map((s, i) => [s.id, i]),
   )
   const rankOf = (r: { section_id: string | null }) =>
-    r.section_id != null && rank.has(r.section_id) ? rank.get(r.section_id)! : Number.MAX_SAFE_INTEGER
+    r.section_id != null && rank.has(r.section_id)
+      ? rank.get(r.section_id)!
+      : Number.MAX_SAFE_INTEGER
   return [...playlist.playlist_tracks]
     .map((pt) => ({
       id: pt.id,
@@ -84,7 +100,9 @@ function sortRows(playlist: PlaylistDetail): Row[] {
 function normalise(rows: Row[], sections: Section[]): Row[] {
   const rank = new Map(sections.map((s, i) => [s.id, i]))
   const rankOf = (r: Row) =>
-    r.section_id != null && rank.has(r.section_id) ? rank.get(r.section_id)! : Number.MAX_SAFE_INTEGER
+    r.section_id != null && rank.has(r.section_id)
+      ? rank.get(r.section_id)!
+      : Number.MAX_SAFE_INTEGER
   return rows
     .map((r, i) => ({ r, i }))
     .sort((a, b) => rankOf(a.r) - rankOf(b.r) || a.i - b.i)
@@ -112,11 +130,15 @@ export default function Creator() {
   const [attaching, setAttaching] = useState(false)
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [destroying, setDestroying] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
   const data = playlist.data ?? null
   const sections = useMemo(
-    () => [...(data?.playlist_sections ?? [])].sort((a, b) => a.position - b.position),
+    () =>
+      [...(data?.playlist_sections ?? [])].sort(
+        (a, b) => a.position - b.position,
+      ),
     [data],
   )
 
@@ -138,7 +160,14 @@ export default function Creator() {
     const openBelongs = data?.project_id === routeProjectId
     if (openBelongs) return
     open(projectPlaylists.data[0]?.id ?? null)
-  }, [routeProjectId, projectPlaylists.data, playlistId, playlist.isPending, data, open])
+  }, [
+    routeProjectId,
+    projectPlaylists.data,
+    playlistId,
+    playlist.isPending,
+    data,
+    open,
+  ])
 
   useEffect(() => {
     if (!notice) return
@@ -168,7 +197,9 @@ export default function Creator() {
         let base = rows
         let secs = sections
         if (!pid) {
-          pid = await actions.createPlaylist.mutateAsync({ projectId: routeProjectId })
+          pid = await actions.createPlaylist.mutateAsync({
+            projectId: routeProjectId,
+          })
           open(pid)
           base = []
           secs = []
@@ -200,7 +231,8 @@ export default function Creator() {
           moving.section_id = o.pt.section_id
           const fromAbove =
             a.type === 'pt' &&
-            base.findIndex((r) => r.id === moving.id) < base.findIndex((r) => r.id === o.pt.id)
+            base.findIndex((r) => r.id === moving.id) <
+              base.findIndex((r) => r.id === o.pt.id)
           next.splice(fromAbove ? idx + 1 : idx, 0, moving)
         } else if (o.type === 'section') {
           moving.section_id = o.sectionId
@@ -230,7 +262,11 @@ export default function Creator() {
           },
           {
             onError: (err) =>
-              setNotice(err instanceof Error ? `Not saved — ${err.message}` : 'Not saved'),
+              setNotice(
+                err instanceof Error
+                  ? `Not saved — ${err.message}`
+                  : 'Not saved',
+              ),
           },
         )
       })()
@@ -250,7 +286,9 @@ export default function Creator() {
       let base = rows
       let secs = sections
       if (!pid) {
-        pid = await actions.createPlaylist.mutateAsync({ projectId: routeProjectId })
+        pid = await actions.createPlaylist.mutateAsync({
+          projectId: routeProjectId,
+        })
         open(pid)
         base = []
         secs = []
@@ -285,7 +323,9 @@ export default function Creator() {
         },
         {
           onError: (err) =>
-            setNotice(err instanceof Error ? `Not saved — ${err.message}` : 'Not saved'),
+            setNotice(
+              err instanceof Error ? `Not saved — ${err.message}` : 'Not saved',
+            ),
         },
       )
     },
@@ -308,7 +348,9 @@ export default function Creator() {
 
       let pid = playlistId
       if (!pid) {
-        pid = await actions.createPlaylist.mutateAsync({ projectId: routeProjectId })
+        pid = await actions.createPlaylist.mutateAsync({
+          projectId: routeProjectId,
+        })
         open(pid)
       }
       // A playlist attached to a project puts its uploads in that project; one
@@ -348,10 +390,18 @@ export default function Creator() {
           const item = queued.find((q) => q.id === id)!
           const index = media.indexOf(item.file)
           const patch = (next: Partial<Upload>) =>
-            setUploads((u) => u.map((x) => (x.id === id ? { ...x, ...next } : x)))
+            setUploads((u) =>
+              u.map((x) => (x.id === id ? { ...x, ...next } : x)),
+            )
           try {
-            const signed = await signUploadAsStaff(item.file, projectId, accessToken)
-            await putToS3(signed.upload_url, item.file, (progress) => patch({ progress }))
+            const signed = await signUploadAsStaff(
+              item.file,
+              projectId,
+              accessToken,
+            )
+            await putToS3(signed.upload_url, item.file, (progress) =>
+              patch({ progress }),
+            )
 
             const contentType = contentTypeFor(item.file)
             const t = tags[index] ?? null
@@ -408,7 +458,9 @@ export default function Creator() {
             })
             setUploads((u) => u.filter((x) => x.id !== id))
           } catch (err) {
-            patch({ error: err instanceof Error ? err.message : 'Upload failed' })
+            patch({
+              error: err instanceof Error ? err.message : 'Upload failed',
+            })
           }
         },
         PARALLEL_UPLOADS,
@@ -421,12 +473,17 @@ export default function Creator() {
   // ------------------------------------------------------------ derived
 
   const grouped = useMemo(() => {
-    const groups: { section: Section | null; rows: Row[] }[] = sections.map((s) => ({
-      section: s,
-      rows: rows.filter((r) => r.section_id === s.id),
-    }))
-    const loose = rows.filter((r) => !r.section_id || !sections.some((s) => s.id === r.section_id))
-    if (loose.length > 0 || sections.length === 0) groups.push({ section: null, rows: loose })
+    const groups: { section: Section | null; rows: Row[] }[] = sections.map(
+      (s) => ({
+        section: s,
+        rows: rows.filter((r) => r.section_id === s.id),
+      }),
+    )
+    const loose = rows.filter(
+      (r) => !r.section_id || !sections.some((s) => s.id === r.section_id),
+    )
+    if (loose.length > 0 || sections.length === 0)
+      groups.push({ section: null, rows: loose })
     return groups
   }, [rows, sections])
 
@@ -434,7 +491,10 @@ export default function Creator() {
     () => rows.filter((r) => r.track).map((r) => toPlayerTrack(r.track!)),
     [rows],
   )
-  const totalSeconds = rows.reduce((sum, r) => sum + (r.track?.duration_seconds ?? 0), 0)
+  const totalSeconds = rows.reduce(
+    (sum, r) => sum + (r.track?.duration_seconds ?? 0),
+    0,
+  )
   const dirty = !!data && title.trim() !== data.name && title.trim() !== ''
 
   // ------------------------------------------------------------ actions
@@ -451,7 +511,9 @@ export default function Creator() {
   }
 
   const newPlaylist = async () => {
-    const id = await actions.createPlaylist.mutateAsync({ projectId: routeProjectId })
+    const id = await actions.createPlaylist.mutateAsync({
+      projectId: routeProjectId,
+    })
     open(id)
   }
 
@@ -499,11 +561,9 @@ export default function Creator() {
     actions.removeTrack.mutate({ playlistId: data.id, id: row.id })
   }
 
-  const destroy = async () => {
+  const destroy = () => {
     if (!data) return
-    if (!window.confirm(`Delete "${data.name}"? Viewers with the link will lose access.`)) return
-    await actions.deletePlaylist.mutateAsync(data.id)
-    open(null)
+    setDestroying(true)
   }
 
   const duplicate = async () => {
@@ -514,12 +574,28 @@ export default function Creator() {
 
   const menuItems = [
     { label: 'Upload files…', onSelect: () => fileInput.current?.click() },
-    { label: 'Add from library…', onSelect: () => setAddingTracks(true), disabled: !data },
-    { label: 'Add section', onSelect: () => void addSection(), disabled: !data },
-    { label: editing ? 'Done editing' : 'Edit all', onSelect: () => setEditing((v) => !v), disabled: !data },
-    { label: 'Attach to project…', onSelect: () => setAttaching(true), disabled: !data },
+    {
+      label: 'Add from library…',
+      onSelect: () => setAddingTracks(true),
+      disabled: !data,
+    },
+    {
+      label: 'Add section',
+      onSelect: () => void addSection(),
+      disabled: !data,
+    },
+    {
+      label: editing ? 'Done editing' : 'Edit all',
+      onSelect: () => setEditing((v) => !v),
+      disabled: !data,
+    },
+    {
+      label: 'Attach to project…',
+      onSelect: () => setAttaching(true),
+      disabled: !data,
+    },
     { label: 'Duplicate', onSelect: () => void duplicate(), disabled: !data },
-    { label: 'Delete', onSelect: () => void destroy(), disabled: !data, danger: true },
+    { label: 'Delete', onSelect: destroy, disabled: !data, danger: true },
   ]
 
   // Running number across sections, computed once per render.
@@ -533,7 +609,8 @@ export default function Creator() {
         setFileOver(true)
       }}
       onDragLeave={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFileOver(false)
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+          setFileOver(false)
       }}
       onDrop={async (e) => {
         if (!e.dataTransfer.types.includes('Files')) return
@@ -542,7 +619,9 @@ export default function Creator() {
         await uploadFiles(await filesFromDrop(e.dataTransfer))
       }}
       className={`relative flex h-full w-96 min-h-0 flex-col overflow-hidden bg-sequel-silver ${
-        fileOver ? 'outline outline-2 -outline-offset-2 outline-sequel-brown' : ''
+        fileOver
+          ? 'outline outline-2 -outline-offset-2 outline-sequel-brown'
+          : ''
       }`}
     >
       {/* One input for both the drop zones and the menu item. */}
@@ -558,7 +637,9 @@ export default function Creator() {
         }}
       />
       <div className="flex items-center justify-between bg-sequel-brown px-[18px] py-[14px] text-sequel-silver">
-        <h2 className="font-title text-[15px] font-semibold uppercase tracking-[.06em]">Playlist Creator</h2>
+        <h2 className="font-title text-[15px] font-semibold uppercase tracking-[.06em]">
+          Playlist Creator
+        </h2>
         <button
           type="button"
           title="New playlist"
@@ -571,7 +652,10 @@ export default function Creator() {
       </div>
 
       {!playlistId ? (
-        <EmptyDrop forProject={!!routeProjectId} onClick={() => fileInput.current?.click()} />
+        <EmptyDrop
+          forProject={!!routeProjectId}
+          onClick={() => fileInput.current?.click()}
+        />
       ) : !data && !playlist.isPending ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-[13px] text-sequel-mid">
           <p>That playlist could not be found.</p>
@@ -598,7 +682,11 @@ export default function Creator() {
               </small>
             </div>
             {editing ? (
-              <button type="button" className="btn btn-tool btn-dark" onClick={() => setEditing(false)}>
+              <button
+                type="button"
+                className="btn btn-tool btn-dark"
+                onClick={() => setEditing(false)}
+              >
                 Done
               </button>
             ) : (
@@ -621,7 +709,10 @@ export default function Creator() {
               playlist={data}
               onClose={() => setAttaching(false)}
               onPick={(projectId) => {
-                actions.updatePlaylist.mutate({ id: data.id, project_id: projectId })
+                actions.updatePlaylist.mutate({
+                  id: data.id,
+                  project_id: projectId,
+                })
                 setAttaching(false)
               }}
             />
@@ -633,14 +724,22 @@ export default function Creator() {
                 <SectionLabel name="Film" count={1} />
                 <div className="creator-track cursor-default">
                   <span className="secondary w-4 text-xs" />
-                  <Artwork artworkKey={data.video.artwork_s3_key} kind="video" />
+                  <Artwork
+                    artworkKey={data.video.artwork_s3_key}
+                    kind="video"
+                  />
                   <span className="flex-1 truncate">{data.video.title}</span>
                   <span className="pill ml-0">video</span>
                   <button
                     type="button"
                     aria-label="Remove film"
                     className="px-1 text-sequel-mid hover:text-inherit"
-                    onClick={() => actions.updatePlaylist.mutate({ id: data.id, video_track_id: null })}
+                    onClick={() =>
+                      actions.updatePlaylist.mutate({
+                        id: data.id,
+                        video_track_id: null,
+                      })
+                    }
                   >
                     ×
                   </button>
@@ -648,7 +747,10 @@ export default function Creator() {
               </>
             )}
 
-            <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext
+              items={rows.map((r) => r.id)}
+              strategy={verticalListSortingStrategy}
+            >
               {grouped.map((g, gi) => (
                 <Fragment key={g.section?.id ?? 'loose'}>
                   {g.section ? (
@@ -659,13 +761,25 @@ export default function Creator() {
                       first={gi === 0}
                       last={gi === sections.length - 1}
                       onRename={(name) =>
-                        actions.updateSection.mutate({ playlistId: data.id, id: g.section!.id, name })
+                        actions.updateSection.mutate({
+                          playlistId: data.id,
+                          id: g.section!.id,
+                          name,
+                        })
                       }
                       onMove={(dir) => moveSection(g.section!, dir)}
-                      onDelete={() => actions.deleteSection.mutate({ playlistId: data.id, id: g.section!.id })}
+                      onDelete={() =>
+                        actions.deleteSection.mutate({
+                          playlistId: data.id,
+                          id: g.section!.id,
+                        })
+                      }
                     />
                   ) : (
-                    sections.length > 0 && g.rows.length > 0 && <SectionLabel name="Tracks" count={g.rows.length} />
+                    sections.length > 0 &&
+                    g.rows.length > 0 && (
+                      <SectionLabel name="Tracks" count={g.rows.length} />
+                    )
                   )}
                   {g.rows.map((row) => {
                     const index = queue.findIndex((q) => q.id === row.track_id)
@@ -683,7 +797,10 @@ export default function Creator() {
                   })}
                 </Fragment>
               ))}
-              <EndDrop empty={rows.length === 0} onClick={() => fileInput.current?.click()} />
+              <EndDrop
+                empty={rows.length === 0}
+                onClick={() => fileInput.current?.click()}
+              />
             </SortableContext>
             {uploads.length > 0 && (
               <ul className="border-t border-sequel-line px-[18px] py-2 text-[13px]">
@@ -709,7 +826,11 @@ export default function Creator() {
                 ))}
               </ul>
             )}
-            {notice && <div className="px-[18px] py-2 text-[13px] text-sequel-mid">{notice}</div>}
+            {notice && (
+              <div className="px-[18px] py-2 text-[13px] text-sequel-mid">
+                {notice}
+              </div>
+            )}
           </div>
 
           {addingTracks && (
@@ -727,20 +848,36 @@ export default function Creator() {
               currentId={data.video_track_id}
               onClose={() => setPicking(false)}
               onPick={(trackId) => {
-                actions.updatePlaylist.mutate({ id: data.id, video_track_id: trackId })
+                actions.updatePlaylist.mutate({
+                  id: data.id,
+                  video_track_id: trackId,
+                })
                 setPicking(false)
               }}
             />
           )}
 
           <div className="grid grid-cols-2 gap-2 border-t border-sequel-line px-[18px] py-[14px]">
-            <button type="button" className="btn btn-tool btn-dark" onClick={() => void share()}>
+            <button
+              type="button"
+              className="btn btn-tool btn-dark"
+              onClick={() => void share()}
+            >
               {copied ? 'Copied' : 'Share'}
             </button>
-            <button type="button" className="btn btn-tool btn-outline" disabled title="Themes arrive with the viewer page">
+            <button
+              type="button"
+              className="btn btn-tool btn-outline"
+              disabled
+              title="Themes arrive with the viewer page"
+            >
               Theme
             </button>
-            <button type="button" className="btn btn-tool btn-outline" onClick={() => setPicking((v) => !v)}>
+            <button
+              type="button"
+              className="btn btn-tool btn-outline"
+              onClick={() => setPicking((v) => !v)}
+            >
               Add film
             </button>
             <a
@@ -756,7 +893,12 @@ export default function Creator() {
               <Switch
                 label="Visible to client in Sequel Track"
                 checked={data.visible_to_client}
-                onChange={(v) => actions.updatePlaylist.mutate({ id: data.id, visible_to_client: v })}
+                onChange={(v) =>
+                  actions.updatePlaylist.mutate({
+                    id: data.id,
+                    visible_to_client: v,
+                  })
+                }
               />
             </div>
             <div className="col-span-2 flex items-center justify-between text-[13px] text-sequel-mid">
@@ -764,11 +906,29 @@ export default function Creator() {
               <Switch
                 label="Sign-in required"
                 checked={data.require_sign_in}
-                onChange={(v) => actions.updatePlaylist.mutate({ id: data.id, require_sign_in: v })}
+                onChange={(v) =>
+                  actions.updatePlaylist.mutate({
+                    id: data.id,
+                    require_sign_in: v,
+                  })
+                }
               />
             </div>
           </div>
         </>
+      )}
+      {destroying && data && (
+        <Confirm
+          title={`Delete “${data.name}”?`}
+          body="Viewers holding the link will lose access. The tracks themselves stay where they are."
+          confirmLabel="Delete playlist"
+          onConfirm={async () => {
+            setDestroying(false)
+            await actions.deletePlaylist.mutateAsync(data.id)
+            open(null)
+          }}
+          onCancel={() => setDestroying(false)}
+        />
       )}
     </aside>
   )
@@ -825,15 +985,31 @@ function SectionHeader({
             value={name}
             aria-label="Section name"
             onChange={(e) => setName(e.target.value)}
-            onBlur={() => name.trim() && name.trim() !== section.name && onRename(name.trim())}
+            onBlur={() =>
+              name.trim() &&
+              name.trim() !== section.name &&
+              onRename(name.trim())
+            }
             onKeyDown={(e) => {
               if (e.key === 'Enter') e.currentTarget.blur()
             }}
           />
-          <button type="button" disabled={first} onClick={() => onMove(-1)} aria-label="Move section up" className="disabled:opacity-30">
+          <button
+            type="button"
+            disabled={first}
+            onClick={() => onMove(-1)}
+            aria-label="Move section up"
+            className="disabled:opacity-30"
+          >
             ↑
           </button>
-          <button type="button" disabled={last} onClick={() => onMove(1)} aria-label="Move section down" className="disabled:opacity-30">
+          <button
+            type="button"
+            disabled={last}
+            onClick={() => onMove(1)}
+            aria-label="Move section down"
+            className="disabled:opacity-30"
+          >
             ↓
           </button>
           <button type="button" onClick={onDelete} aria-label="Delete section">
@@ -865,7 +1041,15 @@ function CreatorTrack({
   onPlay: () => void
   onRemove: () => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+    isOver,
+  } = useSortable({
     id: row.id,
     data: { type: 'pt', pt: row },
   })
@@ -882,7 +1066,10 @@ function CreatorTrack({
       }`}
     >
       <span className="secondary w-4 text-xs">{number}</span>
-      <Artwork artworkKey={track?.artwork_s3_key ?? null} kind={track?.kind ?? 'audio'} />
+      <Artwork
+        artworkKey={track?.artwork_s3_key ?? null}
+        kind={track?.kind ?? 'audio'}
+      />
       <span className="flex-1 truncate">{track?.title ?? 'Missing track'}</span>
       {track?.kind === 'video' && <span className="pill ml-0">video</span>}
       {editing && (
@@ -902,8 +1089,17 @@ function CreatorTrack({
   )
 }
 
-function EmptyDrop({ forProject, onClick }: { forProject: boolean; onClick: () => void }) {
-  const { setNodeRef, isOver } = useDroppable({ id: 'creator-empty', data: { type: 'end' } })
+function EmptyDrop({
+  forProject,
+  onClick,
+}: {
+  forProject: boolean
+  onClick: () => void
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'creator-empty',
+    data: { type: 'end' },
+  })
   return (
     <button
       type="button"
@@ -915,7 +1111,8 @@ function EmptyDrop({ forProject, onClick }: { forProject: boolean; onClick: () =
     >
       <p>No playlist open.</p>
       <p>
-        Drop files here from your desktop, or click to choose them — that starts a playlist
+        Drop files here from your desktop, or click to choose them — that starts
+        a playlist
         {forProject ? ' for this project' : ''}. Press + to start an empty one.
       </p>
     </button>
@@ -923,14 +1120,19 @@ function EmptyDrop({ forProject, onClick }: { forProject: boolean; onClick: () =
 }
 
 function EndDrop({ empty, onClick }: { empty: boolean; onClick: () => void }) {
-  const { setNodeRef, isOver } = useDroppable({ id: 'creator-end', data: { type: 'end' } })
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'creator-end',
+    data: { type: 'end' },
+  })
   return (
     <button
       type="button"
       ref={setNodeRef}
       onClick={onClick}
       className={`mx-[18px] my-[10px] block w-[calc(100%-36px)] cursor-pointer border border-dashed p-4 text-center text-[13px] ${
-        isOver ? 'border-sequel-brown text-sequel-ink' : 'border-sequel-grey text-sequel-mid'
+        isOver
+          ? 'border-sequel-brown text-sequel-ink'
+          : 'border-sequel-grey text-sequel-mid'
       }`}
     >
       {empty
@@ -962,7 +1164,9 @@ function TrackPicker({
 
   const results = useMemo(() => {
     const needle = term.trim().toLowerCase()
-    const source = projectId ? (projectTracks.data ?? []) : (libraryTracks.data ?? [])
+    const source = projectId
+      ? (projectTracks.data ?? [])
+      : (libraryTracks.data ?? [])
     if (!projectId || !needle) return source.slice(0, 100)
     return source
       .filter((t) =>
@@ -978,7 +1182,9 @@ function TrackPicker({
   return (
     <div className="border-t border-sequel-line px-[18px] py-3 text-[13px]">
       <div className="mb-2 flex items-center justify-between text-sequel-mid">
-        <span>{projectId ? 'Add from this project' : 'Add from the library'}</span>
+        <span>
+          {projectId ? 'Add from this project' : 'Add from the library'}
+        </span>
         <button type="button" onClick={onClose} aria-label="Close">
           ×
         </button>
@@ -1007,9 +1213,15 @@ function TrackPicker({
                 onClick={() => onPick(t)}
                 className="flex w-full items-center gap-2 py-1 text-left hover:text-sequel-brown disabled:opacity-40"
               >
-                <Artwork artworkKey={t.artwork_s3_key} kind={t.kind} className="h-7! w-7!" />
+                <Artwork
+                  artworkKey={t.artwork_s3_key}
+                  kind={t.kind}
+                  className="h-7! w-7!"
+                />
                 <span className="min-w-0 flex-1 truncate">{t.title}</span>
-                {already && <span className="shrink-0 text-sequel-mid">added</span>}
+                {already && (
+                  <span className="shrink-0 text-sequel-mid">added</span>
+                )}
               </button>
             </li>
           )
@@ -1041,10 +1253,13 @@ function PicturePicker({
         </button>
       </div>
       {!projectId ? (
-        <p className="text-sequel-mid">Attach this playlist to a project first — films come from a project.</p>
+        <p className="text-sequel-mid">
+          Attach this playlist to a project first — films come from a project.
+        </p>
       ) : videos.length === 0 ? (
         <p className="text-sequel-mid">
-          No film in this project yet. Drop one on the inbox link, or send it from Track's assets.
+          No film in this project yet. Drop one on the inbox link, or send it
+          from Track's assets.
         </p>
       ) : (
         <ul>
@@ -1057,7 +1272,11 @@ function PicturePicker({
                   v.id === currentId ? 'font-medium' : ''
                 }`}
               >
-                <Artwork artworkKey={v.artwork_s3_key} kind="video" className="h-7! w-7!" />
+                <Artwork
+                  artworkKey={v.artwork_s3_key}
+                  kind="video"
+                  className="h-7! w-7!"
+                />
                 <span className="truncate">{v.title}</span>
               </button>
             </li>
@@ -1113,8 +1332,12 @@ function AttachPanel({
             </button>
           </li>
         )}
-        {projects.isPending && <li className="py-1 text-sequel-mid">Searching…</li>}
-        {projects.data?.length === 0 && <li className="py-1 text-sequel-mid">Nothing matches.</li>}
+        {projects.isPending && (
+          <li className="py-1 text-sequel-mid">Searching…</li>
+        )}
+        {projects.data?.length === 0 && (
+          <li className="py-1 text-sequel-mid">Nothing matches.</li>
+        )}
         {(projects.data ?? []).map((p) => (
           <li key={p.id}>
             <button
@@ -1125,7 +1348,11 @@ function AttachPanel({
               }`}
             >
               <span className="sentence-case truncate">{p.name}</span>
-              {p.client_name && <span className="truncate text-sequel-mid">{p.client_name}</span>}
+              {p.client_name && (
+                <span className="truncate text-sequel-mid">
+                  {p.client_name}
+                </span>
+              )}
             </button>
           </li>
         ))}

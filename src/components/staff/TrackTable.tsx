@@ -8,6 +8,7 @@ import {
   type TrackWithUse,
 } from '../../lib/queries'
 import Artwork from './Artwork'
+import Confirm from './Confirm'
 import {
   GripIcon,
   InfoIcon,
@@ -102,6 +103,7 @@ function TrackRow({
   const player = usePlayer()
   const remove = useDeleteTrack()
   const [copied, setCopied] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `track:${track.id}`,
     data: { type: 'track', track },
@@ -191,16 +193,7 @@ function TrackRow({
                 title="Delete track"
                 onClick={(e) => {
                   e.stopPropagation()
-                  const uses = playlistCount(track)
-                  const where =
-                    uses > 0 ? ` It is in ${plural(uses, 'playlist')}.` : ''
-                  if (
-                    !confirm(
-                      `Delete “${track.title}”?${where} The audio is removed from storage as well, and this cannot be undone.`,
-                    )
-                  )
-                    return
-                  remove.mutate(track.id)
+                  setConfirming(true)
                 }}
               >
                 <TrashIcon />
@@ -211,6 +204,24 @@ function TrackRow({
             {formatDuration(track.duration_seconds)}
           </td>
         </>
+      )}
+      {confirming && (
+        <td className="p-0!">
+          <Confirm
+            title={`Delete “${track.title}”?`}
+            body={`The audio, preview and artwork are removed from storage as well.${
+              playlistCount(track) > 0
+                ? ` It is in ${plural(playlistCount(track), 'playlist')}, and will be taken out of ${playlistCount(track) === 1 ? 'it' : 'them'}.`
+                : ''
+            }`}
+            confirmLabel="Delete track"
+            onConfirm={() => {
+              setConfirming(false)
+              remove.mutate(track.id)
+            }}
+            onCancel={() => setConfirming(false)}
+          />
+        </td>
       )}
     </tr>
   )

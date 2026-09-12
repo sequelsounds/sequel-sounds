@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Search from '../components/staff/Search'
+import Confirm from '../components/staff/Confirm'
 import RowMenu from '../components/staff/RowMenu'
 import TrackTable from '../components/staff/TrackTable'
 import {
@@ -12,13 +13,14 @@ import {
 import { useCreator } from '../lib/creator'
 import { formatDate, plural } from '../lib/format'
 import {
+  type PlaylistSummary,
+  type TrackWithUse,
   usePlaylist,
   usePlaylistActions,
   usePlaylists,
   useProject,
   useProjectTracks,
   useRecordVisit,
-  type TrackWithUse,
 } from '../lib/queries'
 import { trackProjectUrl } from '../lib/track'
 
@@ -78,6 +80,7 @@ export default function Project() {
 
   const [copied, setCopied] = useState(false)
   const [picked, setPicked] = useState<Open | null>(null)
+  const [deleting, setDeleting] = useState<PlaylistSummary | null>(null)
 
   const submissions = useMemo(
     () => groupSubmissions(tracks.data ?? []),
@@ -255,16 +258,7 @@ export default function Project() {
                   className="icon-btn"
                   aria-label="Delete playlist"
                   title="Delete playlist"
-                  onClick={() => {
-                    if (
-                      !confirm(
-                        `Delete “${p.name}”? The tracks stay in the project.`,
-                      )
-                    )
-                      return
-                    void actions.deletePlaylist.mutateAsync(p.id)
-                    if (open?.key === p.id) setPicked(null)
-                  }}
+                  onClick={() => setDeleting(p)}
                 >
                   <TrashIcon />
                 </button>
@@ -408,6 +402,20 @@ export default function Project() {
           </div>
         )}
       </div>
+      {deleting && (
+        <Confirm
+          title={`Delete “${deleting.name}”?`}
+          body="The tracks stay in the project — only the playlist goes, along with any link already shared for it."
+          confirmLabel="Delete playlist"
+          onConfirm={() => {
+            const id = deleting.id
+            setDeleting(null)
+            void actions.deletePlaylist.mutateAsync(id)
+            if (open?.key === id) setPicked(null)
+          }}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
     </>
   )
 }
