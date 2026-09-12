@@ -1,7 +1,9 @@
 # CLAUDE.md
 
 Working notes for Claude in this repo. Read `docs/overview.md` first for what
-the product is; this file is about how to work here.
+the product is, `docs/product-spec.md` for what is being built, and
+`docs/mockups/sequel-studio-mockup.html` for what the staff app looks like;
+this file is about how to work here.
 
 ## Commands
 
@@ -67,7 +69,10 @@ alphabetical, the way the generator emits it.
 
 Prefer checking the running app over asserting it works. The in-app browser can
 drive `localhost:5173`, and reading computed styles or the DOM beats reasoning
-about CSS. When testing uploads, clean up afterwards: delete both the `tracks`
+about CSS. Staff sign-in needs an emailed code you cannot receive, so for the
+staff shell use **`/__preview/projects/p1`** — a dev-only route that mounts the
+real components over fixture data (`src/dev/Preview.tsx`). It is compiled out
+of production builds. When testing uploads, clean up afterwards: delete both the `tracks`
 row and the S3 object.
 
 `:focus-visible` does not match a programmatic `.focus()` — only real keyboard
@@ -84,23 +89,25 @@ variables — Vite inlines them, so they belong in Cloudflare's build environmen
 not as Worker secrets. Set as Worker secrets they do nothing and the app throws
 `Missing VITE_SUPABASE_URL` on load.
 
-**A new origin has to be added in three places, or uploads fail in ways that
+**A new origin has to be added in four places, or uploads fail in ways that
 look unrelated:**
 
-1. `ALLOWED_ORIGINS` in `supabase/functions/sign-upload/index.ts`, then redeploy
+1. `ALLOWED_ORIGINS` in `supabase/functions/sign-upload/index.ts` **and**
+   `supabase/functions/sign-media/index.ts`, then redeploy both
 2. the S3 bucket CORS — `infra/s3-cors.json`, applied with
    `aws s3api put-bucket-cors --bucket sequel-sounds-media --region eu-west-2
    --cors-configuration file://infra/s3-cors.json`
 3. `APP_BASE_URL` in the Supabase secrets, which is what `xano-webhook` uses to
    build the inbox links Xano stores
 
-Miss (1) and the presign call is blocked; miss (2) and the presign succeeds but
+Miss (1) and the presign call is blocked — or, for `sign-media`, every artwork
+and preview in the staff app silently fails to load; miss (2) and the presign succeeds but
 the PUT to S3 is blocked — the page looks fine until someone actually drops a
 file. Miss (3) and every partner link Xano hands out points at the wrong host.
 
 Edge Functions deploy separately from the app; editing a file under
 `supabase/functions/` changes nothing until it is deployed. There is no supabase
 CLI on this machine, but the Supabase MCP can deploy — keep `verify_jwt` as it
-was (`true` for `sign-upload`, `false` for `xano-webhook`, which authenticates
-itself with a shared secret).
+was (`true` for `sign-upload` and `sign-media`, `false` for `xano-webhook` and
+`track-processed`, which authenticate themselves with a shared secret).
 

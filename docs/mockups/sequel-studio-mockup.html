@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sequel Studio — main screen mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Fahkwang:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --asphalt:#302f2c; --silver:#f1f0ee; --grey:#d3d8da; --ink:#1c1b19;
+    --mid:#8b8a86; --line:#dcdad6; --hi:#fff; --accent:#c9a13b;
+    --rail:clamp(150px,17vw,232px); --creator:clamp(240px,28vw,340px); --player:72px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font:14px/1.4 "Creato Display","Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--ink);background:var(--silver);
+       display:grid;grid-template-columns:var(--rail) minmax(0,1fr) var(--creator);grid-template-rows:1fr var(--player);
+       height:100vh;overflow:hidden}
+  h1,h2,h3{font-family:Fahkwang,"Creato Display","Helvetica Neue",sans-serif;font-weight:400;margin:0}
+  button{font:inherit;background:none;border:1px solid var(--asphalt);color:var(--asphalt);padding:6px 12px;cursor:pointer;}
+  button.primary{background:var(--asphalt);color:var(--silver)}
+  button.quiet{border-color:transparent;color:var(--mid)}
+  kbd{font:11px ui-monospace,Menlo,monospace;background:var(--grey);color:var(--ink);padding:1px 5px;}
+
+  /* left rail */
+  .rail{border-right:1px solid var(--line);padding:18px 16px;display:flex;flex-direction:column;gap:18px;overflow:auto}
+  .brand{display:flex;align-items:center;gap:10px}
+  .mark{width:34px;height:34px;background:#2b2320;color:#c98a9a;display:grid;place-items:center;font:italic 700 20px Georgia,serif;}
+  .search{background:#e6e4df;padding:8px 12px;color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+  .nav a{display:block;padding:7px 8px;color:var(--mid);text-decoration:none}
+  .nav a.on{color:var(--ink);font-weight:500}
+  .recent h3{font-size:12px;color:var(--mid);margin:0 0 6px 8px;font-family:inherit}
+  .recent a{display:flex;justify-content:space-between;padding:6px 8px;color:var(--ink);text-decoration:none;font-size:13px}
+  .recent a .dot{width:7px;height:7px;background:var(--accent);align-self:center}
+
+  /* middle */
+  .work{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+  .head{padding:22px 28px 0;border-bottom:1px solid var(--line);background:var(--silver)}
+  .head .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+  .head h1{font-size:clamp(18px,2.4vw,28px);line-height:1.1;overflow-wrap:anywhere}
+  .head .client{color:var(--mid);margin-top:4px}
+  .head .actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+  .tabs{display:flex;gap:26px;margin-top:22px}
+  .tabs a{padding:0 0 12px;color:var(--mid);text-decoration:none;border-bottom:2px solid transparent}
+  .tabs a.on{color:var(--ink);border-color:var(--asphalt)}
+  .tabs a span{color:var(--mid);margin-left:6px;font-size:12px}
+  .sub{display:flex;align-items:center;gap:14px;padding:14px 28px;border-bottom:1px solid var(--line);background:var(--hi)}
+  .sub h2{font-size:17px;flex:1}
+  .sub .meta{color:var(--mid);font-size:13px}
+  .sub .arrows{display:flex;gap:4px}
+  .sub .arrows button{padding:4px 9px}
+  .list{overflow:auto;flex:1;width:100%}
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  th{font-weight:400;color:var(--mid);text-align:left;font-size:12px;padding:10px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--silver)}
+  td{padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  tr:hover td{background:var(--asphalt);color:var(--silver)}
+  tr:hover td .t2,tr:hover td.dur,tr:hover td.play,tr:hover .inpl{color:#c9c6c0;border-color:#6d6b66}
+  tr.playing td{background:#e9e7e1}
+  tr.playing:hover td{background:var(--asphalt)}
+  td.play{color:var(--mid);text-align:center;cursor:grab}
+  td.title{}
+  .art{width:40px;height:40px;background:#cfcac2;display:block}
+  .art.v{background:#3f3a36}
+  td.artcell{padding-right:0}
+  .t1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .t2{color:var(--mid);font-size:12px;margin-top:2px}
+  .inpl{font-size:11px;color:var(--mid);border:1px solid var(--line);padding:1px 6px;margin-left:8px}
+  td.dur{color:var(--mid);text-align:right;padding-right:20px}
+  .drag{color:var(--mid);width:24px;text-align:center}
+  .grp{display:flex;align-items:baseline;gap:12px;padding:16px 28px 8px;cursor:pointer}
+  .grp h2{font-size:17px}
+  .grp .meta{color:var(--mid);font-size:13px}
+  .grp .tog{margin-left:auto;color:var(--mid)}
+  .collapsed{padding:14px 28px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:baseline;cursor:pointer;background:var(--silver)}
+  .collapsed h2{font-size:17px}
+  .collapsed .meta{color:var(--mid);font-size:13px}
+  .collapsed .tog{margin-left:auto;color:var(--mid)}
+  .subs .row{display:grid;grid-template-columns:1fr 160px 90px 120px;padding:14px 28px;border-bottom:1px solid var(--line);align-items:center}
+  .subs .row:hover{background:var(--hi);cursor:pointer}
+  .subs .who{color:var(--mid);font-size:13px}
+  .subs .note{color:var(--mid);font-size:13px;font-style:italic}
+
+  /* creator */
+  .creator{background:var(--hi);display:flex;flex-direction:column;min-width:0;box-shadow:-6px 0 24px rgba(48,47,44,.18);z-index:2}
+  .creator .bar{padding:14px 18px;background:var(--asphalt);color:var(--silver);display:flex;justify-content:space-between;align-items:center}
+  .creator .bar h2{font-size:15px;letter-spacing:.06em}
+  .creator .bar .plus{width:24px;height:24px;border:2px solid var(--silver);display:grid;place-items:center;font-size:18px;line-height:1}
+  .creator .ch{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:10px}
+  .creator .ch .tt{flex:1;min-width:0}
+  .creator .ch input{font:inherit;font-size:18px;font-weight:500;width:100%;border:1px solid transparent;background:transparent;padding:2px 4px;margin-left:-4px;color:var(--ink);outline:none}
+  .creator .ch input:focus{border-color:var(--asphalt)}
+  .creator .ch small{display:block;color:var(--mid);font-size:12px;margin-top:3px;letter-spacing:.04em;padding-left:0}
+  .creator .ch button{padding:5px 12px}
+  .creator .ch .menu{font-size:18px;line-height:1;padding:5px 8px;border-color:transparent}
+  .creator .body{flex:1;overflow:auto;padding:8px 0}
+  .section{padding:10px 18px 4px;color:var(--mid);font-size:12px;display:flex;justify-content:space-between}
+  .ptrack{display:flex;align-items:center;gap:10px;padding:8px 18px;border-left:2px solid transparent}
+  .ptrack:hover{background:var(--asphalt);color:var(--silver)}
+  .ptrack:hover .n,.ptrack:hover .film{color:#c9c6c0;border-color:#6d6b66}
+  .ptrack .n{color:var(--mid);width:16px;font-size:12px}
+  .ptrack .a{width:28px;height:28px;background:#cfcac2;flex-shrink:0}
+  .ptrack .a.v{background:#3f3a36}
+  .ptrack .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ptrack .film{font-size:11px;color:var(--mid);border:1px solid var(--line);padding:0 4px;}
+  .dropzone{margin:10px 18px;border:1px dashed var(--grey);color:var(--mid);text-align:center;padding:16px;font-size:13px}
+  .creator .cf{border-top:1px solid var(--line);padding:14px 18px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .creator .cf button{padding:6px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .creator .cf .wide{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;color:var(--mid);font-size:13px;padding-top:4px}
+  .switch{width:34px;height:18px;background:var(--grey);position:relative}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;background:var(--hi)}
+  .switch.on{background:var(--asphalt)}
+  .switch.on::after{left:18px}
+
+  /* player */
+  .player{grid-column:1/-1;background:var(--asphalt);color:var(--silver);display:grid;grid-template-columns:44px minmax(120px,300px) 1fr 90px 50px;align-items:center;gap:18px;padding:0 22px}
+  .player .pp{width:34px;height:34px;background:var(--silver);color:var(--asphalt);display:grid;place-items:center}
+  .player .now b{display:block;font-weight:400}
+  .player .now small{color:#a9a7a2}
+  .wave{height:36px;display:flex;align-items:center;gap:1px}
+  .wave i{display:block;width:3px;background:#6d6b66;}
+  .wave i.on{background:var(--silver)}
+  .player .time{color:#a9a7a2;text-align:right;font-variant-numeric:tabular-nums}
+  .player .keys{color:var(--silver);font-size:16px;text-align:right;letter-spacing:4px}
+  .player .keys kbd{background:#4a4844;color:var(--silver)}
+</style>
+</head>
+<body>
+
+<aside class="rail">
+  <div class="brand"><div class="mark">//</div><span>Sequel Studio</span></div>
+  <div class="search">Search</div>
+  <nav class="nav">
+    <a class="on" href="#">Projects</a>
+    <a href="#">Playlists</a>
+    <a href="#">Library</a>
+  </nav>
+  <div class="recent">
+    <h3>Recent</h3>
+    <a href="#"><span>256-OLD-26-II Nachips</span><span class="dot"></span></a>
+    <a href="#"><span>Bango Bisma</span></a>
+    <a href="#"><span>Hellmann's Habs</span></a>
+    <a href="#"><span>227-KNO-26-II Flavour Unlocked</span><span class="dot"></span></a>
+    <a href="#"><span>Sunsilk</span></a>
+  </div>
+</aside>
+
+<main class="work">
+  <div class="head">
+    <div class="top">
+      <div>
+        <h1>256-OLD-26-II Nachips</h1>
+        <div class="client">Old El Paso · Hogarth</div>
+      </div>
+      <div class="actions">
+        <button>Copy inbox link</button>
+        <button class="quiet">Open in Track</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <a class="on" href="#">Inbox<span>3 submissions · 41 tracks</span></a>
+      <a href="#">Playlists<span>2</span></a>
+      <a href="#">Activity</a>
+    </div>
+  </div>
+
+    <div class="list">
+    <div class="grp"><h2>Cavendish Music</h2><span class="meta">jess.munro@cavendishmusic.com · 11 Sep · 16 tracks · "Two routes as discussed, B is the braver one"</span><span class="tog">▾</span></div>
+    <table><colgroup><col style="width:34px"><col style="width:56px"><col><col style="width:80px"></colgroup>
+      
+      <tbody>
+<tr class="playing"><td class="play">▶</td><td class="artcell"><span class="art"></span></td><td class="title"><div class="t1">WHIP STINGER A --- Killer vintage and raw Old School guitar riff<span class="inpl">in 1 playlist</span></div><div class="t2">The Ricochets: Badass Rock</div></td><td class="dur">1:02</td></tr>
+<tr><td class="play">⋮⋮</td><td class="artcell"><span class="art"></span></td><td class="title"><div class="t1">ENTER THE ZONE --- Instrumental hip hop groove with heavy bass<span class="inpl">in 1 playlist</span></div><div class="t2">Bad Habit: Urban Grit</div></td><td class="dur">2:14</td></tr>
+<tr><td class="play">⋮⋮</td><td class="artcell"><span class="art"></span></td><td class="title"><div class="t1">Slow Water</div><div class="t2">Marla Reyes: Blue Hours</div></td><td class="dur">3:00</td></tr>
+<tr><td class="play">⋮⋮</td><td class="artcell"><span class="art"></span></td><td class="title"><div class="t1">Hockey Route 1 — Classic Rock A<span class="inpl">in 2 playlists</span></div><div class="t2">Cavendish Studio: Hellmann's search</div></td><td class="dur">2:41</td></tr>
+<tr><td class="play">⋮⋮</td><td class="artcell"><span class="art"></span></td><td class="title"><div class="t1">Hockey Route 1 — Classic Rock B</div><div class="t2">Cavendish Studio: Hellmann's search</div></td><td class="dur">2:39</td></tr>
+<tr><td class="play">⋮⋮</td><td class="artcell"><span class="art"></span></td><td class="title"><div class="t1">Gutter Glam<span class="inpl">in 1 playlist</span></div><div class="t2">Velvet Antler: Singles</div></td><td class="dur">3:22</td></tr>
+<tr><td class="play">⋮⋮</td><td class="artcell"><span class="art"></span></td><td class="title"><div class="t1">Riff Raff Riot<span class="inpl">in 1 playlist</span></div><div class="t2">The Ricochets: Badass Rock</div></td><td class="dur">1:58</td></tr>
+<tr><td class="play">⋮⋮</td><td class="artcell"><span class="art"></span></td><td class="title"><div class="t1">Crunch Time<span class="inpl">in 1 playlist</span></div><div class="t2">Dial Tone: Ad Cuts Vol. 4</div></td><td class="dur">0:59</td></tr>
+<tr><td class="play">⋮⋮</td><td class="artcell"><span class="art"></span></td><td class="title"><div class="t1">Big Bite Boogie<span class="inpl">in 1 playlist</span></div><div class="t2">Dial Tone: Ad Cuts Vol. 4</div></td><td class="dur">1:04</td></tr>
+<tr><td class="play">⋮⋮</td><td class="artcell"><span class="art"></span></td><td class="title"><div class="t1">Spice Rack</div><div class="t2">Marla Reyes: Blue Hours</div></td><td class="dur">2:47</td></tr>
+<tr><td class="play">⋮⋮</td><td class="artcell"><span class="art"></span></td><td class="title"><div class="t1">Loud Lunch</div><div class="t2">Bad Habit: Urban Grit</div></td><td class="dur">2:05</td></tr>
+<tr><td class="play">⋮⋮</td><td class="artcell"><span class="art"></span></td><td class="title"><div class="t1">Salsa Static</div><div class="t2">Velvet Antler: Singles</div></td><td class="dur">3:10</td></tr>
+</tbody>
+    </table>
+    <div class="collapsed"><h2>Pink Noise Studio</h2><span class="meta">tom@pinknoise.co · 10 Sep · 14 tracks</span><span class="tog">▸</span></div>
+    <div class="collapsed" style="border-top:0"><h2>BMG Creative Synch</h2><span class="meta">sam.h@bmg.com · 9 Sep · 11 tracks</span><span class="tog">▸</span></div>
+  </div>
+</main>
+
+<aside class="creator">
+  <div class="bar"><h2>PLAYLIST CREATOR</h2><span class="plus" title="New playlist">+</span></div>
+  <div class="ch">
+    <div class="tt"><input value="Nachips — Round 1"><small>8 TRACKS | 12:40</small></div><button>Save</button><button class="menu" title="Add section · Edit all · Attach to project · Duplicate · Delete">⋮</button>
+  </div>
+  <div class="body">
+    <div class="section"><span>Hero options</span><span>3</span></div>
+    <div class="ptrack"><span class="n">1</span><span class="a"></span><span class="t">WHIP STINGER A --- Killer vintage and raw…</span></div>
+    <div class="ptrack"><span class="n">2</span><span class="a"></span><span class="t">Riff Raff Riot</span></div>
+    <div class="ptrack"><span class="n">3</span><span class="a"></span><span class="t">Gutter Glam</span></div>
+    <div class="section"><span>Alternates</span><span>3</span></div>
+    <div class="ptrack"><span class="n">4</span><span class="a"></span><span class="t">ENTER THE ZONE --- Instrumental hip hop…</span></div>
+    <div class="ptrack"><span class="n">5</span><span class="a"></span><span class="t">Crunch Time</span></div>
+    <div class="ptrack"><span class="n">6</span><span class="a"></span><span class="t">Big Bite Boogie</span></div>
+    <div class="section"><span>Picture</span><span>2</span></div>
+    <div class="ptrack"><span class="n">7</span><span class="a v"></span><span class="t">260911 - NACHOS - OP2 fix2</span><span class="film">video</span></div>
+    <div class="ptrack"><span class="n">8</span><span class="a v"></span><span class="t">260910 - NACHIPS - OP1</span><span class="film">video</span></div>
+    <div class="dropzone">Drop tracks here</div>
+  </div>
+  <div class="cf">
+    <button class="primary">Share</button>
+    <button>Theme</button>
+    <button>Add picture</button>
+    <button class="quiet">Preview as client</button>
+    <div class="wide"><span>Visible to client in Sequel Track</span><span class="switch"></span></div>
+    <div class="wide"><span>Sign-in required</span><span class="switch on"></span></div>
+  </div>
+</aside>
+
+<footer class="player">
+  <div class="pp">❚❚</div>
+  <div class="now"><b>WHIP STINGER A --- Killer vintage and raw…</b><small>The Ricochets · Cavendish Music</small></div>
+  <div class="wave" id="wave"></div>
+  <div class="time">0:41 / 1:02</div>
+  <div class="keys">⏮ ⏭</div>
+</footer>
+
+<script>
+  // fake waveform
+  const w=document.getElementById('wave');const n=170;
+  for(let i=0;i<n;i++){const b=document.createElement('i');
+    const h=6+Math.abs(Math.sin(i/6)*18+Math.sin(i/2.3)*8+Math.random()*4);
+    b.style.height=h+'px';if(i<n*0.66)b.classList.add('on');w.appendChild(b);}
+</script>
+</body>
+</html>

@@ -129,6 +129,17 @@ soprano aria with famous ridiculously high climax. Wri…"*. The rule "filename
 wins only when the tag is empty" does not help — the tag is not empty, just
 useless. **Open question**, no decision yet.
 
+## A scrolling column inside the grid needs `min-h-0` at every level
+
+The staff shell is a CSS grid with a fixed-height row, and each column is a
+flex column whose middle part scrolls. Flex and grid items default to
+`min-height: auto`, which means "at least as tall as my content" — so the
+list grew, the column grew, the grid grew past the viewport, and the player
+bar slid off the bottom. Nothing scrolled and nothing looked broken until the
+list was long. Every element between the grid row and the scrolling element
+carries `min-h-0` (and the column an `overflow-hidden`), and that is the whole
+fix. Check with a long list, not the two-row fixture.
+
 ## The dev server port is not pinned
 
 `vite.config.ts` sets no port, so 5173 is only Vite's default. If something else

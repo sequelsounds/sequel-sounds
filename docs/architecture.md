@@ -11,16 +11,20 @@ Xano.
 | --- | --- |
 | Supabase project | `sveirphsppyfhulymjiu`, eu-west-2, Postgres 17.4 |
 | S3 bucket | `sequel-sounds-media`, eu-west-2 |
-| Edge Function | `supabase/functions/sign-upload` |
+| Edge Functions | `supabase/functions/` — `sign-upload`, `sign-media`, `xano-webhook`, `track-processed` |
 | ffmpeg Lambda | `lambda/process-track` (Node 20, ffmpeg via our own layer) |
 | Marketing / app site | Webflow `68e6c2e8dbcd39de2547a97d`, sequelsounds.app |
 
 ## Who can do what
 
-Staff are the handful of Supabase Auth users. **Partners and clients never get
+Staff are the Supabase Auth users listed in the **`staff` table** — an
+allowlist, since viewers become auth users too (phase 3) and "signed in" stops
+meaning "staff". `app.is_staff()` reads that table. **Partners never get
 accounts.** They act through a share token sent as an `x-share-token` header,
 read in RLS by `app.request_token()`. The header is used rather than a query
-param so the token stays out of Postgres logs and `Referer`.
+param so the token stays out of Postgres logs and `Referer`. Viewers of a
+playlist present the same header, signed in or not; a playlist with
+`require_sign_in` only resolves for a signed-in request.
 
 Two token-scoped surfaces exist: an inbox (`/inbox/:token`, insert tracks) and a
 playlist (`/p/:token`, read tracks, write comments).
@@ -62,6 +66,29 @@ tracks/{uuid}/original.wav    partner upload
 tracks/{uuid}/preview.mp3     Lambda
 tracks/{uuid}/peaks.json      Lambda
 ```
+
+## Media delivery
+
+The bucket is private. `sign-media` returns presigned GET URLs for a batch of
+keys under `tracks/*` — previews, artwork, originals — after checking the
+caller may see those tracks: staff see everything, a token holder sees the
+tracks on that playlist (resolved by the same RLS the viewer page uses). The
+browser folds all requests made within one tick into one call
+(`src/lib/media.ts`), so a page of forty tracks costs one round trip.
+
+## The staff app
+
+`src/routes/StaffLayout.tsx` is the shell from
+`docs/mockups/sequel-studio-mockup.html`: rail, workspace, Playlist Creator,
+and a player spanning the bottom. The player (`lib/player.tsx`) and the
+Creator's open playlist (`lib/creator.tsx`) live above the routes so neither
+resets on navigation. One `DndContext` in the layout carries drags from the
+inbox and library tables into the Creator; the Creator registers its drop
+handler with the context rather than owning the `DndContext`, because the
+draggables are in a different column.
+
+Positions in a playlist are global (0..n-1 in render order) and rewritten in
+full after every change, so "position" never has to be reconciled per section.
 
 ## The inbox page
 
@@ -142,3 +169,8 @@ contract in [`xano-sync.md`](xano-sync.md).
 - `0003_bulk_drop_submitter_and_tags` — `submitter_name/email/company`, `album`,
   `bpm`, `musical_key`
 - `0004_track_content_hash_and_duplicates` — `content_hash`, `duplicate_of`
+- `0005_track_metadata_from_embedded_tags` — the ffprobe columns
+- `0006_studio_model` — the Studio spec: `staff` allowlist, track status
+  removed, `submission_id`, sections, playlist switches, `project_assets`,
+  `viewer_profiles`, `events`, `theme_presets`, `staff_project_visits`, and
+  token policies opened to signed-in viewers

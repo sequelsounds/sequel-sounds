@@ -191,6 +191,7 @@ function Inbox({ token }: { token: string }) {
         // still show a way to reply.
         contact_email: partner.email.trim(),
         notes: trimmedNote === '' ? null : trimmedNote,
+        submission_id: submissionRef.current,
       })
       if (error) throw error
 
@@ -205,8 +206,14 @@ function Inbox({ token }: { token: string }) {
     }
   }
 
+  // One drop = one submission. The id is minted per send, so the staff inbox
+  // can stack the whole drop as a single group without inferring it from
+  // timestamps. A retry keeps the id it was first sent under.
+  const submissionRef = useRef<string | null>(null)
+
   async function send(ids: string[]) {
     if (ids.length === 0 || running) return
+    if (!submissionRef.current) submissionRef.current = crypto.randomUUID()
     setRunning(true)
     try {
       await runQueue(ids, uploadOne, PARALLEL_UPLOADS)

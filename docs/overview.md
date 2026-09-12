@@ -6,8 +6,11 @@ One page. Paste this into a Claude project as background.
 
 An internal music supervision tool. Staff run projects; **partners** (music
 libraries, labels, composers) send in tracks; **clients** review shortlists on
-shared playlists. Only staff have accounts — everyone else acts through an
-unguessable share link.
+shared playlists. Partners never have accounts — they act through an
+unguessable share link. Viewers sign in with an emailed code; staff are the
+accounts on the `staff` allowlist. The product spec is
+[`product-spec.md`](product-spec.md); the approved staff-app layout is
+`mockups/sequel-studio-mockup.html`.
 
 ## Stack
 
@@ -87,11 +90,17 @@ Outstanding:
 
 ```
 src/routes/Inbox.tsx     the bulk drop page
-src/lib/                 dropFiles, tags, partner, sentFiles,
-                         uploadQueue, upload, tokenClient
+src/routes/StaffLayout   the staff shell; Projects, Project, Playlists, Library
+src/components/staff/    Rail, Creator, Player, TrackTable, Waveform
+src/lib/                 queries, player, creator, media, staff, projectName,
+                         dropFiles, tags, partner, sentFiles, uploadQueue,
+                         upload, tokenClient
+src/dev/Preview.tsx      dev-only shell over fixture data, at /__preview
 supabase/migrations/     0001 init · 0002 lock triggers
                          0003 submitter + tags · 0004 content hash
-supabase/functions/      sign-upload · xano-webhook · track-processed
+                         0005 embedded tags · 0006 studio model
+supabase/functions/      sign-upload · sign-media · xano-webhook · track-processed
 lambda/process-track/    the ffmpeg pass
-docs/                    architecture · auth · decisions · gotchas · xano-sync
+docs/                    product-spec · mockups · architecture · auth ·
+                         decisions · gotchas · xano-sync
 ```

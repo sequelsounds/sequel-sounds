@@ -5,7 +5,7 @@ of them so it can attach tracks, inboxes and playlists to a project without
 calling Xano on every page load.
 
 One Edge Function receives the changes: **`xano-webhook`**. Nothing else writes
-to `projects_mirror` or `suppliers_mirror`.
+to `projects_mirror`, `suppliers_mirror` or `project_assets`.
 
 ```
 POST https://sveirphsppyfhulymjiu.supabase.co/functions/v1/xano-webhook
@@ -45,7 +45,7 @@ holding it can write to the mirrors.
 
 ```jsonc
 {
-  "type": "project",   // or "supplier"
+  "type": "project",   // or "supplier", or "asset"
   "record": { /* fields below */ }
 }
 ```
@@ -74,6 +74,22 @@ so a partial failure is always about exactly one record.
 | `contact_email` | no | Lower-cased on the way in. |
 | `notes` | no | |
 
+### `type: "asset"`
+
+A file attached to a project in Track — a cut of the film, a reference. The
+mirror records where it lives; the copy into the media bucket happens later,
+when staff pick it as a playlist's picture.
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `xano_id` | **yes** | The upsert key. |
+| `project_xano_id` | **yes** | The Xano id of the project it belongs to. That project must have been sent first — otherwise `409 unknown project`, which is retryable once it has. |
+| `name` | **yes** | |
+| `bucket` | no | Defaults to `sequel-uploaded-project-assets`. |
+| `key` | no | The object key in that bucket. |
+| `mime_type` | no | |
+| `size_bytes` | no | A number. |
+
 Any extra fields you send are kept verbatim in a `raw` JSONB column, so adding
 something in Xano does not require a change here before it is captured.
 
@@ -96,16 +112,19 @@ a field, and a date column will not accept `""`.
     "url": "https://app.sequelsounds.app/inbox/41a3da9d9be748f9a687bd46d602375f",
     "is_active": true,
     "expires_at": null
-  }
+  },
+  "studio_url": "https://app.sequelsounds.app/projects/a6cdb399-9f3c-41b4-92de-b2bc4fd5184c"
 }
 ```
 
-For a supplier, the same without `inbox`.
+For a supplier or an asset, the same without `inbox` and `studio_url`.
 
 - `id` — the Supabase uuid. Worth storing in Xano if you ever want to join.
 - `created` — `true` if this call inserted the row, `false` if it updated one.
 - `inbox.url` — **this is the link to give partners.** Store it on the Xano
   project record.
+- `studio_url` — where Track's **Open in Studio** button should point. It
+  lands on the project's Inbox tab. Store it alongside the inbox link.
 
 Every project gets exactly one inbox, created automatically when the project row
 is first inserted. The token is stable: calling this endpoint again for the same
@@ -119,7 +138,9 @@ as a failure worth alerting on, not a normal state.
 | Status | Body | Meaning |
 | --- | --- | --- |
 | `400` | `invalid json` | Body was not JSON |
-| `400` | `type must be 'project' or 'supplier'` | Missing or unknown `type` |
+| `400` | `type must be 'project', 'supplier' or 'asset'` | Missing or unknown `type` |
+| `400` | `record.project_xano_id is required` | An asset without its project |
+| `409` | `unknown project` | The asset's project has not been mirrored yet — send the project, then retry |
 | `400` | `record is required` | No `record` object |
 | `400` | `record.xano_id is required` | |
 | `400` | `record.name is required` | |
@@ -190,8 +211,11 @@ curl -X POST "$SUPABASE_URL/functions/v1/xano-webhook" \
    in a function stack where it ends up in request history.
 2. On project create **and** update, call this endpoint with `type: "project"`.
    On create, write `inbox.url` back to the Xano project record.
-3. Same for suppliers with `type: "supplier"`.
-4. Treat any non-`200` as retryable, since every call is idempotent.
-5. To backfill what already exists, loop over current projects and suppliers and
+3. Same for suppliers with `type: "supplier"`, and for project assets with
+   `type: "asset"` — after the project, never before.
+4. Show the inbox link on the project's Creative tab, and add an **Open in
+   Studio** button that goes to `studio_url`.
+5. Treat any non-`200` as retryable, since every call is idempotent.
+6. To backfill what already exists, loop over current projects and suppliers and
    send one call each. Existing rows come back `created: false`; projects that
    somehow lack an inbox get one created on the way through.

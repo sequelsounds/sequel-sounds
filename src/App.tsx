@@ -1,17 +1,39 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useSession } from './lib/auth'
+import { useIsStaff } from './lib/staff'
+import { supabase } from './lib/supabase'
 import Inbox from './routes/Inbox'
+import Library from './routes/Library'
 import Login from './routes/Login'
-import Playlist from './routes/Playlist'
+import Playlists, { PlaylistRoute } from './routes/Playlists'
 import Project from './routes/Project'
 import Projects from './routes/Projects'
 import SharedPlaylist from './routes/SharedPlaylist'
 import StaffLayout from './routes/StaffLayout'
 
+// Dev only: the shell over fixture data, for checking layout without a
+// sign-in code. `import.meta.env.DEV` is a build-time constant, so the branch
+// and the chunk behind it are dropped from production bundles.
+const Preview = import.meta.env.DEV ? lazy(() => import('./dev/Preview')) : null
+
 function RequireStaff({ children }: { children: React.ReactNode }) {
   const session = useSession()
-  if (session === undefined) return <div className="p-8 text-sm text-sequel-brown/70">Loading…</div>
+  const staff = useIsStaff()
+  if (session === undefined) return <div className="p-8 text-sm text-sequel-mid">Loading…</div>
   if (session === null) return <Navigate to="/login" replace />
+  if (staff.isPending) return <div className="p-8 text-sm text-sequel-mid">Loading…</div>
+  if (!staff.data) {
+    // Signed in, but not on the allowlist — a viewer who found the staff URL.
+    return (
+      <div className="p-8 text-sm">
+        <p>This account is not a staff account.</p>
+        <button type="button" className="mt-3 underline" onClick={() => supabase.auth.signOut()}>
+          Sign out
+        </button>
+      </div>
+    )
+  }
   return <>{children}</>
 }
 
@@ -33,8 +55,21 @@ export default function App() {
       >
         <Route index path="/" element={<Projects />} />
         <Route path="/projects/:id" element={<Project />} />
-        <Route path="/playlists/:id" element={<Playlist />} />
+        <Route path="/playlists" element={<Playlists />} />
+        <Route path="/playlists/:id" element={<PlaylistRoute />} />
+        <Route path="/library" element={<Library />} />
       </Route>
+
+      {Preview && (
+        <Route
+          path="/__preview/*"
+          element={
+            <Suspense fallback={null}>
+              <Preview />
+            </Suspense>
+          }
+        />
+      )}
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

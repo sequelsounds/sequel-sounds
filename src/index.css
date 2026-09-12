@@ -103,6 +103,17 @@
   /* .login_error_text on the Webflow login page. */
   --color-sequel-error: #eb9a93;
 
+  /* The tool's supporting greys, from the approved staff-app mockup
+     (docs/mockups/sequel-studio-mockup.html). Warm, like the brand. */
+  --color-sequel-ink: #1c1b19;
+  --color-sequel-mid: #8b8a86;
+  --color-sequel-line: #dcdad6;
+  --color-sequel-grey: #d3d8da;
+  --color-sequel-accent: #c9a13b;
+  --color-sequel-white: #ffffff;
+  --color-sequel-playing: #e9e7e1;
+  --color-sequel-well: #e6e4df;
+
   /* Sequel has no rounded corners anywhere — a survey of the live Projects
      page returns an empty set of border radii. Zeroing the scale means any
      `rounded*` utility, including ones added later, stays square. */

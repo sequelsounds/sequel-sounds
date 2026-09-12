@@ -188,4 +188,342 @@
     background-color: var(--color-sequel-brown);
     color: var(--color-sequel-silver);
   }
+
+  /* ------------------------------------------------------------- the tool
+   * Components for the staff app, taken from the approved mockup at
+   * docs/mockups/sequel-studio-mockup.html. Where the mockup and the brand
+   * disagree the brand wins: row hover is Sequel Brown, not asphalt.
+   */
+
+  /* A third button size, the mockup's: Creato, 14px, 6x12 padding. Colour is
+     still a separate axis so these compose with .btn-dark / .btn-outline. */
+  .btn-tool {
+    padding: 6px 12px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  .btn-tool.btn-outline {
+    border-color: var(--color-sequel-asphalt);
+    color: var(--color-sequel-asphalt);
+  }
+
+  .btn-tool.btn-outline:hover:not(:disabled) {
+    background-color: var(--color-sequel-asphalt);
+  }
+
+  .btn-tool.btn-dark {
+    background-color: var(--color-sequel-asphalt);
+  }
+
+  /* Borderless and quiet until hovered. */
+  .btn-quiet {
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--color-sequel-mid);
+  }
+
+  .btn-quiet:hover:not(:disabled) {
+    color: var(--color-sequel-ink);
+  }
+
+  .nav-link {
+    display: block;
+    padding: 7px 8px;
+    color: var(--color-sequel-mid);
+    text-decoration: none;
+  }
+
+  .nav-link:hover {
+    color: var(--color-sequel-ink);
+  }
+
+  .nav-link[aria-current='page'] {
+    color: var(--color-sequel-ink);
+    font-weight: 500;
+  }
+
+  .tab {
+    padding: 0 0 12px;
+    color: var(--color-sequel-mid);
+    border-bottom: 2px solid transparent;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .tab:hover {
+    color: var(--color-sequel-ink);
+  }
+
+  .tab[aria-selected='true'] {
+    color: var(--color-sequel-ink);
+    border-color: var(--color-sequel-asphalt);
+  }
+
+  .tab .count {
+    color: var(--color-sequel-mid);
+    margin-left: 6px;
+    font-size: 12px;
+  }
+
+  /* The track table. Hover inverts the whole row; secondary text and the
+     pill soften rather than vanish. */
+  .track-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .track-table th {
+    font-weight: 400;
+    color: var(--color-sequel-mid);
+    text-align: left;
+    font-size: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--color-sequel-line);
+    position: sticky;
+    top: 0;
+    background-color: var(--color-sequel-silver);
+    z-index: 1;
+  }
+
+  .track-row td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--color-sequel-line);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .track-row.is-playing td {
+    background-color: var(--color-sequel-playing);
+  }
+
+  .track-row:hover td {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  .track-row .secondary {
+    color: var(--color-sequel-mid);
+  }
+
+  .track-row:hover .secondary,
+  .track-row:hover .pill {
+    color: #c9c6c0;
+    border-color: #6d6b66;
+  }
+
+  .track-row .grip {
+    color: var(--color-sequel-mid);
+    text-align: center;
+    cursor: grab;
+  }
+
+  .track-row .play-btn {
+    display: none;
+    width: 100%;
+    background: none;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+  }
+
+  .track-row:hover .play-btn,
+  .track-row.is-playing .play-btn {
+    display: block;
+  }
+
+  .track-row:hover .grip-glyph,
+  .track-row.is-playing .grip-glyph {
+    display: none;
+  }
+
+  .pill {
+    font-size: 11px;
+    color: var(--color-sequel-mid);
+    border: 1px solid var(--color-sequel-line);
+    padding: 1px 6px;
+    margin-left: 8px;
+    white-space: nowrap;
+    vertical-align: 1px;
+  }
+
+  .art {
+    width: 40px;
+    height: 40px;
+    display: block;
+    background-color: #cfcac2;
+    object-fit: cover;
+  }
+
+  .art.is-video {
+    background-color: #3f3a36;
+  }
+
+  /* Creator list rows. Same inversion on hover as the table. */
+  .creator-track {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 18px;
+    border-left: 2px solid transparent;
+    cursor: grab;
+  }
+
+  .creator-track:hover {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  .creator-track:hover .secondary,
+  .creator-track:hover .pill {
+    color: #c9c6c0;
+    border-color: #6d6b66;
+  }
+
+  .creator-track.is-over {
+    border-left-color: var(--color-sequel-brown);
+  }
+
+  .creator-track .art {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+
+  .creator-title {
+    font: inherit;
+    font-size: 18px;
+    font-weight: 500;
+    width: 100%;
+    border: 1px solid transparent;
+    background-color: transparent;
+    padding: 2px 4px;
+    margin-left: -4px;
+    color: var(--color-sequel-ink);
+    outline: none;
+  }
+
+  .creator-title:focus {
+    border-color: var(--color-sequel-asphalt);
+  }
+
+  .switch {
+    width: 34px;
+    height: 18px;
+    background-color: var(--color-sequel-grey);
+    position: relative;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background-color: var(--color-sequel-white);
+    transition: left 120ms ease-out;
+  }
+
+  .switch[aria-checked='true'] {
+    background-color: var(--color-sequel-asphalt);
+  }
+
+  .switch[aria-checked='true']::after {
+    left: 18px;
+  }
+
+  .menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    min-width: 12rem;
+    background-color: var(--color-sequel-white);
+    border: 1px solid var(--color-sequel-line);
+    box-shadow: 0 6px 24px rgba(48, 47, 44, 0.18);
+    z-index: 20;
+    padding: 4px 0;
+  }
+
+  .menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 7px 14px;
+    background: none;
+    border: 0;
+    font: inherit;
+    color: var(--color-sequel-ink);
+    cursor: pointer;
+  }
+
+  .menu button:hover:not(:disabled) {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  .menu button:disabled {
+    color: var(--color-sequel-mid);
+    cursor: default;
+  }
+
+  .menu button.danger {
+    color: #a6463c;
+  }
+
+  /* The inbox's stacked submissions. */
+  .submission-open {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 16px 28px 8px;
+    cursor: pointer;
+  }
+
+  .submission-closed {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--color-sequel-line);
+    cursor: pointer;
+    background-color: var(--color-sequel-silver);
+  }
+
+  .submission-closed:hover {
+    background-color: var(--color-sequel-white);
+  }
+
+  .submission-title {
+    font-family: var(--font-title);
+    font-weight: 400;
+    font-size: 17px;
+    margin: 0;
+  }
+
+  .search-well {
+    background-color: var(--color-sequel-well);
+    padding: 8px 12px;
+    color: var(--color-sequel-ink);
+    font: inherit;
+    font-size: 13px;
+    border: 0;
+    width: 100%;
+    outline: none;
+  }
+
+  .search-well::placeholder {
+    color: var(--color-sequel-mid);
+  }
 }

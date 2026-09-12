@@ -1,7 +1,7 @@
-// xano-webhook — Xano pushes project and supplier changes here.
+// xano-webhook — Xano pushes project, supplier and asset changes here.
 //
-// Xano is the system of record for projects and suppliers; this app only keeps
-// mirrors of them. Upserts are keyed on `xano_id`, so the same change can be
+// Xano is the system of record for projects, suppliers and project assets;
+// this app only keeps mirrors of them. Upserts are keyed on `xano_id`, so the same change can be
 // replayed safely — Xano can retry a failed call without creating duplicates.
 //
 // Auth is a shared secret in a header, not a Supabase JWT: the caller is a
@@ -98,8 +98,8 @@ Deno.serve(async (req) => {
   }
 
   const { type, record } = payload
-  if (type !== 'project' && type !== 'supplier') {
-    return json({ error: "type must be 'project' or 'supplier'" }, 400)
+  if (type !== 'project' && type !== 'supplier' && type !== 'asset') {
+    return json({ error: "type must be 'project', 'supplier' or 'asset'" }, 400)
   }
   if (!record || typeof record !== 'object') {
     return json({ error: 'record is required' }, 400)
@@ -117,6 +117,54 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     { auth: { persistSession: false } },
   )
+
+  // Assets hang off a project, so the parent has to be mirrored first. Xano
+  // sends the project's own id; the mirror row is looked up by it.
+  if (type === 'asset') {
+    const projectXanoId = text(record.project_xano_id)
+    if (!projectXanoId) return json({ error: 'record.project_xano_id is required' }, 400)
+
+    const { data: project, error: projectError } = await admin
+      .from('projects_mirror')
+      .select('id')
+      .eq('xano_id', projectXanoId)
+      .maybeSingle()
+    if (projectError) return json({ error: 'lookup failed' }, 500)
+    if (!project) {
+      // Not an error to retry blindly: the project record has to arrive first.
+      return json({ error: 'unknown project', project_xano_id: projectXanoId }, 409)
+    }
+
+    const { data: before } = await admin
+      .from('project_assets')
+      .select('id')
+      .eq('xano_id', xanoId)
+      .maybeSingle()
+
+    const size = typeof record.size_bytes === 'number' ? record.size_bytes : null
+    const { data: saved, error: upsertError } = await admin
+      .from('project_assets')
+      .upsert(
+        {
+          xano_id: xanoId,
+          project_id: project.id,
+          name,
+          source_bucket: text(record.bucket) ?? 'sequel-uploaded-project-assets',
+          source_key: text(record.key),
+          mime_type: text(record.mime_type),
+          size_bytes: size,
+          raw: record,
+          synced_at: new Date().toISOString(),
+        },
+        { onConflict: 'xano_id' },
+      )
+      .select('id')
+      .single()
+    if (upsertError || !saved) {
+      return json({ error: 'could not save record', detail: upsertError?.message }, 500)
+    }
+    return json({ ok: true, type, id: saved.id, xano_id: xanoId, created: !before }, 200)
+  }
 
   const table = type === 'project' ? 'projects_mirror' : 'suppliers_mirror'
 
@@ -196,6 +244,11 @@ Deno.serve(async (req) => {
           expires_at: inbox.expires_at,
         }
       : null
+
+    // Where "Open in Studio" on the Track side should point: the project's
+    // workspace, landing on its Inbox tab. Not /p/ — that prefix is the
+    // viewer playlist route.
+    result.studio_url = `${appBaseUrl}/projects/${saved.id}`
   }
 
   return json(result, 200)

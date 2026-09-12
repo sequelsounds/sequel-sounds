@@ -5,6 +5,54 @@ rediscovering an argument later.
 
 ---
 
+## Staff are an allowlist table, not "anyone signed in"
+
+**2026-09-12.** `app.is_staff()` was `auth.uid() is not null`, which was true
+while only staff had accounts. The Studio spec makes viewers Supabase Auth
+users, so the first client to sign in would have been staff. `public.staff`
+is the allowlist; every account that existed when the migration ran was
+inserted, and adding a fourth member of staff is now an insert as well as a
+user. The frontend checks the same table for what it shows, but the database
+is the enforcement.
+
+## Tracks have no status
+
+**2026-09-12.** The init schema gave tracks new/shortlisted/rejected. The spec
+says an inbox is the permanent record and the only actions on a track are
+play and drag-into-playlist, so the column, its enum and its index are gone.
+A track's "state" is which playlists it sits in — shown as the "in N
+playlists" pill.
+
+## A submission is an id minted by the inbox page
+
+**2026-09-12.** The staff inbox stacks drops as expandable submissions. Rather
+than guess a drop from timestamps and sender, the inbox page mints one
+`submission_id` per send and every row in that send carries it. A retry
+keeps the id. Rows from before the column fall back to sender-and-hour.
+
+## Open in Studio goes to /projects/:id, not /p/:id
+
+**2026-09-12.** The spec wrote `studio.sequelsounds.com/p/{id}`, but `/p/` is
+the viewer playlist route and has been since the first migration. Changing a
+share-link prefix breaks every link already handed out; changing a button
+that does not exist yet costs nothing. The webhook returns `studio_url`
+pointing at `/projects/{id}` so Track never has to know the rule.
+
+## The tool has a third button size
+
+**2026-09-12.** The approved mockup's buttons are Creato at 14px with 6×12
+padding — neither the marketing `.btn-wide` nor the mono `.btn-mono`. Added as
+`.btn-tool`, sizing only; colour still comes from `.btn-dark` / `.btn-outline`
+/ `.btn-quiet`. Row hover is Sequel Brown, where the mockup used asphalt: the
+mockup is the layout reference, the brand values are the brand's.
+
+## No keyboard shortcuts
+
+**2026-09-12.** The spec's "keyboard and speed matter more than anything" was
+withdrawn with the mockup: no ⌘K, no space-to-play. Search is a field in the
+rail; the player is clicked. Escape still closes a menu — that is the
+browser's convention, not an app shortcut.
+
 ## One design system file, two button languages
 
 **2026-09-11.** Shared styles live in `src/styles/design-system.css`, imported
