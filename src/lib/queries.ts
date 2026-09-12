@@ -46,7 +46,6 @@ export type Track = Pick<
 /** A track plus which playlists already hold it, for the "in N playlists" pill. */
 export type TrackWithUse = Track & {
   playlist_tracks: { playlist_id: string }[]
-  projects_mirror?: { id: string; name: string } | null
 }
 
 export function playlistCount(track: TrackWithUse): number {
@@ -123,7 +122,7 @@ export function useLibraryTracks(search: string) {
     queryFn: async () => {
       let query = supabase
         .from('tracks')
-        .select(`${TRACK_COLS}, playlist_tracks(playlist_id), projects_mirror(id, name)`)
+        .select(`${TRACK_COLS}, playlist_tracks(playlist_id)`)
         .order('created_at', { ascending: false })
         .limit(500)
       if (term) {

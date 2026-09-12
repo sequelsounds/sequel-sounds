@@ -9,7 +9,6 @@ import TrackMeta from './TrackMeta'
 
 type Props = {
   tracks: TrackWithUse[]
-  showProject?: boolean
 }
 
 /**
@@ -18,7 +17,7 @@ type Props = {
  * does. The queue handed to the player is this table's order, so next and
  * previous walk the list on screen.
  */
-export default function TrackTable({ tracks, showProject = false }: Props) {
+export default function TrackTable({ tracks }: Props) {
   const queue = useMemo(() => tracks.map(toPlayerTrack), [tracks])
   // Held here rather than per row: the arrows in the dialog step through this
   // table's order, which a row does not know.
@@ -32,26 +31,9 @@ export default function TrackTable({ tracks, showProject = false }: Props) {
         <col style={{ width: 34 }} />
         <col style={{ width: 56 }} />
         <col />
-        {showProject && <col style={{ width: 180 }} />}
         <col style={{ width: 86 }} />
         <col style={{ width: 80 }} />
       </colgroup>
-      {/* The library spans every project, so the project column needs saying.
-          The inbox does not have one — its tracks are already grouped under
-          the partner who sent them — and a header row there would just repeat
-          itself above every submission. */}
-      {showProject && (
-        <thead>
-          <tr>
-            <th />
-            <th />
-            <th>Track</th>
-            <th>Project</th>
-            <th />
-            <th className="pr-5 text-right!">Length</th>
-          </tr>
-        </thead>
-      )}
       <tbody>
         {tracks.map((track, index) => (
           <TrackRow
@@ -59,7 +41,6 @@ export default function TrackTable({ tracks, showProject = false }: Props) {
             track={track}
             index={index}
             queue={queue}
-            showProject={showProject}
             onEdit={() => setEditing(index)}
           />
         ))}
@@ -84,13 +65,11 @@ function TrackRow({
   track,
   index,
   queue,
-  showProject,
   onEdit,
 }: {
   track: TrackWithUse
   index: number
   queue: PlayerTrack[]
-  showProject: boolean
   onEdit: () => void
 }) {
   const player = usePlayer()
@@ -138,7 +117,6 @@ function TrackRow({
           {secondary || (track.processing_status !== 'ready' ? 'Processing…' : '')}
         </div>
       </td>
-      {showProject && <td className="secondary">{track.projects_mirror?.name ?? ''}</td>}
       <td>
         {/* Row actions. Not draggable: pointerdown here must not start a drag,
             or the click never lands. */}

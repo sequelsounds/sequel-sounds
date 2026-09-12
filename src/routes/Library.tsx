@@ -31,7 +31,7 @@ export default function Library() {
         {tracks.data && tracks.data.length === 0 && (
           <p className="px-7 py-6 text-sequel-mid">Nothing matches.</p>
         )}
-        {tracks.data && tracks.data.length > 0 && <TrackTable tracks={tracks.data} showProject />}
+        {tracks.data && tracks.data.length > 0 && <TrackTable tracks={tracks.data} />}
       </div>
     </>
   )
