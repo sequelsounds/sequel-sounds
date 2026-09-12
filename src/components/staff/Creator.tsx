@@ -26,6 +26,7 @@ import { contentTypeFor, putToS3, signUploadAsStaff } from '../../lib/upload'
 import { runQueue } from '../../lib/uploadQueue'
 import { useSession } from '../../lib/auth'
 import Artwork from './Artwork'
+import { MenuIcon } from './icons'
 import Menu from './Menu'
 import Switch from './Switch'
 
@@ -599,7 +600,7 @@ export default function Creator() {
               </button>
             )}
             <Menu
-              label="⋮"
+              label={<MenuIcon />}
               title="Add section · Edit all · Attach to project · Duplicate · Delete"
               buttonClassName="px-2 py-[5px] text-lg leading-none"
               items={menuItems}

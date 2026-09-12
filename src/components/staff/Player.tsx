@@ -1,5 +1,6 @@
 import { formatDuration } from '../../lib/format'
 import { usePeaks, usePlayer } from '../../lib/player'
+import { NextIcon, PauseIcon, PlayIcon, PrevIcon } from './icons'
 import Waveform from './Waveform'
 
 /** The bottom bar. Mounted once in the layout, so it outlives every route. */
@@ -21,7 +22,7 @@ export default function Player() {
         aria-label={player.playing ? 'Pause' : 'Play'}
         className="grid h-[34px] w-[34px] place-items-center bg-sequel-silver text-sequel-brown disabled:opacity-40"
       >
-        {player.playing ? '❚❚' : '▶'}
+        {player.playing ? <PauseIcon /> : <PlayIcon />}
       </button>
       <div className="min-w-0">
         <div className="truncate">{player.current?.title ?? 'Nothing playing'}</div>
@@ -37,12 +38,24 @@ export default function Player() {
       <div className="text-right font-light text-sequel-silver tabular-nums">
         {formatDuration(player.position)} / {formatDuration(duration)}
       </div>
-      <div className="flex justify-end gap-3 text-base">
-        <button type="button" onClick={player.prev} disabled={!player.current} aria-label="Previous">
-          ⏮
+      <div className="flex items-center justify-end gap-4">
+        <button
+          type="button"
+          onClick={player.prev}
+          disabled={!player.current}
+          aria-label="Previous"
+          className="disabled:opacity-40"
+        >
+          <PrevIcon size="1.1rem" />
         </button>
-        <button type="button" onClick={player.next} disabled={!player.current} aria-label="Next">
-          ⏭
+        <button
+          type="button"
+          onClick={player.next}
+          disabled={!player.current}
+          aria-label="Next"
+          className="disabled:opacity-40"
+        >
+          <NextIcon size="1.1rem" />
         </button>
       </div>
     </footer>

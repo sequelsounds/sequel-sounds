@@ -4,9 +4,7 @@ import { formatDuration, plural } from '../../lib/format'
 import { toPlayerTrack, usePlayer, type PlayerTrack } from '../../lib/player'
 import { playlistCount, type TrackWithUse } from '../../lib/queries'
 import Artwork from './Artwork'
-import GripIcon from './GripIcon'
-import InfoIcon from './InfoIcon'
-import ShareIcon from './ShareIcon'
+import { GripIcon, InfoIcon, PauseIcon, PlayIcon, ShareIcon } from './icons'
 import TrackMeta from './TrackMeta'
 
 type Props = {
@@ -89,7 +87,7 @@ function TrackRow({
             player.play(queue, index)
           }}
         >
-          {current && player.playing ? '❚❚' : '▶'}
+          {current && player.playing ? <PauseIcon /> : <PlayIcon />}
         </button>
       </td>
       <td className="pr-0!">

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
+import { ChevronIcon } from '../components/staff/icons'
 import TrackTable from '../components/staff/TrackTable'
 import { useCreator } from '../lib/creator'
 import { formatDate, plural } from '../lib/format'
@@ -164,7 +165,7 @@ export default function Project() {
                       {meta}
                       {s.note && <> · “{s.note}”</>}
                     </span>
-                    <span className="ml-auto text-sequel-mid">▾</span>
+                    <ChevronIcon className="ml-auto shrink-0" />
                   </div>
                   <TrackTable tracks={s.tracks} />
                 </section>
@@ -176,7 +177,7 @@ export default function Project() {
                 >
                   <h2 className="submission-title">{s.company}</h2>
                   <span className="min-w-0 truncate text-[13px] text-sequel-mid">{meta}</span>
-                  <span className="ml-auto text-sequel-mid">▸</span>
+                  <ChevronIcon className="ml-auto shrink-0 -rotate-90" />
                 </div>
               )
             })}

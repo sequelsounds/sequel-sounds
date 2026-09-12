@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import SequelLogo from '../components/SequelLogo'
+import { PauseIcon, PlayIcon } from '../components/staff/icons'
 import Waveform from '../components/staff/Waveform'
 import { formatDuration } from '../lib/format'
 import { mediaUrls } from '../lib/media'
@@ -130,7 +131,7 @@ function SharedTrack({ token }: { token: string }) {
                   }}
                   className="grid h-[34px] w-[34px] shrink-0 place-items-center bg-sequel-silver text-sequel-brown disabled:opacity-40"
                 >
-                  {playing ? '❚❚' : '▶'}
+                  {playing ? <PauseIcon /> : <PlayIcon />}
                 </button>
                 <div className="min-w-0 flex-1">
                   <Waveform
