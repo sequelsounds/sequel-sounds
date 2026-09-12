@@ -93,20 +93,23 @@ function TrackRow({
         <span className="grip-glyph">
           <GripIcon />
         </span>
-        <button
-          type="button"
-          className="play-btn"
-          aria-label={current && player.playing ? 'Pause' : 'Play'}
-          onClick={(e) => {
-            e.stopPropagation()
-            player.play(queue, index)
-          }}
-        >
-          {current && player.playing ? <PauseIcon /> : <PlayIcon />}
-        </button>
       </td>
       <td className="pr-0!">
-        <Artwork artworkKey={track.artwork_s3_key} kind={track.kind} />
+        {/* Pointerdown must not start a drag here, or the click never lands. */}
+        <div className="art-wrap" onPointerDown={(e) => e.stopPropagation()}>
+          <Artwork artworkKey={track.artwork_s3_key} kind={track.kind} />
+          <button
+            type="button"
+            className="play-btn"
+            aria-label={current && player.playing ? 'Pause' : 'Play'}
+            onClick={(e) => {
+              e.stopPropagation()
+              player.play(queue, index)
+            }}
+          >
+            {current && player.playing ? <PauseIcon /> : <PlayIcon />}
+          </button>
+        </div>
       </td>
       <td>
         <div className="truncate">

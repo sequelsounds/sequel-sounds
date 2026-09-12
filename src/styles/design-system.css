@@ -503,12 +503,25 @@
     place-items: center;
   }
 
+  /* Play sits on the artwork, not in the grip column. It used to take the
+     grip's place on hover, which meant the handle vanished at exactly the
+     moment you reached for it. */
+  .art-wrap {
+    position: relative;
+    width: 40px;
+    height: 40px;
+  }
+
   .track-row .play-btn {
+    position: absolute;
+    inset: 0;
     display: none;
-    width: 100%;
-    background: none;
+    place-items: center;
+    /* The art underneath can be any colour, so the mark needs its own
+       ground to stay legible. */
+    background: rgba(55, 43, 41, 0.55);
     border: 0;
-    color: inherit;
+    color: var(--color-sequel-silver);
     cursor: pointer;
     font: inherit;
     padding: 0;
@@ -516,12 +529,7 @@
 
   .track-row:hover .play-btn,
   .track-row.is-playing .play-btn {
-    display: block;
-  }
-
-  .track-row:hover .grip-glyph,
-  .track-row.is-playing .grip-glyph {
-    display: none;
+    display: grid;
   }
 
   /* Always there, so a row says what can be done with it without having to
