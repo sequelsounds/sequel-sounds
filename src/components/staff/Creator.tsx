@@ -8,10 +8,11 @@ import type { Tables } from '../../lib/database.types'
 import { formatDuration, plural } from '../../lib/format'
 import { toPlayerTrack, usePlayer, type PlayerTrack } from '../../lib/player'
 import {
+  useLibraryTracks,
   usePlaylist,
   usePlaylistActions,
   usePlaylists,
-  useProjects,
+  useProjectSearch,
   useProjectTracks,
   type PlaylistDetail,
   type Track,
@@ -83,6 +84,7 @@ export default function Creator() {
   const [title, setTitle] = useState('')
   const [editing, setEditing] = useState(false)
   const [picking, setPicking] = useState(false)
+  const [addingTracks, setAddingTracks] = useState(false)
   const [attaching, setAttaching] = useState(false)
   const [copied, setCopied] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -100,6 +102,7 @@ export default function Creator() {
     setEditing(false)
     setPicking(false)
     setAttaching(false)
+    setAddingTracks(false)
   }, [data])
 
   // Scoped to the project on screen: arriving at a project shows its latest
@@ -190,15 +193,21 @@ export default function Creator() {
 
         const normalised = normalise(next, secs)
         setRows(normalised)
-        actions.persistOrder.mutate({
-          playlistId: pid,
-          rows: normalised.map(({ id, track_id, section_id, position }) => ({
-            id,
-            track_id,
-            section_id,
-            position,
-          })),
-        })
+        actions.persistOrder.mutate(
+          {
+            playlistId: pid,
+            rows: normalised.map(({ id, track_id, section_id, position }) => ({
+              id,
+              track_id,
+              section_id,
+              position,
+            })),
+          },
+          {
+            onError: (err) =>
+              setNotice(err instanceof Error ? `Not saved — ${err.message}` : 'Not saved'),
+          },
+        )
       })()
     },
     [rows, sections, playlistId, routeProjectId, actions, open],
@@ -208,6 +217,55 @@ export default function Creator() {
     setDropHandler(onDrop)
     return () => setDropHandler(null)
   }, [onDrop, setDropHandler])
+
+  /** Append a track to the end — what clicking a track in the picker does. */
+  const addTrack = useCallback(
+    async (track: TrackWithUse) => {
+      let pid = playlistId
+      let base = rows
+      let secs = sections
+      if (!pid) {
+        pid = await actions.createPlaylist.mutateAsync({ projectId: routeProjectId })
+        open(pid)
+        base = []
+        secs = []
+      }
+      if (base.some((r) => r.track_id === track.id)) {
+        setNotice('Already in this playlist')
+        return
+      }
+      const normalised = normalise(
+        [
+          ...base,
+          {
+            id: crypto.randomUUID(),
+            track_id: track.id,
+            section_id: secs[secs.length - 1]?.id ?? null,
+            position: base.length,
+            track,
+          },
+        ],
+        secs,
+      )
+      setRows(normalised)
+      actions.persistOrder.mutate(
+        {
+          playlistId: pid,
+          rows: normalised.map(({ id, track_id, section_id, position }) => ({
+            id,
+            track_id,
+            section_id,
+            position,
+          })),
+        },
+        {
+          onError: (err) =>
+            setNotice(err instanceof Error ? `Not saved — ${err.message}` : 'Not saved'),
+        },
+      )
+    },
+    [rows, sections, playlistId, routeProjectId, actions, open],
+  )
 
   // ------------------------------------------------------------ derived
 
@@ -311,7 +369,7 @@ export default function Creator() {
   return (
     <aside className="z-[2] flex min-h-0 min-w-0 flex-col overflow-hidden bg-sequel-white shadow-[-6px_0_24px_rgba(48,47,44,0.18)]">
       <div className="flex items-center justify-between bg-sequel-brown px-[18px] py-[14px] text-sequel-silver">
-        <h2 className="font-title text-[15px] font-normal uppercase tracking-[.06em]">Playlist Creator</h2>
+        <h2 className="font-title text-[15px] font-semibold uppercase tracking-[.06em]">Playlist Creator</h2>
         <button
           type="button"
           title="New playlist"
@@ -324,7 +382,7 @@ export default function Creator() {
       </div>
 
       {!playlistId ? (
-        <EmptyDrop forProject={!!routeProjectId} />
+        <EmptyDrop forProject={!!routeProjectId} onClick={() => setAddingTracks(true)} />
       ) : !data && !playlist.isPending ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-[13px] text-sequel-mid">
           <p>That playlist could not be found.</p>
@@ -381,7 +439,7 @@ export default function Creator() {
           <div className="min-h-0 flex-1 overflow-auto py-2">
             {data.video && (
               <>
-                <SectionLabel name="Picture" count={1} />
+                <SectionLabel name="Film" count={1} />
                 <div className="creator-track cursor-default">
                   <span className="secondary w-4 text-xs" />
                   <Artwork artworkKey={data.video.artwork_s3_key} kind="video" />
@@ -389,7 +447,7 @@ export default function Creator() {
                   <span className="pill ml-0">video</span>
                   <button
                     type="button"
-                    aria-label="Remove picture"
+                    aria-label="Remove film"
                     className="px-1 text-sequel-mid hover:text-inherit"
                     onClick={() => actions.updatePlaylist.mutate({ id: data.id, video_track_id: null })}
                   >
@@ -434,10 +492,19 @@ export default function Creator() {
                   })}
                 </Fragment>
               ))}
-              <EndDrop empty={rows.length === 0} />
+              <EndDrop empty={rows.length === 0} onClick={() => setAddingTracks(true)} />
             </SortableContext>
             {notice && <div className="px-[18px] py-2 text-[13px] text-sequel-mid">{notice}</div>}
           </div>
+
+          {addingTracks && (
+            <TrackPicker
+              projectId={data.project_id}
+              chosen={new Set(rows.map((r) => r.track_id))}
+              onClose={() => setAddingTracks(false)}
+              onPick={(t) => void addTrack(t)}
+            />
+          )}
 
           {picking && (
             <PicturePicker
@@ -459,7 +526,7 @@ export default function Creator() {
               Theme
             </button>
             <button type="button" className="btn btn-tool btn-outline" onClick={() => setPicking((v) => !v)}>
-              Add picture
+              Add film
             </button>
             <a
               className="btn btn-tool btn-quiet"
@@ -620,34 +687,117 @@ function CreatorTrack({
   )
 }
 
-function EmptyDrop({ forProject }: { forProject: boolean }) {
+function EmptyDrop({ forProject, onClick }: { forProject: boolean; onClick: () => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'creator-empty', data: { type: 'end' } })
   return (
-    <div
+    <button
+      type="button"
       ref={setNodeRef}
-      className={`flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-[13px] ${
+      onClick={onClick}
+      className={`flex flex-1 cursor-pointer flex-col items-center justify-center gap-2 p-6 text-center text-[13px] ${
         isOver ? 'bg-sequel-well text-sequel-ink' : 'text-sequel-mid'
       }`}
     >
       <p>No playlist open.</p>
       <p>
-        Press + to start one{forProject ? ' for this project' : ''}, drop a track here to start
-        one, or pick one on the Playlists tab.
+        Press + to start one{forProject ? ' for this project' : ''}, or drop a track here — or
+        click — to start one.
       </p>
-    </div>
+    </button>
   )
 }
 
-function EndDrop({ empty }: { empty: boolean }) {
+function EndDrop({ empty, onClick }: { empty: boolean; onClick: () => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'creator-end', data: { type: 'end' } })
   return (
-    <div
+    <button
+      type="button"
       ref={setNodeRef}
-      className={`mx-[18px] my-[10px] border border-dashed p-4 text-center text-[13px] ${
+      onClick={onClick}
+      className={`mx-[18px] my-[10px] block w-[calc(100%-36px)] cursor-pointer border border-dashed p-4 text-center text-[13px] ${
         isOver ? 'border-sequel-brown text-sequel-ink' : 'border-sequel-grey text-sequel-mid'
       }`}
     >
-      {empty ? 'Drag tracks here from the inbox or the library' : 'Drop tracks here'}
+      {empty ? 'Drag tracks here, or click to add them' : 'Drop tracks here, or click to add'}
+    </button>
+  )
+}
+
+/**
+ * Adds tracks without dragging. Scoped to the playlist's project when it has
+ * one — that is where a supe is almost always picking from — and to the whole
+ * library when it does not.
+ */
+function TrackPicker({
+  projectId,
+  chosen,
+  onClose,
+  onPick,
+}: {
+  projectId: string | null
+  chosen: Set<string>
+  onClose: () => void
+  onPick: (track: TrackWithUse) => void
+}) {
+  const [term, setTerm] = useState('')
+  const projectTracks = useProjectTracks(projectId)
+  const libraryTracks = useLibraryTracks(projectId ? '' : term)
+
+  const results = useMemo(() => {
+    const needle = term.trim().toLowerCase()
+    const source = projectId ? (projectTracks.data ?? []) : (libraryTracks.data ?? [])
+    if (!projectId || !needle) return source.slice(0, 100)
+    return source
+      .filter((t) =>
+        [t.title, t.artist, t.album, t.submitter_company]
+          .filter(Boolean)
+          .some((v) => v!.toLowerCase().includes(needle)),
+      )
+      .slice(0, 100)
+  }, [term, projectId, projectTracks.data, libraryTracks.data])
+
+  const pending = projectId ? projectTracks.isPending : libraryTracks.isPending
+
+  return (
+    <div className="border-t border-sequel-line px-[18px] py-3 text-[13px]">
+      <div className="mb-2 flex items-center justify-between text-sequel-mid">
+        <span>{projectId ? 'Add from this project' : 'Add from the library'}</span>
+        <button type="button" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+      </div>
+      <input
+        type="search"
+        autoFocus
+        className="field-boxed"
+        placeholder="Title, artist, album or partner"
+        aria-label="Search tracks"
+        value={term}
+        onChange={(e) => setTerm(e.target.value)}
+      />
+      <ul className="mt-2 max-h-64 overflow-auto">
+        {pending && <li className="py-1 text-sequel-mid">Loading…</li>}
+        {!pending && results.length === 0 && (
+          <li className="py-1 text-sequel-mid">Nothing matches.</li>
+        )}
+        {results.map((t) => {
+          const already = chosen.has(t.id)
+          return (
+            <li key={t.id}>
+              <button
+                type="button"
+                disabled={already}
+                onClick={() => onPick(t)}
+                className="flex w-full items-center gap-2 py-1 text-left hover:text-sequel-brown disabled:opacity-40"
+              >
+                <Artwork artworkKey={t.artwork_s3_key} kind={t.kind} className="h-7! w-7!" />
+                <span className="min-w-0 flex-1 truncate">{t.title}</span>
+                {already && <span className="shrink-0 text-sequel-mid">added</span>}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }
@@ -668,16 +818,16 @@ function PicturePicker({
   return (
     <div className="border-t border-sequel-line px-[18px] py-3 text-[13px]">
       <div className="mb-2 flex items-center justify-between text-sequel-mid">
-        <span>Pick the picture</span>
+        <span>Pick the film</span>
         <button type="button" onClick={onClose} aria-label="Close">
           ×
         </button>
       </div>
       {!projectId ? (
-        <p className="text-sequel-mid">Attach this playlist to a project first — pictures come from a project.</p>
+        <p className="text-sequel-mid">Attach this playlist to a project first — films come from a project.</p>
       ) : videos.length === 0 ? (
         <p className="text-sequel-mid">
-          No video in this project yet. Drop one on the inbox link, or send it from Track's assets.
+          No film in this project yet. Drop one on the inbox link, or send it from Track's assets.
         </p>
       ) : (
         <ul>
@@ -701,6 +851,11 @@ function PicturePicker({
   )
 }
 
+/**
+ * A search, not a select. There will be thousands of projects, and a dropdown
+ * would have to hold every one of them to be usable; this asks the database
+ * for the twenty that match what has been typed.
+ */
 function AttachPanel({
   playlist,
   onClose,
@@ -710,7 +865,8 @@ function AttachPanel({
   onClose: () => void
   onPick: (projectId: string | null) => void
 }) {
-  const projects = useProjects()
+  const [term, setTerm] = useState('')
+  const projects = useProjectSearch(term)
   return (
     <div className="border-b border-sequel-line px-[18px] py-3 text-[13px]">
       <div className="mb-2 flex items-center justify-between text-sequel-mid">
@@ -719,18 +875,44 @@ function AttachPanel({
           ×
         </button>
       </div>
-      <select
+      <input
+        type="search"
+        autoFocus
         className="field-boxed"
-        value={playlist.project_id ?? ''}
-        onChange={(e) => onPick(e.target.value || null)}
-      >
-        <option value="">Not attached</option>
+        placeholder="Search projects"
+        aria-label="Search projects"
+        value={term}
+        onChange={(e) => setTerm(e.target.value)}
+      />
+      <ul className="mt-2 max-h-56 overflow-auto">
+        {playlist.project_id && (
+          <li>
+            <button
+              type="button"
+              onClick={() => onPick(null)}
+              className="w-full py-1 text-left text-sequel-mid hover:text-sequel-brown"
+            >
+              Detach from {playlist.projects_mirror?.name ?? 'its project'}
+            </button>
+          </li>
+        )}
+        {projects.isPending && <li className="py-1 text-sequel-mid">Searching…</li>}
+        {projects.data?.length === 0 && <li className="py-1 text-sequel-mid">Nothing matches.</li>}
         {(projects.data ?? []).map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
+          <li key={p.id}>
+            <button
+              type="button"
+              onClick={() => onPick(p.id)}
+              className={`flex w-full items-baseline gap-2 py-1 text-left hover:text-sequel-brown ${
+                p.id === playlist.project_id ? 'font-medium' : ''
+              }`}
+            >
+              <span className="sentence-case truncate">{p.name}</span>
+              {p.client_name && <span className="truncate text-sequel-mid">{p.client_name}</span>}
+            </button>
+          </li>
         ))}
-      </select>
+      </ul>
     </div>
   )
 }

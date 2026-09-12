@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { plural } from '../lib/format'
 import { splitProjectName } from '../lib/projectName'
@@ -7,29 +6,14 @@ import { useProjects } from '../lib/queries'
 export default function Projects() {
   const projects = useProjects()
   const navigate = useNavigate()
-  const [filter, setFilter] = useState('')
-
-  const term = filter.trim().toLowerCase()
-  const rows = (projects.data ?? []).filter(
-    (p) => !term || p.name.toLowerCase().includes(term) || (p.client_name ?? '').toLowerCase().includes(term),
-  )
+  const rows = projects.data ?? []
 
   return (
     <>
       <div className="border-b border-sequel-line px-7 pb-[18px] pt-[22px]">
-        <div className="flex items-end justify-between gap-4">
-          <h1 className="font-title text-[clamp(18px,2.4vw,28px)] font-normal uppercase leading-[1.1]">
-            Projects
-          </h1>
-          <input
-            type="search"
-            className="search-well max-w-[18rem]"
-            placeholder="Filter"
-            aria-label="Filter projects"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-        </div>
+        <h1 className="font-title text-[clamp(18px,2.4vw,28px)] font-normal uppercase leading-[1.1]">
+          Projects
+        </h1>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
         {projects.isPending && <p className="px-7 py-4 text-sequel-mid">Loading…</p>}
@@ -77,7 +61,7 @@ export default function Projects() {
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-7 py-6 text-sequel-mid">
-                    {term ? 'No project matches.' : 'No projects yet — they arrive from Sequel Track.'}
+                    No projects yet — they arrive from Sequel Track.
                   </td>
                 </tr>
               )}

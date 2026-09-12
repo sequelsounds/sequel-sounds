@@ -1,9 +1,11 @@
 import { useDraggable } from '@dnd-kit/core'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { formatDuration, plural } from '../../lib/format'
 import { toPlayerTrack, usePlayer, type PlayerTrack } from '../../lib/player'
 import { playlistCount, type TrackWithUse } from '../../lib/queries'
 import Artwork from './Artwork'
+import ShareIcon from './ShareIcon'
+import TrackMeta from './TrackMeta'
 
 type Props = {
   tracks: TrackWithUse[]
@@ -25,6 +27,7 @@ export default function TrackTable({ tracks, showProject = false }: Props) {
         <col style={{ width: 56 }} />
         <col />
         {showProject && <col style={{ width: 180 }} />}
+        <col style={{ width: 72 }} />
         <col style={{ width: 80 }} />
       </colgroup>
       <tbody>
@@ -54,6 +57,8 @@ function TrackRow({
   showProject: boolean
 }) {
   const player = usePlayer()
+  const [editing, setEditing] = useState(false)
+  const [copied, setCopied] = useState(false)
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `track:${track.id}`,
     data: { type: 'track', track },
@@ -96,7 +101,41 @@ function TrackRow({
         </div>
       </td>
       {showProject && <td className="secondary">{track.projects_mirror?.name ?? ''}</td>}
+      <td>
+        {/* Row actions. Not draggable: pointerdown here must not start a drag,
+            or the click never lands. */}
+        <div
+          className="row-actions"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            aria-label="Track details"
+            title="Track details"
+            onClick={(e) => {
+              e.stopPropagation()
+              setEditing(true)
+            }}
+          >
+            i
+          </button>
+          <button
+            type="button"
+            aria-label="Copy share link"
+            title={copied ? 'Link copied' : 'Copy a link to this track alone'}
+            onClick={async (e) => {
+              e.stopPropagation()
+              await navigator.clipboard.writeText(`${location.origin}/t/${track.share_token}`)
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1500)
+            }}
+          >
+            <ShareIcon />
+          </button>
+        </div>
+      </td>
       <td className="secondary pr-5 text-right">{formatDuration(track.duration_seconds)}</td>
+      {editing && <TrackMeta track={track} onClose={() => setEditing(false)} />}
     </tr>
   )
 }

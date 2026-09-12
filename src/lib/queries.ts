@@ -12,7 +12,7 @@ import { supabase } from './supabase'
  */
 
 export const TRACK_COLS =
-  'id, project_id, kind, title, artist, album, duration_seconds, preview_key, artwork_s3_key, processing_status, submitter_name, submitter_email, submitter_company, notes, submission_id, created_at'
+  'id, project_id, kind, title, artist, album, composer, publisher, label, genre, bpm, musical_key, isrc, staff_notes, duration_seconds, preview_key, artwork_s3_key, processing_status, submitter_name, submitter_email, submitter_company, notes, submission_id, share_token, created_at'
 
 export type Track = Pick<
   Tables<'tracks'>,
@@ -22,6 +22,14 @@ export type Track = Pick<
   | 'title'
   | 'artist'
   | 'album'
+  | 'composer'
+  | 'publisher'
+  | 'label'
+  | 'genre'
+  | 'bpm'
+  | 'musical_key'
+  | 'isrc'
+  | 'staff_notes'
   | 'duration_seconds'
   | 'preview_key'
   | 'artwork_s3_key'
@@ -31,6 +39,7 @@ export type Track = Pick<
   | 'submitter_company'
   | 'notes'
   | 'submission_id'
+  | 'share_token'
   | 'created_at'
 >
 
@@ -125,6 +134,30 @@ export function useLibraryTracks(search: string) {
       const { data, error } = await query
       if (error) throw error
       return data as unknown as TrackWithUse[]
+    },
+  })
+}
+
+/**
+ * Projects matching a term, for the Creator's "attach to project" search.
+ * There will be thousands of projects, so this is a query, not a filter over
+ * everything — a select element would have to hold the lot.
+ */
+export function useProjectSearch(term: string) {
+  const q = safeTerm(term)
+  return useQuery({
+    queryKey: ['project-search', q],
+    staleTime: 30_000,
+    queryFn: async () => {
+      let query = supabase
+        .from('projects_mirror')
+        .select('id, name, client_name')
+        .order('name')
+        .limit(20)
+      if (q) query = query.or(`name.ilike.%${q}%,client_name.ilike.%${q}%`)
+      const { data, error } = await query
+      if (error) throw error
+      return data
     },
   })
 }
@@ -298,6 +331,22 @@ export function useSearch(q: string) {
 }
 
 // ---------------------------------------------------------------- writes
+
+/** Staff corrections to a track's metadata. Partners never edit these. */
+export function useTrackActions() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { id: string } & Partial<Tables<'tracks'>>) => {
+      const { id, ...patch } = input
+      const { error } = await supabase.from('tracks').update(patch).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['tracks'] })
+      void qc.invalidateQueries({ queryKey: ['playlist'] })
+    },
+  })
+}
 
 export type OrderRow = {
   id: string

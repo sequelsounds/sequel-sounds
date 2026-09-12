@@ -1,12 +1,12 @@
-import { useState } from 'react'
 import TrackTable from '../components/staff/TrackTable'
 import { plural } from '../lib/format'
 import { useLibraryTracks } from '../lib/queries'
 
 /** Every track across every project. The second-search tool. */
 export default function Library() {
-  const [q, setQ] = useState('')
-  const tracks = useLibraryTracks(q)
+  // Searching is the rail's job — one search box in the app, not two. This
+  // page is the full list behind it.
+  const tracks = useLibraryTracks('')
 
   return (
     <>
@@ -20,14 +20,6 @@ export default function Library() {
               {tracks.data ? plural(tracks.data.length, 'track') : ' '}
             </div>
           </div>
-          <input
-            type="search"
-            className="search-well max-w-[22rem]"
-            placeholder="Title, artist, album or partner"
-            aria-label="Search the library"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">

@@ -32,9 +32,10 @@ export default function Rail() {
     // text for its own dark ground, which would be invisible on this rail's
     // light one, and the approved mockup is light with dark text.
     <aside className="flex flex-col gap-[18px] overflow-auto border-r border-sequel-line pb-8 pl-12 pr-8 pt-8 text-[14px] font-normal leading-[20px]">
-      <Link to="/" className="flex items-center gap-[10px] text-sequel-ink no-underline">
+      {/* The mark alone, as in Webflow's App Nav (app_logo_wrap is 4rem
+          square and holds nothing but the image). */}
+      <Link to="/" className="block w-16 text-sequel-ink no-underline">
         <SequelLogo className="h-16! w-16!" />
-        <span>Sequel Studio</span>
       </Link>
 
       <div className="relative">

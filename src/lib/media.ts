@@ -17,7 +17,12 @@ const SAFETY_MARGIN_MS = 5 * 60 * 1000
 type Cached = { url: string; expiresAt: number }
 const cache = new Map<string, Cached>()
 
-type Waiter = { keys: string[]; resolve: (r: Record<string, string>) => void; reject: (e: Error) => void }
+type Waiter = {
+  keys: string[]
+  token: string | null
+  resolve: (r: Record<string, string>) => void
+  reject: (e: Error) => void
+}
 let pending: Waiter[] = []
 let timer: ReturnType<typeof setTimeout> | null = null
 
@@ -35,12 +40,15 @@ async function flush() {
     if (keys.length > 0) {
       const { data } = await supabase.auth.getSession()
       const accessToken = data.session?.access_token
+      // Share pages have a token and no session; staff have the reverse.
+      const shareToken = waiters.find((w) => w.token)?.token ?? null
       const res = await fetch(`${FUNCTIONS_URL}/sign-media`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           Authorization: `Bearer ${accessToken ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          ...(shareToken ? { 'x-share-token': shareToken } : {}),
         },
         body: JSON.stringify({ keys }),
       })
@@ -63,20 +71,23 @@ async function flush() {
   }
 }
 
-export function mediaUrls(keys: string[]): Promise<Record<string, string>> {
+export function mediaUrls(
+  keys: string[],
+  token: string | null = null,
+): Promise<Record<string, string>> {
   return new Promise((resolve, reject) => {
-    pending.push({ keys, resolve, reject })
+    pending.push({ keys, token, resolve, reject })
     if (!timer) timer = setTimeout(flush, BATCH_WINDOW_MS)
   })
 }
 
 /** One key's URL, or null while unsigned / when the key is null. */
-export function useMediaUrl(key: string | null | undefined) {
+export function useMediaUrl(key: string | null | undefined, token: string | null = null) {
   return useQuery({
-    queryKey: ['media', key],
+    queryKey: ['media', key, token],
     enabled: !!key,
     staleTime: 50 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
-    queryFn: async () => (key ? ((await mediaUrls([key]))[key] ?? null) : null),
+    queryFn: async () => (key ? ((await mediaUrls([key], token))[key] ?? null) : null),
   })
 }

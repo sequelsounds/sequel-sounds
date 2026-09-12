@@ -68,10 +68,12 @@ function Shell() {
       <div
         className="grid h-screen overflow-hidden bg-sequel-silver text-[14px] leading-[1.4] text-sequel-ink"
         style={{
-          gridTemplateColumns: '16rem minmax(0, 1fr) clamp(240px, 28vw, 340px)',
-          gridTemplateRows: '1fr 72px',
+          gridTemplateColumns: '16rem minmax(0, 1fr) 24rem',
+          gridTemplateRows: '2rem 1fr 72px',
         }}
       >
+        {/* A 2rem strip across the top, above all three columns. */}
+        <div className="col-span-3 border-b border-sequel-line" />
         <Rail />
         <main className="flex min-w-0 flex-col overflow-hidden">
           <Outlet />

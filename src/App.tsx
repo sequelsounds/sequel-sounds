@@ -10,6 +10,7 @@ import Playlists, { PlaylistRoute } from './routes/Playlists'
 import Project from './routes/Project'
 import Projects from './routes/Projects'
 import SharedPlaylist from './routes/SharedPlaylist'
+import SharedTrack from './routes/SharedTrack'
 import StaffLayout from './routes/StaffLayout'
 
 // Dev only: the shell over fixture data, for checking layout without a
@@ -43,6 +44,7 @@ export default function App() {
       {/* Public, token-based */}
       <Route path="/inbox/:token" element={<Inbox />} />
       <Route path="/p/:token" element={<SharedPlaylist />} />
+      <Route path="/t/:token" element={<SharedTrack />} />
 
       {/* Staff */}
       <Route path="/login" element={<Login />} />

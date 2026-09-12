@@ -631,6 +631,7 @@ export type Database = {
           publisher: string | null
           release_date: string | null
           s3_key: string | null
+          share_token: string
           size_bytes: number | null
           staff_notes: string | null
           submission_id: string | null
@@ -679,6 +680,7 @@ export type Database = {
           publisher?: string | null
           release_date?: string | null
           s3_key?: string | null
+          share_token?: string
           size_bytes?: number | null
           staff_notes?: string | null
           submission_id?: string | null
@@ -727,6 +729,7 @@ export type Database = {
           publisher?: string | null
           release_date?: string | null
           s3_key?: string | null
+          share_token?: string
           size_bytes?: number | null
           staff_notes?: string | null
           submission_id?: string | null
