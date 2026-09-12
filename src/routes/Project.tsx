@@ -409,18 +409,22 @@ export default function Project() {
 
           {open?.kind === 'playlist' && openPlaylist.data && (
             <>
-              <div className="detail-head">
-                <h2 className="submission-title">{openPlaylist.data.name}</h2>
-                <div className="detail-meta">
-                  {plural(playlistTracks.length, 'track')} ·{' '}
-                  {formatDate(openPlaylist.data.updated_at)}
+              <div className="detail-head flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h2 className="submission-title">{openPlaylist.data.name}</h2>
+                  <div className="detail-meta">
+                    {plural(playlistTracks.length, 'track')} ·{' '}
+                    {formatDate(openPlaylist.data.updated_at)}
+                  </div>
                 </div>
                 <button
                   type="button"
-                  className="btn btn-tool btn-outline mt-3"
+                  className="icon-btn shrink-0 text-sequel-brown"
+                  title="Edit in creator"
+                  aria-label="Edit in creator"
                   onClick={() => creator.open(openPlaylist.data!.id)}
                 >
-                  Edit in creator
+                  <PencilIcon size="1.25rem" />
                 </button>
               </div>
               {playlistTracks.length === 0 ? (
