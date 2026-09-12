@@ -38,12 +38,12 @@ export default function Rail() {
         // Well clear of the nav above it: at the shared 18px gap the heading
         // read as a fourth nav item rather than the start of a new section.
         <div className="mt-6">
-          <h3 className="mb-2 ml-2 text-xs font-normal text-sequel-mid">Recent</h3>
+          <h3 className="mb-2 text-xs font-normal text-sequel-mid">Recent</h3>
           {recent.data.map((p) => (
             <Link
               key={p.id}
               to={`/projects/${p.id}`}
-              className="flex items-center justify-between gap-2 px-2 py-1.5 text-[13px] text-sequel-ink no-underline hover:bg-sequel-well"
+              className="flex items-center justify-between gap-2 py-1.5 text-[13px] text-sequel-ink no-underline hover:text-sequel-brown"
             >
               <span className="truncate">{p.name}</span>
               {p.hasNew && (
