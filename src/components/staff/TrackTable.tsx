@@ -127,7 +127,9 @@ function TrackRow({
       <td>
         <div className="truncate">
           {track.title}
-          {inPlaylists > 0 && (
+          {/* Not in a half-width pane: the title needs the room more, and the
+              pill only ever got a few characters in before truncating. */}
+          {!lean && inPlaylists > 0 && (
             <span className="pill">in {plural(inPlaylists, 'playlist')}</span>
           )}
         </div>
