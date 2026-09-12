@@ -729,7 +729,6 @@ export default function Creator() {
                     kind="video"
                   />
                   <span className="flex-1 truncate">{data.video.title}</span>
-                  <span className="pill ml-0">video</span>
                   <button
                     type="button"
                     aria-label="Remove film"
@@ -1070,8 +1069,10 @@ function CreatorTrack({
         artworkKey={track?.artwork_s3_key ?? null}
         kind={track?.kind ?? 'audio'}
       />
+      {/* No "video" tag: the artwork block already renders brown for a film,
+          so the label said the same thing a second time, on the rows with
+          the least width to spare. */}
       <span className="flex-1 truncate">{track?.title ?? 'Missing track'}</span>
-      {track?.kind === 'video' && <span className="pill ml-0">video</span>}
       {editing && (
         <button
           type="button"
