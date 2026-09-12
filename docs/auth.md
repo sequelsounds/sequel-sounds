@@ -14,6 +14,17 @@ pages through share tokens. See [`architecture.md`](architecture.md).
 3. Staff type the code. The app calls `verifyOtp` with `type: 'email'` and a
    session is created.
 
+Nothing is allowed to offer to fill the pin field. It is dead in ten minutes,
+so there is nothing worth remembering. Three mechanisms have to be told
+separately: `data-lpignore` / `data-1p-ignore` / `data-form-type` for the
+password managers, `autocomplete="off"` on both the field and its form for
+Chrome, and a `name`/`id` that avoids "code" and "pin". That last one matters
+more than it sounds — Chrome was offering saved names and email addresses on
+the pin field, which is its *address* classifier firing, not a password
+manager, and it reads the name, id, label and placeholder to decide.
+`autocomplete="one-time-code"` is deliberately not used: it exists so Safari
+can lift a code out of an SMS, and this code arrives by email.
+
 Resending is blocked for 60 seconds in the UI, because Supabase refuses a second
 code inside a minute anyway and a button that earns a rate-limit error is worse
 than one that says "Resend in 43s".

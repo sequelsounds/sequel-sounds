@@ -113,20 +113,33 @@ export default function Login() {
           name="login-code"
           id="login-code-form"
           method="post"
+          autoComplete="off"
           className="flex w-full max-w-[22rem] flex-col"
         >
           <h1 className="display-heading mb-4">Login</h1>
 
-          <label className="field-label" htmlFor="code">
+          <label className="field-label" htmlFor="sq-verify">
             Pin
           </label>
-          {/* data-* opt-outs for LastPass, 1Password and Dashlane. Without them a
-              short numeric field gets treated as something to save and offer
-              back, which is useless for a code that is dead in ten minutes.
-              These are the same three the Webflow pin field carries. */}
+          {/* Nothing should offer to fill this. It is dead in ten minutes, so
+              there is nothing worth remembering and nothing worth suggesting.
+              Three separate mechanisms have to be told so:
+
+              - the data-* attributes are LastPass, 1Password and Dashlane,
+                the same three the Webflow pin field carries
+              - autocomplete="off" on the field *and* the form is what Chrome
+                wants before it will leave a field alone
+              - the name and id avoid "code", "pin" and anything else Chrome's
+                address heuristics recognise. It was offering saved names and
+                email addresses here, which is that classifier firing, not a
+                password manager — and it reads the name, id, label and
+                placeholder to decide. "one-time-code" was enough to catch it.
+
+              autocomplete="one-time-code" is gone with it: it exists so Safari
+              can lift a code out of an SMS, and this code arrives by email. */}
           <input
-            id="code"
-            name="one-time-code"
+            id="sq-verify"
+            name="sq-verify"
             ref={codeInput}
             data-lpignore="true"
             data-1p-ignore=""
@@ -135,7 +148,10 @@ export default function Login() {
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={6}
-            autoComplete="one-time-code"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             placeholder="Enter 6-digit Code"
