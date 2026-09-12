@@ -5,6 +5,29 @@ rediscovering an argument later.
 
 ---
 
+## The page header is header_app's element tree, not its class list
+
+**2026-09-12.** Reading the classes was not enough, and reading only the
+classes produced three wrong headers in a row. `header_app`'s own tree:
+
+```
+.header_app                6rem, flex column, no justification
+  .project_subtitle_app    margin-top 1rem, 0.8rem/0.8rem, weight 400
+  .main-title-wrap         flex row, space-between, align centre
+    .Title_app             Fahkwang 2rem/2rem uppercase
+    .main-add-new-button   11rem x 2rem — the button is in the title row
+  .project_subtitle2_app   0.8rem/0.8rem, weight 300, no margin
+```
+
+Three things that only the tree shows. The line above the title and the
+line below it are **different classes** — 400 above, 300 below. Only the
+top one has the 1rem margin, so the lines otherwise touch and the slack
+falls at the bottom of the band, which is what sits the heading high in it
+rather than centred. And the page's button belongs **inside** the title
+row, which is why the Playlists button no longer crowds the heading.
+
+Copied as `.page-eyebrow` / `.title-row` / `.page-title` / `.page-subtitle`.
+
 ## The nav is Webflow's App Nav, measured
 
 **2026-09-12.** `nav_text_app` and `nav_links_app` were read off the live

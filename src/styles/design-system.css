@@ -44,7 +44,6 @@
     display: flex;
     height: 6rem;
     flex-direction: column;
-    justify-content: center;
     padding: 0 2rem;
     border-bottom: 1px solid var(--color-sequel-line);
   }
@@ -66,27 +65,35 @@
   }
 
   /* ---------------------------------------------------------- page headings
-   * Read off Webflow's Projects page: title_app is Fahkwang 2rem/2rem
-   * uppercase in Sequel Brown, and project_subtitle_app is 0.8rem/0.8rem at
-   * weight 400 with 1rem above it. Both fixed, not fluid — the page they
-   * come from does not scale them with the viewport.
+   * header_app, copied from its own element tree rather than guessed at:
    *
-   * One class carries the line above the title and the line below it: on
-   * that page they are the same element ("Let's check in on..." and the
-   * person's name).
+   *   .header_app                6rem, flex column, no justification
+   *     .project_subtitle_app    margin-top 1rem, 0.8rem/0.8rem, weight 400
+   *     .main-title-wrap         flex row, space-between, centred
+   *       .Title_app             Fahkwang 2rem/2rem uppercase
+   *       .main-add-new-button   the button sits in the title row
+   *     .project_subtitle2_app   0.8rem/0.8rem, weight 300, no margin
    *
-   * Its 1rem top margin is the one value not copied, and no gap replaces
-   * it. On the page itself the three lines very nearly touch — the small
-   * ones sit right on the title, which is what makes the big Fahkwang read
-   * as the heading and the other two as annotations on it. Any gap at all
-   * breaks them into three separate things.
+   * So the two small lines are not the same class — the one above is a
+   * weight heavier than the one below, and only it carries a margin. The
+   * band stacks from the top: 1rem + 0.8 + 2 + 0.8 leaves the slack at the
+   * bottom, which is what sets the heading high in the band rather than
+   * centred in it.
    */
-  /* The three lines as one block, so the gap is the same above and below
-   * the title wherever the stack sits — on its own, or beside the buttons. */
-  .page-heading {
+  .page-eyebrow {
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    line-height: 0.8rem;
+    font-weight: 400;
+    color: var(--color-sequel-brown);
+  }
+
+  /* main-title-wrap: the title and whatever acts on the page, on one row. */
+  .title-row {
     display: flex;
     min-width: 0;
-    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .page-title {
@@ -101,7 +108,7 @@
   .page-subtitle {
     font-size: 0.8rem;
     line-height: 0.8rem;
-    font-weight: 400;
+    font-weight: 300;
     color: var(--color-sequel-brown);
   }
 

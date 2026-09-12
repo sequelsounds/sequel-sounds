@@ -33,14 +33,9 @@ export default function Playlists() {
   return (
     <>
       <div className="header-band">
-        <div className="flex items-center justify-between gap-4">
-          <div className="page-heading">
-            <div className="page-subtitle">Everything you have put together…</div>
-            <h1 className="page-title">Playlists</h1>
-            <div className="page-subtitle">
-              {playlists.data ? plural(playlists.data.length, 'playlist') : '\u00a0'}
-            </div>
-          </div>
+        <div className="page-eyebrow">Everything you have put together…</div>
+        <div className="title-row">
+          <h1 className="page-title">Playlists</h1>
           <button
             type="button"
             className="btn btn-tool btn-outline"
@@ -51,6 +46,9 @@ export default function Playlists() {
           >
             New playlist
           </button>
+        </div>
+        <div className="page-subtitle">
+          {playlists.data ? plural(playlists.data.length, 'playlist') : '\u00a0'}
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">

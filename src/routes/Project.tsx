@@ -92,15 +92,12 @@ export default function Project() {
   return (
     <>
       <div className="header-band">
-        <div className="flex items-center justify-between gap-4">
-          <div className="page-heading">
-            <div className="page-subtitle">{project.data?.client_name ?? ' '}</div>
-            <h1 className="page-title [overflow-wrap:anywhere]">
-              <span className="sentence-case font-sans">{title}</span>
-            </h1>
-            <div className="page-subtitle">{number || ' '}</div>
-          </div>
-          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+        <div className="page-eyebrow">{project.data?.client_name ?? ' '}</div>
+        <div className="title-row gap-4">
+          <h1 className="page-title min-w-0 flex-1 truncate">
+            <span className="sentence-case font-sans">{title}</span>
+          </h1>
+          <div className="flex shrink-0 gap-2">
             <button
               type="button"
               className="btn btn-tool btn-outline"
@@ -116,6 +113,7 @@ export default function Project() {
             )}
           </div>
         </div>
+        <div className="page-subtitle">{number || ' '}</div>
       </div>
 
       <div role="tablist" className="tab-band gap-[26px]">

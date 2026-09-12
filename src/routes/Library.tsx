@@ -12,14 +12,12 @@ export default function Library() {
   return (
     <>
       <div className="header-band">
-        <div className="flex items-center justify-between gap-4">
-          <div className="page-heading">
-            <div className="page-subtitle">Everything partners have sent…</div>
-            <h1 className="page-title">Library</h1>
-            <div className="page-subtitle">
-              {tracks.data ? plural(tracks.data.length, 'track') : ' '}
-            </div>
-          </div>
+        <div className="page-eyebrow">Everything partners have sent…</div>
+        <div className="title-row">
+          <h1 className="page-title">Library</h1>
+        </div>
+        <div className="page-subtitle">
+          {tracks.data ? plural(tracks.data.length, 'track') : '\u00a0'}
         </div>
       </div>
       {/* tab_bar_app: its own band between the heading and the list, the
