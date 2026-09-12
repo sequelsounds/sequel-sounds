@@ -10,7 +10,7 @@ export default function Projects() {
 
   return (
     <>
-      <div className="border-b border-sequel-line px-7 pb-[18px] pt-[22px]">
+      <div className="header-band">
         <h1 className="page-title">
           Projects
         </h1>

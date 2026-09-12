@@ -11,8 +11,8 @@ export default function Library() {
 
   return (
     <>
-      <div className="border-b border-sequel-line px-7 pb-[18px] pt-[22px]">
-        <div className="flex items-end justify-between gap-4">
+      <div className="header-band">
+        <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="page-title">
               Library
@@ -23,10 +23,12 @@ export default function Library() {
           </div>
         </div>
       </div>
-      {/* Its own band between the heading and the list, with a line of its
-          own, so the search belongs to neither and separates the two. */}
-      <div className="border-b border-sequel-line px-7 py-4">
-        <Search />
+      {/* tab_bar_app: its own band between the heading and the list, the
+          search taking 40% of it as Form Block 3 does. */}
+      <div className="tab-band">
+        <div className="tab-band-search">
+          <Search />
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">

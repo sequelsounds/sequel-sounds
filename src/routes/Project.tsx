@@ -91,8 +91,8 @@ export default function Project() {
 
   return (
     <>
-      <div className="border-b border-sequel-line px-7 pt-[22px]">
-        <div className="flex items-start justify-between gap-4">
+      <div className="header-band">
+        <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="page-title [overflow-wrap:anywhere]">
               <span className="sentence-case font-sans">{title}</span>
@@ -120,7 +120,9 @@ export default function Project() {
             )}
           </div>
         </div>
-        <div role="tablist" className="mt-[22px] flex gap-[26px]">
+      </div>
+
+      <div role="tablist" className="tab-band gap-[26px]">
           <button type="button" role="tab" className="tab" aria-selected={tab === 'inbox'} onClick={() => setTab('inbox')}>
             Inbox
             {tracks.data && (
@@ -133,10 +135,9 @@ export default function Project() {
             Playlists
             {playlists.data && <span className="count">{playlists.data.length}</span>}
           </button>
-          <button type="button" role="tab" className="tab" aria-selected={tab === 'activity'} onClick={() => setTab('activity')}>
-            Activity
-          </button>
-        </div>
+        <button type="button" role="tab" className="tab" aria-selected={tab === 'activity'} onClick={() => setTab('activity')}>
+          Activity
+        </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">

@@ -32,8 +32,8 @@ export default function Playlists() {
 
   return (
     <>
-      <div className="border-b border-sequel-line px-7 pb-[18px] pt-[22px]">
-        <div className="flex items-end justify-between gap-4">
+      <div className="header-band">
+        <div className="flex items-center justify-between gap-4">
           <h1 className="page-title">
             Playlists
           </h1>

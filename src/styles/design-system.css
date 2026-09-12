@@ -33,6 +33,38 @@
     color: var(--surface-fg);
   }
 
+  /* ------------------------------------------------------------- page bands
+   * The two bands every page opens with, straight off Webflow's Projects
+   * page. Both are fixed heights, not padding around whatever is inside:
+   * header_app is 6rem, tab_bar_app 3.5rem, both 2rem in from the sides with
+   * a single line beneath. That is what makes the pages line up with each
+   * other — the content changes, the bands do not.
+   */
+  .header-band {
+    display: flex;
+    height: 6rem;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 2rem;
+    border-bottom: 1px solid var(--color-sequel-line);
+  }
+
+  .tab-band {
+    display: flex;
+    height: 3.5rem;
+    align-items: center;
+    padding: 0 2rem;
+    border-bottom: 1px solid var(--color-sequel-line);
+  }
+
+  /* Form Block 3 — the search takes 40% of the band, not the whole width. */
+  .tab-band-search {
+    width: 40%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+
   /* ---------------------------------------------------------- page headings
    * Read off Webflow's Projects page: title_app is Fahkwang 2rem/2rem
    * uppercase in Sequel Brown, and project_subtitle_app is 0.8rem/0.8rem at
@@ -359,6 +391,10 @@
     table-layout: fixed;
   }
 
+  .track-table th:first-child {
+    padding-left: 2rem;
+  }
+
   .track-table th {
     font-weight: 300;
     color: var(--color-sequel-ink);
@@ -370,6 +406,14 @@
     top: 0;
     background-color: var(--color-sequel-silver);
     z-index: 1;
+  }
+
+  .track-row td:first-child {
+    padding-left: 2rem;
+  }
+
+  .track-row td:last-child {
+    padding-right: 2rem;
   }
 
   .track-row td {
