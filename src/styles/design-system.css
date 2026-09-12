@@ -75,11 +75,11 @@
    * that page they are the same element ("Let's check in on..." and the
    * person's name).
    *
-   * Its 1rem top margin is the one value not copied. Webflow's h1 brings a
-   * default top margin of its own, so there the gap lands on both sides of
-   * the title; ours has none, which left the line above jammed against the
-   * title and the line below stranded 16px away. The band spaces the three
-   * lines evenly instead and centres them, so the stack reads as one block.
+   * Its 1rem top margin is the one value not copied, and no gap replaces
+   * it. On the page itself the three lines very nearly touch — the small
+   * ones sit right on the title, which is what makes the big Fahkwang read
+   * as the heading and the other two as annotations on it. Any gap at all
+   * breaks them into three separate things.
    */
   /* The three lines as one block, so the gap is the same above and below
    * the title wherever the stack sits — on its own, or beside the buttons. */
@@ -87,7 +87,6 @@
     display: flex;
     min-width: 0;
     flex-direction: column;
-    gap: 0.5rem;
   }
 
   .page-title {
