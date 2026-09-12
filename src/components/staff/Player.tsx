@@ -25,7 +25,7 @@ export default function Player() {
       </button>
       <div className="min-w-0">
         <div className="truncate">{player.current?.title ?? 'Nothing playing'}</div>
-        <div className="truncate text-xs text-[#a9a7a2]">
+        <div className="truncate text-xs font-light text-sequel-silver">
           {player.error ? <span className="text-sequel-error">{player.error}</span> : subtitle}
         </div>
       </div>
@@ -34,7 +34,7 @@ export default function Player() {
         progress={duration > 0 ? Math.min(1, player.position / duration) : 0}
         onSeek={(fraction) => player.seek(fraction * duration)}
       />
-      <div className="text-right text-[#a9a7a2] tabular-nums">
+      <div className="text-right font-light text-sequel-silver tabular-nums">
         {formatDuration(player.position)} / {formatDuration(duration)}
       </div>
       <div className="flex justify-end gap-3 text-base">

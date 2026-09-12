@@ -533,7 +533,7 @@ export default function Creator() {
         setFileOver(false)
         await uploadFiles(await filesFromDrop(e.dataTransfer))
       }}
-      className={`relative col-start-3 row-start-2 z-[2] flex min-h-0 min-w-0 flex-col overflow-hidden bg-sequel-white shadow-[-6px_0_24px_rgba(48,47,44,0.18)] ${
+      className={`relative col-start-3 row-start-2 z-[2] flex min-h-0 min-w-0 flex-col overflow-hidden bg-sequel-silver shadow-[-6px_0_24px_rgba(48,47,44,0.18)] ${
         fileOver ? 'outline outline-2 -outline-offset-2 outline-sequel-brown' : ''
       }`}
     >

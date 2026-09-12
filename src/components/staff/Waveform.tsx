@@ -12,9 +12,10 @@ type Props = {
 const BAR = 3
 const GAP = 1
 const PLAYED = '#f1f0ee'
-// Sequel Silver at low alpha, so the unplayed bars sit on Sequel Brown
-// rather than introducing a third grey.
-const UNPLAYED = 'rgba(241, 240, 238, 0.35)'
+// A solid tone rather than silver at low alpha — played and unplayed still
+// have to be told apart, and this is that distinction drawn as a real colour
+// instead of transparency.
+const UNPLAYED = '#7d7370'
 
 /**
  * Bars from peaks, drawn on a canvas because the bar count follows the width
