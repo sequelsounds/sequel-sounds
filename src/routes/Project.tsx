@@ -105,8 +105,22 @@ export default function Project() {
       <div className="header-band">
         <div className="page-eyebrow">{project.data?.client_name ?? ' '}</div>
         <div className="title-row gap-4">
+          {/* The title is the way through to the project in Track, so the
+              separate button for it is gone. A project with no uuid has
+              nowhere to point, and stays plain text rather than a dead link. */}
           <h1 className="page-title min-w-0 flex-1 truncate">
-            <span className="sentence-case font-sans">{title}</span>
+            {trackUrl ? (
+              <a
+                href={trackUrl}
+                target="_blank"
+                rel="noreferrer"
+                title="Open this project in Sequel Track"
+              >
+                {title}
+              </a>
+            ) : (
+              title
+            )}
           </h1>
           <div className="flex shrink-0 gap-2">
             <button
@@ -117,16 +131,6 @@ export default function Project() {
             >
               {copied ? 'Copied' : 'Copy inbox link'}
             </button>
-            {trackUrl && (
-              <a
-                className="btn btn-mono btn-quiet"
-                href={trackUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open in Track
-              </a>
-            )}
           </div>
         </div>
         <div className="page-subtitle">{sequelNo || ' '}</div>

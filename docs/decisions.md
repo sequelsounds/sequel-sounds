@@ -87,6 +87,16 @@ keyed on. So the mirror carries both: `xano_id` stays the upsert key, and the
 webhook now takes `uuid` into `xano_uuid`. A project without one shows no
 button rather than a wrong link.
 
+## The project title is the link to Track
+
+**2026-09-12.** Open in Track was a button beside the title pointing at the
+same project the title names. The title carries the link instead, in
+Fahkwang caps like every other page heading, and the button is gone.
+
+The rule about a missing uuid still holds, and is why this is a condition
+rather than a plain anchor: a project with no `xano_uuid` has nowhere to
+point, so its title stays plain text rather than becoming a dead link.
+
 ## Open in Studio goes to /projects/:id, not /p/:id
 
 **2026-09-12.** The spec wrote `studio.sequelsounds.com/p/{id}`, but `/p/` is

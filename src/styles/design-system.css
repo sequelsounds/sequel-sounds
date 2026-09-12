@@ -115,6 +115,19 @@
     color: var(--color-sequel-brown);
   }
 
+  /* On a project page the title is the link out to Track. It should not
+     announce itself as one in the middle of a heading — the underline
+     arrives on hover. */
+  .page-title a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .page-title a:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
   .page-subtitle {
     font-size: 0.8rem;
     line-height: 0.8rem;
