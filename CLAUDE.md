@@ -56,7 +56,10 @@ alphabetical, the way the generator emits it.
 
 - **Partners never fill in forms.** The inbox page takes a name/email/company
   once per browser and nothing else. Do not add per-track fields; staff edit
-  metadata in the library.
+  metadata from the "i" button on a track row.
+- **Staff upload too.** `sign-upload` takes either an inbox token or a staff
+  session; the staff path names the project explicitly. Dropping files on the
+  Playlist Creator uploads them and adds them to the playlist.
 - **Browser-side metadata is a first pass.** The Lambda re-reads tags server-side
   and is authoritative. Never make an upload depend on a browser tag read.
 - **Nothing blocks an upload on a guess.** Duplicate detection is advisory at

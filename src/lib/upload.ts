@@ -39,22 +39,23 @@ export type SignedUpload = {
   already_uploaded: { track_id: string; created_at: string } | null
 }
 
-/** Ask the Edge Function for a presigned PUT. The token authorises the call. */
-export async function signUpload(token: string, file: File): Promise<SignedUpload> {
+async function requestSignature(
+  file: File,
+  extra: Record<string, unknown>,
+  headers: Record<string, string>,
+): Promise<SignedUpload> {
   const res = await fetch(`${FUNCTIONS_URL}/sign-upload`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-share-token': token,
-      // The publishable key is public by design; it only gets the request past
-      // the platform's JWT gate. The share token is the real authorisation.
       apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      ...headers,
     },
     body: JSON.stringify({
       filename: file.name,
       content_type: contentTypeFor(file),
       size_bytes: file.size,
+      ...extra,
     }),
   })
 
@@ -63,6 +64,36 @@ export async function signUpload(token: string, file: File): Promise<SignedUploa
     throw new Error(detail.error ?? `could not start upload (${res.status})`)
   }
   return res.json()
+}
+
+/** Ask the Edge Function for a presigned PUT. The token authorises the call. */
+export function signUpload(token: string, file: File): Promise<SignedUpload> {
+  return requestSignature(
+    file,
+    {},
+    {
+      'x-share-token': token,
+      // The publishable key is public by design; it only gets the request past
+      // the platform's JWT gate. The share token is the real authorisation.
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+  )
+}
+
+/**
+ * The same presign, for staff uploading into a playlist rather than through an
+ * inbox link. Their session is the authorisation, so the project has to be
+ * named explicitly — there is no inbox to infer it from. The Edge Function
+ * checks both the session and that the project exists.
+ */
+export function signUploadAsStaff(
+  file: File,
+  projectId: string,
+  accessToken: string,
+): Promise<SignedUpload> {
+  return requestSignature(file, { project_id: projectId }, {
+    Authorization: `Bearer ${accessToken}`,
+  })
 }
 
 /**

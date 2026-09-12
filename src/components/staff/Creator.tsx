@@ -1,7 +1,8 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useDroppable, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMatch } from 'react-router-dom'
 import { useCreator } from '../../lib/creator'
 import type { Tables } from '../../lib/database.types'
@@ -18,6 +19,12 @@ import {
   type Track,
   type TrackWithUse,
 } from '../../lib/queries'
+import { filesFromDrop, isMediaFile } from '../../lib/dropFiles'
+import { readTagsAll, type FileTags } from '../../lib/tags'
+import { supabase } from '../../lib/supabase'
+import { contentTypeFor, putToS3, signUploadAsStaff } from '../../lib/upload'
+import { runQueue } from '../../lib/uploadQueue'
+import { useSession } from '../../lib/auth'
 import Artwork from './Artwork'
 import Menu from './Menu'
 import Switch from './Switch'
@@ -32,6 +39,17 @@ type Row = {
   position: number
   track: Track | null
 }
+
+/** A file on its way to S3, shown in the Creator while it goes. */
+type Upload = {
+  id: string
+  file: File
+  name: string
+  progress: number
+  error: string | null
+}
+
+const PARALLEL_UPLOADS = 4
 
 type DragData =
   | { type: 'track'; track: TrackWithUse }
@@ -79,12 +97,17 @@ export default function Creator() {
   const projectPlaylists = usePlaylists(routeProjectId ?? undefined)
   const actions = usePlaylistActions()
   const player = usePlayer()
+  const qc = useQueryClient()
 
   const [rows, setRows] = useState<Row[]>([])
   const [title, setTitle] = useState('')
   const [editing, setEditing] = useState(false)
   const [picking, setPicking] = useState(false)
   const [addingTracks, setAddingTracks] = useState(false)
+  const [uploads, setUploads] = useState<Upload[]>([])
+  const [fileOver, setFileOver] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const session = useSession()
   const [attaching, setAttaching] = useState(false)
   const [copied, setCopied] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -267,6 +290,134 @@ export default function Creator() {
     [rows, sections, playlistId, routeProjectId, actions, open],
   )
 
+  /**
+   * Files straight off the desktop, into this playlist.
+   *
+   * Same three steps as the partner inbox — presign, PUT to S3, then write the
+   * row — so a failed upload still leaves no orphan track, and the same Lambda
+   * picks the object up and renders the preview and peaks. The difference is
+   * only the authorisation: staff have a session rather than an inbox token,
+   * so the project is named explicitly.
+   */
+  const uploadFiles = useCallback(
+    async (files: File[]) => {
+      const media = files.filter(isMediaFile)
+      if (media.length === 0) return
+
+      let pid = playlistId
+      if (!pid) {
+        pid = await actions.createPlaylist.mutateAsync({ projectId: routeProjectId })
+        open(pid)
+      }
+      // tracks.project_id is not null, so an upload needs somewhere to live.
+      const projectId = data?.project_id ?? routeProjectId
+      if (!projectId) {
+        setNotice('Attach this playlist to a project first — uploads belong to a project.')
+        return
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData.session?.access_token
+      if (!accessToken) {
+        setNotice('Your session has expired. Sign in again.')
+        return
+      }
+
+      const queued: Upload[] = media.map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        name: file.name,
+        progress: 0,
+        error: null,
+      }))
+      setUploads((u) => [...u, ...queued])
+
+      // A first pass at the tags so the row is not called "04 bounce final".
+      // The Lambda re-reads the file and overwrites all of it. readTagsAll
+      // reports per file rather than returning, so they are collected here.
+      const tags: (FileTags | null)[] = media.map(() => null)
+      await readTagsAll(media, (index, t) => {
+        tags[index] = t
+      })
+      const submissionId = crypto.randomUUID()
+      const who = session?.user.email ?? 'Sequel'
+
+      await runQueue(
+        queued.map((q) => q.id),
+        async (id) => {
+          const item = queued.find((q) => q.id === id)!
+          const index = media.indexOf(item.file)
+          const patch = (next: Partial<Upload>) =>
+            setUploads((u) => u.map((x) => (x.id === id ? { ...x, ...next } : x)))
+          try {
+            const signed = await signUploadAsStaff(item.file, projectId, accessToken)
+            await putToS3(signed.upload_url, item.file, (progress) => patch({ progress }))
+
+            const contentType = contentTypeFor(item.file)
+            const t = tags[index] ?? null
+            const { error } = await supabase.from('tracks').insert({
+              id: signed.track_id,
+              project_id: signed.project_id,
+              s3_key: signed.key,
+              original_filename: item.file.name,
+              mime_type: contentType,
+              size_bytes: item.file.size,
+              kind: contentType.startsWith('video/') ? 'video' : 'audio',
+              title: t?.title ?? item.file.name,
+              artist: t?.artist ?? null,
+              album: t?.album ?? null,
+              bpm: t?.bpm ?? null,
+              musical_key: t?.musical_key ?? null,
+              duration_seconds: t?.duration_seconds ?? null,
+              // Staff uploads are not a partner drop, and saying so keeps the
+              // inbox honest about where a track came from.
+              submitter_name: who,
+              submitter_email: session?.user.email ?? null,
+              submitter_company: 'Sequel',
+              submission_id: submissionId,
+            })
+            if (error) throw error
+
+            await addTrack({
+              id: signed.track_id,
+              project_id: signed.project_id,
+              kind: contentType.startsWith('video/') ? 'video' : 'audio',
+              title: t?.title ?? item.file.name,
+              artist: t?.artist ?? null,
+              album: t?.album ?? null,
+              composer: null,
+              publisher: null,
+              label: null,
+              genre: null,
+              bpm: t?.bpm ?? null,
+              musical_key: t?.musical_key ?? null,
+              isrc: null,
+              staff_notes: null,
+              duration_seconds: t?.duration_seconds ?? null,
+              preview_key: null,
+              artwork_s3_key: null,
+              processing_status: 'pending',
+              submitter_name: who,
+              submitter_email: session?.user.email ?? null,
+              submitter_company: 'Sequel',
+              notes: null,
+              submission_id: submissionId,
+              share_token: '',
+              created_at: new Date().toISOString(),
+              playlist_tracks: [],
+            })
+            setUploads((u) => u.filter((x) => x.id !== id))
+          } catch (err) {
+            patch({ error: err instanceof Error ? err.message : 'Upload failed' })
+          }
+        },
+        PARALLEL_UPLOADS,
+      )
+      void qc.invalidateQueries({ queryKey: ['tracks'] })
+    },
+    [playlistId, routeProjectId, data, actions, open, addTrack, session, qc],
+  )
+
   // ------------------------------------------------------------ derived
 
   const grouped = useMemo(() => {
@@ -356,6 +507,8 @@ export default function Creator() {
   }
 
   const menuItems = [
+    { label: 'Upload files…', onSelect: () => fileInput.current?.click() },
+    { label: 'Add from library…', onSelect: () => setAddingTracks(true), disabled: !data },
     { label: 'Add section', onSelect: () => void addSection(), disabled: !data },
     { label: editing ? 'Done editing' : 'Edit all', onSelect: () => setEditing((v) => !v), disabled: !data },
     { label: 'Attach to project…', onSelect: () => setAttaching(true), disabled: !data },
@@ -367,7 +520,37 @@ export default function Creator() {
   const numberOf = new Map(rows.map((r, i) => [r.id, i + 1]))
 
   return (
-    <aside className="z-[2] flex min-h-0 min-w-0 flex-col overflow-hidden bg-sequel-white shadow-[-6px_0_24px_rgba(48,47,44,0.18)]">
+    <aside
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes('Files')) return
+        e.preventDefault()
+        setFileOver(true)
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFileOver(false)
+      }}
+      onDrop={async (e) => {
+        if (!e.dataTransfer.types.includes('Files')) return
+        e.preventDefault()
+        setFileOver(false)
+        await uploadFiles(await filesFromDrop(e.dataTransfer))
+      }}
+      className={`relative z-[2] flex min-h-0 min-w-0 flex-col overflow-hidden bg-sequel-white shadow-[-6px_0_24px_rgba(48,47,44,0.18)] ${
+        fileOver ? 'outline outline-2 -outline-offset-2 outline-sequel-brown' : ''
+      }`}
+    >
+      {/* One input for both the drop zones and the menu item. */}
+      <input
+        ref={fileInput}
+        type="file"
+        multiple
+        accept="audio/*,video/*"
+        className="hidden"
+        onChange={(e) => {
+          void uploadFiles(Array.from(e.target.files ?? []))
+          e.target.value = ''
+        }}
+      />
       <div className="flex items-center justify-between bg-sequel-brown px-[18px] py-[14px] text-sequel-silver">
         <h2 className="font-title text-[15px] font-semibold uppercase tracking-[.06em]">Playlist Creator</h2>
         <button
@@ -382,7 +565,7 @@ export default function Creator() {
       </div>
 
       {!playlistId ? (
-        <EmptyDrop forProject={!!routeProjectId} onClick={() => setAddingTracks(true)} />
+        <EmptyDrop forProject={!!routeProjectId} onClick={() => fileInput.current?.click()} />
       ) : !data && !playlist.isPending ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-[13px] text-sequel-mid">
           <p>That playlist could not be found.</p>
@@ -492,8 +675,32 @@ export default function Creator() {
                   })}
                 </Fragment>
               ))}
-              <EndDrop empty={rows.length === 0} onClick={() => setAddingTracks(true)} />
+              <EndDrop empty={rows.length === 0} onClick={() => fileInput.current?.click()} />
             </SortableContext>
+            {uploads.length > 0 && (
+              <ul className="border-t border-sequel-line px-[18px] py-2 text-[13px]">
+                {uploads.map((u) => (
+                  <li key={u.id} className="py-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 truncate">{u.name}</span>
+                      <span className="shrink-0 tabular-nums text-sequel-mid">
+                        {u.error ? 'failed' : `${u.progress}%`}
+                      </span>
+                    </div>
+                    {u.error ? (
+                      <p className="form-error">{u.error}</p>
+                    ) : (
+                      <div className="mt-1 h-[2px] bg-sequel-brown/15">
+                        <div
+                          className="h-full bg-sequel-brown transition-[width]"
+                          style={{ width: `${u.progress}%` }}
+                        />
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
             {notice && <div className="px-[18px] py-2 text-[13px] text-sequel-mid">{notice}</div>}
           </div>
 
@@ -700,8 +907,8 @@ function EmptyDrop({ forProject, onClick }: { forProject: boolean; onClick: () =
     >
       <p>No playlist open.</p>
       <p>
-        Press + to start one{forProject ? ' for this project' : ''}, or drop a track here — or
-        click — to start one.
+        Drop files here from your desktop, or click to choose them — that starts a playlist
+        {forProject ? ' for this project' : ''}. Press + to start an empty one.
       </p>
     </button>
   )
@@ -718,7 +925,9 @@ function EndDrop({ empty, onClick }: { empty: boolean; onClick: () => void }) {
         isOver ? 'border-sequel-brown text-sequel-ink' : 'border-sequel-grey text-sequel-mid'
       }`}
     >
-      {empty ? 'Drag tracks here, or click to add them' : 'Drop tracks here, or click to add'}
+      {empty
+        ? 'Drop files here from your desktop, or click to choose them'
+        : 'Drop files or tracks here, or click to upload'}
     </button>
   )
 }

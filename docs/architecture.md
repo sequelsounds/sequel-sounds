@@ -41,6 +41,15 @@ in-page record of what it sent rather than fetching one.
 
 ## Upload path
 
+There are two callers. A partner holds an inbox share token and gets that
+inbox's project; staff hold a Supabase session and name the project, because
+they are uploading into a playlist rather than through an inbox link. Both go
+through the same `sign-upload`, the same presigned PUT, the same Lambda. Only
+the authorisation differs — a staff upload carries no `inbox_id`, and is
+recorded with `submitter_company = 'Sequel'` so the inbox stays honest about
+where a track came from.
+
+
 ```
 browser                   sign-upload (Edge)            S3                Postgres
    |  POST filename/type/size     |                      |                   |
@@ -58,6 +67,10 @@ Three properties matter:
    upload at an existing track's prefix.
 2. **Files never pass through Supabase**, and the frontend holds no AWS config.
 3. **The row is written last**, so a failed upload leaves no orphan track.
+
+A staff upload needs a project because `tracks.project_id` is not null, so the
+Creator refuses to upload into a playlist that is not attached to one, and says
+so rather than failing at the insert.
 
 The Lambda's outputs land beside the source:
 

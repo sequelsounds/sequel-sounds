@@ -1,9 +1,15 @@
-// sign-upload — validates an inbox share token and returns a presigned S3 PUT
-// URL for the track's original file.
+// sign-upload — authorises an upload and returns a presigned S3 PUT URL for
+// the track's original file.
 //
-// The caller never chooses the object key: this function mints the track uuid
-// and builds the key itself, so a partner cannot aim an upload at an existing
-// track's prefix.
+// Two callers, two authorisations:
+//   - a partner holding an inbox share token, who gets that inbox's project
+//     and nothing else to choose from
+//   - staff with a Supabase session, who name the project explicitly because
+//     they are uploading into a playlist rather than through an inbox link
+//
+// The caller never chooses the object key in either case: this function mints
+// the track uuid and builds the key itself, so nobody can aim an upload at an
+// existing track's prefix.
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.20'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 
@@ -86,9 +92,13 @@ Deno.serve(async (req) => {
   }
 
   const token = req.headers.get('x-share-token')
-  if (!token) return json({ error: 'missing share token' }, 401, origin)
 
-  let body: { filename?: string; content_type?: string; size_bytes?: number }
+  let body: {
+    filename?: string
+    content_type?: string
+    size_bytes?: number
+    project_id?: string
+  }
   try {
     body = await req.json()
   } catch {
@@ -117,16 +127,50 @@ Deno.serve(async (req) => {
     { auth: { persistSession: false } },
   )
 
-  const { data: inbox, error } = await admin
-    .from('inboxes')
-    .select('id, project_id, is_active, expires_at')
-    .eq('token', token)
-    .maybeSingle()
+  // Which project is this upload for, and is the caller allowed to say so?
+  let projectId: string
+  let inboxId: string | null = null
 
-  if (error) return json({ error: 'lookup failed' }, 500, origin)
-  if (!inbox || !inbox.is_active) return json({ error: 'invalid token' }, 403, origin)
-  if (inbox.expires_at && new Date(inbox.expires_at) <= new Date()) {
-    return json({ error: 'this link has expired' }, 403, origin)
+  if (token) {
+    const { data: inbox, error } = await admin
+      .from('inboxes')
+      .select('id, project_id, is_active, expires_at')
+      .eq('token', token)
+      .maybeSingle()
+
+    if (error) return json({ error: 'lookup failed' }, 500, origin)
+    if (!inbox || !inbox.is_active) return json({ error: 'invalid token' }, 403, origin)
+    if (inbox.expires_at && new Date(inbox.expires_at) <= new Date()) {
+      return json({ error: 'this link has expired' }, 403, origin)
+    }
+    projectId = inbox.project_id
+    inboxId = inbox.id
+  } else {
+    // No token: the only other caller is staff, proved by their session.
+    // The publishable key satisfies the platform's JWT gate but resolves to
+    // no user, so it cannot get past this.
+    const bearer = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
+    const { data: userData } = bearer
+      ? await admin.auth.getUser(bearer)
+      : { data: { user: null } }
+    const userId = userData?.user?.id ?? null
+
+    const { data: staffRow } = userId
+      ? await admin.from('staff').select('user_id').eq('user_id', userId).maybeSingle()
+      : { data: null }
+    if (!staffRow) return json({ error: 'not authorised' }, 401, origin)
+
+    // Staff name the project; it is checked to exist rather than trusted, so
+    // a typo fails here instead of writing a track with a dangling parent.
+    if (!body.project_id) return json({ error: 'project_id is required' }, 400, origin)
+    const { data: project, error: projectError } = await admin
+      .from('projects_mirror')
+      .select('id')
+      .eq('id', body.project_id)
+      .maybeSingle()
+    if (projectError) return json({ error: 'lookup failed' }, 500, origin)
+    if (!project) return json({ error: 'unknown project' }, 404, origin)
+    projectId = project.id
   }
 
   // Cheap duplicate pre-check. Advisory only: it still signs the upload, so a
@@ -136,7 +180,7 @@ Deno.serve(async (req) => {
   const { data: existing } = await admin
     .from('tracks')
     .select('id, created_at')
-    .eq('project_id', inbox.project_id)
+    .eq('project_id', projectId)
     .eq('original_filename', filename)
     .eq('size_bytes', size_bytes)
     .order('created_at', { ascending: true })
@@ -167,8 +211,8 @@ Deno.serve(async (req) => {
       key,
       upload_url: signed.url,
       expires_in: URL_TTL_SECONDS,
-      project_id: inbox.project_id,
-      inbox_id: inbox.id,
+      project_id: projectId,
+      inbox_id: inboxId,
       // Same name and byte length already in this project. Not proof — two
       // different masters can share both — so it is surfaced, never enforced.
       already_uploaded: existing
