@@ -17,6 +17,9 @@
   .surface-dark {
     --surface-bg: var(--color-sequel-brown);
     --surface-fg: var(--color-sequel-silver);
+    /* Silver at full strength: the line colour below is brown, which would
+       be invisible here. */
+    --field-border: var(--surface-fg);
     background-color: var(--surface-bg);
     color: var(--surface-fg);
   }
@@ -24,6 +27,8 @@
   .surface-light {
     --surface-bg: var(--color-sequel-silver);
     --surface-fg: var(--color-sequel-brown);
+    /* The same line every other border in the tool draws. */
+    --field-border: var(--color-sequel-line);
     background-color: var(--surface-bg);
     color: var(--surface-fg);
   }
@@ -119,7 +124,7 @@
     --field-font-weight: 400;
     width: 100%;
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--surface-fg);
+    border: 1px solid var(--field-border, var(--surface-fg));
     background-color: transparent;
     color: var(--surface-fg);
     /* Stated rather than inherited: an inherited family is one more thing the

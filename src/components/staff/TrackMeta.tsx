@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useCornerIsDark } from '../../lib/luminance'
 import { useMediaUrl } from '../../lib/media'
 import { useTrackActions, useTrackDetail, type Track, type TrackDetail } from '../../lib/queries'
 import { supabase } from '../../lib/supabase'
@@ -128,6 +129,11 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
 
   const { data: storedArtUrl } = useMediaUrl(artPreview ? null : artKey)
   const shownArt = artPreview ?? storedArtUrl ?? null
+
+  // The mark sits on the picture with nothing behind it, so it takes its
+  // colour from what it is standing on. Unknown keeps silver rather than
+  // guessing: a wrong guess on a light sleeve makes it invisible.
+  const cornerIsDark = useCornerIsDark(shownArt)
 
   useEffect(() => {
     return () => {
@@ -295,7 +301,9 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
                           setArtKey(null)
                           setArtPreview(null)
                         }}
-                        className="absolute right-0 top-0 grid h-9 w-9 place-items-center bg-sequel-brown text-[1.6rem] leading-none text-sequel-silver"
+                        className={`absolute right-0 top-0 grid h-9 w-9 place-items-center text-[1.6rem] leading-none ${
+                          cornerIsDark === false ? 'text-sequel-brown' : 'text-sequel-silver'
+                        }`}
                       >
                         ×
                       </button>

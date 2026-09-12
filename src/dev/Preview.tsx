@@ -198,17 +198,24 @@ export default function Preview() {
     c.setQueryData(['peaks', tracks[0].id], peaks)
     // One track carries artwork so the dialog's picture state — the image,
     // and the × that clears it — can be looked at without a signed URL.
-    const artKey = `tracks/${'0'.repeat(8)}-0000-0000-0000-${'0'.repeat(12)}/artwork.jpg`
-    c.setQueryData(
-      ['media', artKey, null],
-      'data:image/svg+xml,' +
-        encodeURIComponent(
-          '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">' +
-            '<rect width="300" height="300" fill="%23372b29"/>' +
-            '<text x="150" y="185" font-size="140" font-style="italic" font-family="Georgia" fill="%23c98a9a" text-anchor="middle">II</text>' +
-            '</svg>',
-        ),
-    )
+    const sleeve = (id: string, bg: string, fg: string) => {
+      const key = `tracks/${id.repeat(8)}-0000-0000-0000-${id.repeat(12)}/artwork.jpg`
+      c.setQueryData(
+        ['media', key, null],
+        'data:image/svg+xml;charset=utf-8,' +
+          encodeURIComponent(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">` +
+              `<rect width="300" height="300" fill="${bg}"/>` +
+              `<text x="150" y="185" font-size="140" font-style="italic" font-family="Georgia" fill="${fg}" text-anchor="middle">II</text>` +
+              `</svg>`,
+          ),
+      )
+      return key
+    }
+    // One dark sleeve and one light one, so the control that reads the corner
+    // it sits on can be seen doing both.
+    const darkArt = sleeve('0', '#372b29', '#c98a9a')
+    const lightArt = sleeve('1', '#f1f0ee', '#372b29')
 
     // The details dialog fetches the full row per track; seed the ones the
     // fixture can open so the form is not stuck on "Loading…".
@@ -232,7 +239,7 @@ export default function Preview() {
         disc_no: 1,
         comments: 'Library keyword dump lands here.',
         staff_notes: null,
-        artwork_s3_key: t === tracks[0] ? artKey : null,
+        artwork_s3_key: t === tracks[0] ? darkArt : t === tracks[1] ? lightArt : null,
       })
     }
     return c
