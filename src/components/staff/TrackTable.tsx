@@ -1,8 +1,8 @@
 import { useDraggable } from '@dnd-kit/core'
 import { useMemo, useState } from 'react'
-import { formatDuration, plural } from '../../lib/format'
+import { formatDuration } from '../../lib/format'
 import { toPlayerTrack, usePlayer, type PlayerTrack } from '../../lib/player'
-import { playlistCount, type TrackWithUse } from '../../lib/queries'
+import type { TrackWithUse } from '../../lib/queries'
 import Artwork from './Artwork'
 import { GripIcon, InfoIcon, PauseIcon, PlayIcon, ShareIcon } from './icons'
 import TrackMeta from './TrackMeta'
@@ -92,7 +92,6 @@ function TrackRow({
     data: { type: 'track', track },
   })
   const current = player.isCurrent(track.id)
-  const inPlaylists = playlistCount(track)
   const secondary = [track.artist, track.album].filter(Boolean).join(': ')
 
   return (
@@ -125,14 +124,7 @@ function TrackRow({
         </div>
       </td>
       <td>
-        <div className="truncate">
-          {track.title}
-          {/* Not in a half-width pane: the title needs the room more, and the
-              pill only ever got a few characters in before truncating. */}
-          {!lean && inPlaylists > 0 && (
-            <span className="pill">in {plural(inPlaylists, 'playlist')}</span>
-          )}
-        </div>
+        <div className="truncate">{track.title}</div>
         <div className="secondary mt-0.5 truncate text-xs">
           {secondary ||
             (track.processing_status !== 'ready' ? 'Processing…' : '')}

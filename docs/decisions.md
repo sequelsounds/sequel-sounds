@@ -87,6 +87,19 @@ keyed on. So the mirror carries both: `xano_id` stays the upsert key, and the
 webhook now takes `uuid` into `xano_uuid`. A project without one shows no
 button rather than a wrong link.
 
+## Tracks no longer say how many playlists they are in
+
+**2026-09-12.** The "in N playlists" pill came from the approved mockup and
+was the one thing a track row said about its own state, back when tracks
+had a status column and the pill replaced it.
+
+It is gone from every row. In the project page's half-width pane it
+truncated to "in 1 playli…"; on the Library it fitted but was still
+sitting between a title and nothing, on rows whose titles are long enough
+to want the width. `playlistCount` stays in queries.ts — the count is
+still there to read if it comes back as a column of its own, which is the
+only place it would earn the room.
+
 ## A project is a split, not three tabs
 
 **2026-09-12.** Inbox and Playlists were separate tabs, so seeing what a
