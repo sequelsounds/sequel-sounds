@@ -1122,16 +1122,27 @@ function EmptyDrop({
       type="button"
       ref={setNodeRef}
       onClick={onClick}
-      className={`flex flex-1 cursor-pointer flex-col items-center justify-center gap-2 p-6 text-center text-[13px] ${
-        isOver ? 'bg-sequel-well text-sequel-ink' : 'text-sequel-mid'
-      }`}
+      className="flex flex-1 cursor-pointer flex-col items-start p-[18px] text-[13px]"
     >
-      <p>No playlist open.</p>
-      <p>
-        Drop files here from your desktop, or click to choose them — that starts
-        a playlist
-        {forProject ? ' for this project' : ''}. Press + to start an empty one.
-      </p>
+      {/* The same dashed target as the one at the foot of a playlist, so
+          the panel asks for a file the same way whether it is holding a
+          list or waiting for its first one. */}
+      <span
+        className={`flex w-full flex-col items-center justify-center gap-3 border border-dashed px-4 py-10 text-center ${
+          isOver
+            ? 'border-sequel-brown bg-sequel-well text-sequel-ink'
+            : 'border-sequel-grey text-sequel-mid'
+        }`}
+      >
+        <UploadFileIcon size="1.5rem" />
+        <span>
+          Drag files here, or <span className="underline">click to upload</span>
+        </span>
+        <span className="text-sequel-mid">
+          That starts a playlist{forProject ? ' for this project' : ''}. Press +
+          for an empty one.
+        </span>
+      </span>
     </button>
   )
 }
