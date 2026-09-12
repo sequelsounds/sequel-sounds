@@ -602,8 +602,9 @@
   }
 
   .search-well {
-    background-color: var(--color-sequel-well);
-    padding: 8px 12px;
+    /* No fill. A grey box reads as disabled next to fields that are not. */
+    background-color: transparent;
+    padding: 8px 0;
     color: var(--color-sequel-ink);
     font: inherit;
     font-size: 13px;

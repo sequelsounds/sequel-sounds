@@ -12,7 +12,7 @@ export default function Player() {
 
   return (
     <footer
-      className="col-start-1 col-span-3 row-start-3 grid items-center gap-[18px] bg-sequel-brown px-[22px] text-sequel-silver"
+      className="col-start-1 col-span-3 row-start-2 grid items-center gap-[18px] bg-sequel-brown px-[22px] text-sequel-silver"
       style={{ gridTemplateColumns: '44px minmax(120px, 300px) 1fr 100px 60px' }}
     >
       <button

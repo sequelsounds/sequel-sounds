@@ -1,11 +1,12 @@
+import Search from '../components/staff/Search'
 import TrackTable from '../components/staff/TrackTable'
 import { plural } from '../lib/format'
 import { useLibraryTracks } from '../lib/queries'
 
 /** Every track across every project. The second-search tool. */
 export default function Library() {
-  // Searching is the rail's job — one search box in the app, not two. This
-  // page is the full list behind it.
+  // The list is unfiltered; the band below the heading searches across
+  // everything and navigates, rather than filtering this page.
   const tracks = useLibraryTracks('')
 
   return (
@@ -25,6 +26,12 @@ export default function Library() {
           </div>
         </div>
       </div>
+      {/* Its own band between the heading and the list, with a line of its
+          own, so the search belongs to neither and separates the two. */}
+      <div className="border-b border-sequel-line px-7 py-4">
+        <Search />
+      </div>
+
       <div className="min-h-0 flex-1 overflow-auto">
         {tracks.isPending && <p className="px-7 py-4 text-sequel-mid">Loading…</p>}
         {tracks.error && <p className="form-error px-7 py-4">{tracks.error.message}</p>}
