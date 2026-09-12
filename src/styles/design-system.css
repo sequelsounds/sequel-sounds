@@ -935,10 +935,10 @@
 
   /* The sender's note sits under the head rather than inside it, so the
      head can keep a fixed height. */
+  /* No fill. Without one there is no box to inset from either, so the note
+     lines up with the head above it and the rows below. */
   .detail-from {
     margin: 14px 1.25rem;
-    padding: 12px 14px;
-    background-color: var(--color-sequel-white);
     font-size: 0.8rem;
   }
 
