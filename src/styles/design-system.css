@@ -453,11 +453,14 @@
     padding-right: 2rem;
   }
 
+  /* No rule between rows. The list is quieter without them, and hover
+     already inverts the whole row, so nothing is lost in finding one. The
+     padding pays for the line: at 9px, two-line rows ran into each other
+     once the rules were gone. */
   .track-row td {
-    padding: 9px 12px;
+    padding: 15px 12px;
     /* dashboard project row txt is 0.8rem; the rows are the same list. */
     font-size: 0.8rem;
-    border-bottom: 1px solid var(--color-sequel-line);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
