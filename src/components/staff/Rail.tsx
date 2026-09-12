@@ -1,12 +1,10 @@
 import { Link, NavLink } from 'react-router-dom'
-import { useSession } from '../../lib/auth'
 import { useRecentProjects } from '../../lib/queries'
 import { supabase } from '../../lib/supabase'
 import SequelLogo from '../SequelLogo'
 
 /** Left rail: brand, the three sections, recent projects. */
 export default function Rail() {
-  const session = useSession()
   const recent = useRecentProjects()
 
   return (
@@ -57,16 +55,16 @@ export default function Rail() {
         </div>
       )}
 
-      <div className="mt-auto truncate text-xs text-sequel-mid">
-        <span title={session?.user.email ?? ''}>{session?.user.email}</span>
-        <button
-          type="button"
-          onClick={() => supabase.auth.signOut()}
-          className="ml-2 underline hover:text-sequel-ink"
-        >
-          Sign out
-        </button>
-      </div>
+      {/* Staff know who they are signed in as; the address was taking up the
+          foot of every page to tell them. The only thing needed here is the
+          way out, drawn as one more nav link. */}
+      <button
+        type="button"
+        onClick={() => void supabase.auth.signOut()}
+        className="nav-link mt-auto cursor-pointer text-left"
+      >
+        Log out
+      </button>
     </aside>
   )
 }
