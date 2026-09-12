@@ -36,6 +36,22 @@ export default function TrackTable({ tracks, showProject = false }: Props) {
         <col style={{ width: 86 }} />
         <col style={{ width: 80 }} />
       </colgroup>
+      {/* The library spans every project, so the project column needs saying.
+          The inbox does not have one — its tracks are already grouped under
+          the partner who sent them — and a header row there would just repeat
+          itself above every submission. */}
+      {showProject && (
+        <thead>
+          <tr>
+            <th />
+            <th />
+            <th>Track</th>
+            <th>Project</th>
+            <th />
+            <th className="pr-5 text-right!">Length</th>
+          </tr>
+        </thead>
+      )}
       <tbody>
         {tracks.map((track, index) => (
           <TrackRow
