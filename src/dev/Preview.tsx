@@ -196,6 +196,31 @@ export default function Preview() {
     c.setQueryData(['playlist', PL1], playlist)
     c.setQueryData(['recent', undefined], recent)
     c.setQueryData(['peaks', tracks[0].id], peaks)
+    // The details dialog fetches the full row per track; seed the ones the
+    // fixture can open so the form is not stuck on "Loading…".
+    for (const t of tracks) {
+      c.setQueryData(['track-detail', t.id], {
+        id: t.id,
+        title: t.title,
+        artist: t.artist,
+        album: t.album,
+        composer: t.artist,
+        publisher: null,
+        label: null,
+        grouping: null,
+        genre: 'Rock',
+        year: 2024,
+        release_date: null,
+        bpm: 120,
+        musical_key: null,
+        isrc: 'GB22P1705219',
+        track_no: 1,
+        disc_no: 1,
+        comments: 'Library keyword dump lands here.',
+        staff_notes: null,
+        artwork_s3_key: null,
+      })
+    }
     return c
   }, [])
 

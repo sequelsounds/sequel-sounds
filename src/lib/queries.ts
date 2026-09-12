@@ -333,6 +333,54 @@ export function useSearch(q: string) {
 
 // ---------------------------------------------------------------- writes
 
+/**
+ * The full row behind the details dialog.
+ *
+ * Fetched per dialog rather than carried in TRACK_COLS: `comments` alone runs
+ * to a couple of thousand characters on a production-library track, and the
+ * library list pulls five hundred rows.
+ */
+export type TrackDetail = Pick<
+  Tables<'tracks'>,
+  | 'id'
+  | 'title'
+  | 'artist'
+  | 'album'
+  | 'composer'
+  | 'publisher'
+  | 'label'
+  | 'grouping'
+  | 'genre'
+  | 'year'
+  | 'release_date'
+  | 'bpm'
+  | 'musical_key'
+  | 'isrc'
+  | 'track_no'
+  | 'disc_no'
+  | 'comments'
+  | 'staff_notes'
+  | 'artwork_s3_key'
+>
+
+export const TRACK_DETAIL_COLS =
+  'id, title, artist, album, composer, publisher, label, grouping, genre, year, release_date, bpm, musical_key, isrc, track_no, disc_no, comments, staff_notes, artwork_s3_key'
+
+export function useTrackDetail(id: string) {
+  return useQuery({
+    queryKey: ['track-detail', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tracks')
+        .select(TRACK_DETAIL_COLS)
+        .eq('id', id)
+        .single()
+      if (error) throw error
+      return data as unknown as TrackDetail
+    },
+  })
+}
+
 /** Staff corrections to a track's metadata. Partners never edit these. */
 export function useTrackActions() {
   const qc = useQueryClient()
@@ -342,9 +390,10 @@ export function useTrackActions() {
       const { error } = await supabase.from('tracks').update(patch).eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => {
+    onSuccess: (_d, v) => {
       void qc.invalidateQueries({ queryKey: ['tracks'] })
       void qc.invalidateQueries({ queryKey: ['playlist'] })
+      void qc.invalidateQueries({ queryKey: ['track-detail', v.id] })
     },
   })
 }
