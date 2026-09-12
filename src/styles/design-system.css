@@ -367,33 +367,36 @@
     display: none;
   }
 
-  /* Quiet until the row is hovered, like the play control. */
+  /* Always there, so a row says what can be done with it without having to
+     be hovered first — but quiet, at the same weight as the secondary text,
+     until the pointer is actually on them. */
   .row-actions {
     display: flex;
-    gap: 2px;
-    opacity: 0;
-  }
-
-  .track-row:hover .row-actions,
-  .track-row.is-playing .row-actions {
-    opacity: 1;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
   }
 
   .row-actions button {
     display: grid;
     place-items: center;
-    width: 26px;
-    height: 26px;
-    border: 1px solid transparent;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
     background: none;
-    color: inherit;
-    font: inherit;
-    font-style: italic;
+    color: var(--color-sequel-mid);
     cursor: pointer;
+    transition: color 150ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
-  .row-actions button:hover {
-    border-color: currentColor;
+  .track-row:hover .row-actions button {
+    color: color-mix(in srgb, var(--color-sequel-silver) 78%, transparent);
+  }
+
+  .row-actions button:hover,
+  .track-row:hover .row-actions button:hover {
+    color: inherit;
   }
 
   .pill {

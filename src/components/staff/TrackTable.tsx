@@ -4,6 +4,7 @@ import { formatDuration, plural } from '../../lib/format'
 import { toPlayerTrack, usePlayer, type PlayerTrack } from '../../lib/player'
 import { playlistCount, type TrackWithUse } from '../../lib/queries'
 import Artwork from './Artwork'
+import InfoIcon from './InfoIcon'
 import ShareIcon from './ShareIcon'
 import TrackMeta from './TrackMeta'
 
@@ -27,7 +28,7 @@ export default function TrackTable({ tracks, showProject = false }: Props) {
         <col style={{ width: 56 }} />
         <col />
         {showProject && <col style={{ width: 180 }} />}
-        <col style={{ width: 72 }} />
+        <col style={{ width: 68 }} />
         <col style={{ width: 80 }} />
       </colgroup>
       <tbody>
@@ -117,7 +118,7 @@ function TrackRow({
               setEditing(true)
             }}
           >
-            i
+            <InfoIcon />
           </button>
           <button
             type="button"
