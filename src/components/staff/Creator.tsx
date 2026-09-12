@@ -128,16 +128,14 @@ export default function Creator() {
   const [uploads, setUploads] = useState<Upload[]>([])
   const [fileOver, setFileOver] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
-  const titleInput = useRef<HTMLInputElement>(null)
-  // The id of a playlist this panel just made, so its name can be put up
-  // for typing the moment it loads. A ref, not state: nothing renders
-  // differently because of it.
-  const nameOnArrival = useRef<string | null>(null)
   const session = useSession()
   const [attaching, setAttaching] = useState(false)
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
   const [destroying, setDestroying] = useState(false)
+  // The name typed before a playlist exists. The panel with nothing open
+  // is a playlist waiting to be made, not an absence.
+  const [draftName, setDraftName] = useState('')
   const [deletingTrack, setDeletingTrack] = useState<Track | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -158,14 +156,6 @@ export default function Creator() {
     setPicking(false)
     setAttaching(false)
     setAddingTracks(false)
-
-    // A playlist this panel just made: put its name up for typing, whole,
-    // so the first keystroke replaces "New playlist" rather than appending
-    // to it.
-    if (data && nameOnArrival.current === data.id) {
-      nameOnArrival.current = null
-      titleInput.current?.select()
-    }
   }, [data])
 
   // Scoped to the project on screen: arriving at a project shows its latest
@@ -366,7 +356,9 @@ export default function Creator() {
       if (!pid) {
         pid = await actions.createPlaylist.mutateAsync({
           projectId: routeProjectId,
+          name: draftName.trim() || undefined,
         })
+        setDraftName('')
         open(pid)
       }
       // A playlist attached to a project puts its uploads in that project; one
@@ -526,15 +518,14 @@ export default function Creator() {
     setTimeout(() => setSaved(false), 1600)
   }
 
-  const newPlaylist = async () => {
+  const saveDraft = async () => {
+    const name = draftName.trim()
+    if (!name) return
     const id = await actions.createPlaylist.mutateAsync({
       projectId: routeProjectId,
+      name,
     })
-    // Naming it is the first thing you do — you would rather the list read
-    // as itself in the column on the left before tracks start landing in
-    // it. So the name is selected and waiting, not something to go and
-    // click on afterwards.
-    nameOnArrival.current = id
+    setDraftName('')
     open(id)
   }
 
@@ -665,15 +656,6 @@ export default function Creator() {
           Playlister
         </h2>
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            title="New playlist"
-            aria-label="New playlist"
-            onClick={() => void newPlaylist()}
-            className="grid h-6 w-6 place-items-center border-2 border-sequel-silver text-lg leading-none"
-          >
-            +
-          </button>
           {/* Puts the panel back to "No playlist open". The handle on the
               edge only hides the panel; this is how you finish with a list
               without hiding the thing you build the next one in. */}
@@ -692,10 +674,46 @@ export default function Creator() {
       </div>
 
       {!playlistId ? (
-        <EmptyDrop
-          forProject={!!routeProjectId}
-          onClick={() => fileInput.current?.click()}
-        />
+        <>
+          {/* A playlist before it is one. The same header the real thing
+              gets, so naming it, saving it and dropping into it all happen
+              in the place they will go on happening. */}
+          <div className="flex items-start gap-[10px] border-b border-sequel-line px-[18px] py-[14px]">
+            <div className="min-w-0 flex-1">
+              <input
+                className="creator-title"
+                value={draftName}
+                placeholder="Untitled playlist"
+                aria-label="Playlist name"
+                onChange={(e) => setDraftName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void saveDraft()
+                }}
+              />
+              <small className="mt-[3px] block text-xs uppercase tracking-[.04em] text-sequel-mid">
+                0 tracks
+              </small>
+            </div>
+            <button
+              type="button"
+              className="btn btn-tool btn-outline"
+              disabled={!draftName.trim()}
+              onClick={() => void saveDraft()}
+            >
+              Save
+            </button>
+            <Menu
+              label={<MenuIcon />}
+              title="Nothing to do until the playlist exists"
+              buttonClassName="px-2 py-[5px] text-lg leading-none"
+              items={menuItems}
+            />
+          </div>
+          <EmptyDrop
+            forProject={!!routeProjectId}
+            onClick={() => fileInput.current?.click()}
+          />
+        </>
       ) : !data && !playlist.isPending ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-[13px] text-sequel-mid">
           <p>That playlist could not be found.</p>
@@ -708,7 +726,6 @@ export default function Creator() {
           <div className="flex items-start gap-[10px] border-b border-sequel-line px-[18px] py-[14px]">
             <div className="min-w-0 flex-1">
               <input
-                ref={titleInput}
                 className="creator-title"
                 value={title}
                 aria-label="Playlist name"
@@ -1203,8 +1220,8 @@ function EmptyDrop({
           Drag files here, or <span className="underline">click to upload</span>
         </span>
         <span className="text-sequel-mid">
-          That starts a playlist{forProject ? ' for this project' : ''}. Press +
-          for an empty one.
+          Or name it above and save — either way it becomes a playlist
+          {forProject ? ' for this project' : ''}.
         </span>
       </span>
     </button>

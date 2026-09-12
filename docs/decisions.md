@@ -5,6 +5,26 @@ rediscovering an argument later.
 
 ---
 
+## A playlist is a draft until it is saved
+
+**2026-09-13.** Pressing + wrote a `playlists` row immediately, because a
+dropped file needs a playlist id to attach to. So a playlist appeared in
+the project's column the instant you asked for one, named "New playlist",
+before it meant anything — and the Save button beside the title was
+unclickable, since it only ever saved the name and clicking it blurred the
+field, which had already saved.
+
+The panel with nothing open is now the new playlist: an empty title on
+"Untitled playlist", 0 tracks, Save, the menu. Nothing is written until you
+save it or drop the first file, so nothing appears on the left until it is
+real, and Save is a button that does something again. The + in the bar goes
+with it — the panel no longer needs a control to reach a state it is
+already in.
+
+`uploadFiles` already created a playlist when there was none, so dropping
+into a draft needed nothing new beyond carrying the typed name into the
+insert.
+
 ## Fahkwang had one weight, and the app asked for five
 
 **2026-09-13.** Only `Fahkwang-Regular.woff2` was ever committed, declared at

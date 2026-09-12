@@ -658,6 +658,10 @@
   /* No box on focus, drawn or otherwise: the caret already says where you are,
      and a border appearing around the name the moment it is clicked is the
      loudest thing in the panel. Same call the login fields make. */
+  .creator-title::placeholder {
+    color: var(--color-sequel-mid);
+  }
+
   .creator-title {
     font: inherit;
     /* The same 17px/500 as .submission-title: this names the playlist the
