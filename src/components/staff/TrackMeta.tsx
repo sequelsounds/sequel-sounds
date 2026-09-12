@@ -215,24 +215,26 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
               onClick={onPrev}
               disabled={!onPrev}
               aria-label="Previous track"
-              className="grid h-8 w-8 place-items-center disabled:opacity-30"
+              className="grid h-9 w-9 place-items-center disabled:opacity-30"
             >
-              <ChevronIcon className="rotate-90" />
+              <ChevronIcon size="1.25rem" className="rotate-90" />
             </button>
             <button
               type="button"
               onClick={onNext}
               disabled={!onNext}
               aria-label="Next track"
-              className="grid h-8 w-8 place-items-center disabled:opacity-30"
+              className="grid h-9 w-9 place-items-center disabled:opacity-30"
             >
-              <ChevronIcon className="-rotate-90" />
+              <ChevronIcon size="1.25rem" className="-rotate-90" />
             </button>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="grid h-8 w-8 place-items-center text-lg leading-none"
+              // Same weight as the one on the artwork. Ink rather than silver:
+              // this one sits on the light surface, where silver is invisible.
+              className="grid h-9 w-9 place-items-center text-[1.6rem] leading-none"
             >
               ×
             </button>
@@ -293,7 +295,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
                           setArtKey(null)
                           setArtPreview(null)
                         }}
-                        className="absolute right-1 top-1 grid h-6 w-6 place-items-center bg-sequel-brown text-sequel-silver"
+                        className="absolute right-2 top-2 grid h-9 w-9 place-items-center bg-sequel-brown text-[1.6rem] leading-none text-sequel-silver"
                       >
                         ×
                       </button>

@@ -143,6 +143,16 @@
     color: var(--surface-fg);
   }
 
+  /* A button is a thing you click, so it says so. The browser's default is
+     `cursor: default`, which means every button that is not a .btn has to
+     remember to set this — and they did not. Disabled ones keep the default,
+     because they are not clickable. */
+  button:not(:disabled),
+  [role='tab']:not(:disabled),
+  label:has(> input[type='file']) {
+    cursor: pointer;
+  }
+
   /* The browser's focus ring, replaced rather than removed — keyboard users
      still need to see where they are. :focus-visible keeps it off mouse clicks
      on buttons while still showing it in text fields. */
