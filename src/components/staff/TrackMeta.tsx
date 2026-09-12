@@ -268,7 +268,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
             it was 660px on Metadata, 318px on Notes, 268px on Tags before this
             was pinned, which read as the dialog jumping rather than the
             content changing. Anything taller scrolls inside. */}
-        <div className="flex h-[32rem] overflow-auto px-7 py-6">
+        <div className="flex h-[36rem] overflow-auto px-7 py-6">
           {tab === 'metadata' ? (
             <div className="flex w-full gap-7">
               {/* ---- artwork ---- */}
@@ -392,7 +392,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
                       than running off the end of one line. Same box as
                       Lyrics and Notes: no grabber. */}
                   <textarea
-                    rows={3}
+                    rows={5}
                     className={`${field} mt-2`}
                     value={form.comments ?? ''}
                     onChange={(e) => set('comments', e.target.value)}
@@ -505,7 +505,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
         </div>
 
         {/* ---- footer ---- */}
-        <div className="flex items-center justify-between gap-4 border-t border-sequel-line px-7 py-5">
+        <div className="flex items-center justify-between gap-4 px-7 py-5">
           {/* A uuid is not something anyone retypes, so it copies. */}
           <button
             type="button"
