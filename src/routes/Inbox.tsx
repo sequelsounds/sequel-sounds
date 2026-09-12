@@ -260,18 +260,23 @@ function Inbox({ token }: { token: string }) {
   return (
     <div className="surface-light min-h-screen">
       <div className="mx-auto max-w-4xl space-y-6 px-6 pb-28 pt-10">
-        <SequelLogo className="mb-8" />
+        {/* items-start rather than a shared baseline: "Upload" sits beside the
+            mark, not the title below, so their top edges are what has to line
+            up. */}
+        <div className="mb-8 flex items-start justify-between gap-6">
+          <SequelLogo />
+          <span className="font-title shrink-0 text-[2rem] uppercase leading-none">
+            Upload
+          </span>
+        </div>
 
         {/* Height is reserved so the page does not jump when the name lands,
             but nothing is drawn in the gap — a placeholder is more noticeable
             than the empty space it is meant to cover. */}
-        <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 min-h-10">
+        <header className="min-h-10">
           <h1 className="sentence-case font-sans text-[2rem] font-normal leading-tight">
             {projectName}
           </h1>
-          <span className="font-title shrink-0 text-[3rem] uppercase leading-none">
-            Upload
-          </span>
         </header>
 
         {/* ---- who is sending, asked once per browser ---- */}
