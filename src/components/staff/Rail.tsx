@@ -19,7 +19,7 @@ export default function Rail() {
     <aside className="col-start-1 row-start-1 row-span-2 flex flex-col gap-[18px] overflow-auto border-r border-sequel-line pb-8 pl-12 pr-8 pt-8 text-[14px] font-normal leading-[20px]">
       {/* The mark alone, as in Webflow's App Nav (app_logo_wrap is 4rem
           square and holds nothing but the image). */}
-      <Link to="/" className="block w-16 text-sequel-ink no-underline">
+      <Link to="/" className="mb-[calc(6rem-18px)] block w-16 text-sequel-ink no-underline">
         <SequelLogo className="h-16! w-16!" />
       </Link>
 

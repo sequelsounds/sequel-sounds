@@ -5,6 +5,21 @@ rediscovering an argument later.
 
 ---
 
+## The nav is Webflow's App Nav, measured
+
+**2026-09-12.** `nav_text_app` and `nav_links_app` were read off the live
+Webflow styles rather than eyeballed: 0.8rem at weight 400, 0.5rem above and
+below, 1rem between links, no horizontal padding — `nav_sidebar`'s own 3rem
+left inset is what positions them — and `app_logo_wrap` 6rem clear of the
+first link.
+
+One value is not copied. `nav_text_app` records `line-height: 0.8px`, which
+is a typo in that file: a 0.8px line box collapses the text onto itself. It
+almost certainly means 0.8rem or a unitless 0.8. Ours uses a real one.
+
+Colour is still not copied either, for the reason recorded below: that
+component sets Sequel Silver for its own dark ground.
+
 ## Staff are an allowlist table, not "anyone signed in"
 
 **2026-09-12.** `app.is_staff()` was `auth.uid() is not null`, which was true

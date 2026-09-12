@@ -263,9 +263,19 @@
     color: var(--color-sequel-ink);
   }
 
+  /* Read off Webflow's App Nav (nav_text_app / nav_links_app): 0.8rem at
+     weight 400, 0.5rem above and below, 1rem between links, and no
+     horizontal padding — the sidebar's own 3rem left inset positions them.
+     Its line-height is recorded as 0.8px, which is a typo in that file; a
+     0.8px line box would collapse the text on top of itself, so this uses a
+     real one. */
   .nav-link {
     display: block;
-    padding: 7px 8px;
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.25rem;
     color: var(--color-sequel-mid);
     text-decoration: none;
   }
