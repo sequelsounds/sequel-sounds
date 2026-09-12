@@ -680,17 +680,20 @@
     left: 18px;
   }
 
-  /* The handle left behind when the Creator is away: the same brown bar as
-     its header, pinned to the edge it slid out through. */
+  /* The handle left behind when the Creator is away: the same brown as its
+     header, on the edge it slid out through, halfway down the workspace —
+     which is between the 2rem strip and the 4.5rem player, not the middle
+     of the window. A rectangle, like everything else here. */
   .creator-tab {
     position: fixed;
     right: 0;
-    top: 2rem;
+    top: calc(2rem + (100vh - 2rem - 4.5rem) / 2);
+    transform: translateY(-50%);
     z-index: 3;
     display: grid;
     place-items: center;
     width: 2rem;
-    height: 3rem;
+    height: 4rem;
     background-color: var(--color-sequel-brown);
     color: var(--color-sequel-silver);
     border: 0;
