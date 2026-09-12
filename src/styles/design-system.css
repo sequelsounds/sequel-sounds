@@ -762,8 +762,11 @@
     /* The same gutter around the pair as between them, as DISCO's two
        panels have — they read as two things on the page rather than one
        area with a line down it. */
-    gap: 1.5rem;
-    padding: 1.5rem;
+    gap: 1rem;
+    padding: 1rem;
+    /* The ground reads a shade back from the panes sitting on it — the
+       palette's own recessed silver, not a new colour. */
+    background-color: var(--color-sequel-well);
   }
 
   /* Both take an even share of what the gutter leaves. A 50% basis would
@@ -775,6 +778,7 @@
     min-width: 0;
     overflow: auto;
     border: 1px solid var(--color-sequel-line);
+    background-color: var(--color-sequel-silver);
   }
 
   .split-list {
