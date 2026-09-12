@@ -644,7 +644,9 @@
      loudest thing in the panel. Same call the login fields make. */
   .creator-title {
     font: inherit;
-    font-size: 0.8rem;
+    /* The same 17px/500 as .submission-title: this names the playlist the
+       pane on the left also names, and the two sat at different sizes. */
+    font-size: 17px;
     font-weight: 500;
     width: 100%;
     border: 0;
