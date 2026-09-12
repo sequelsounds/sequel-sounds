@@ -68,7 +68,7 @@ function Shell() {
       <div
         className="grid h-screen overflow-hidden bg-sequel-silver text-[14px] leading-[1.4] text-sequel-ink"
         style={{
-          gridTemplateColumns: 'clamp(150px, 17vw, 232px) minmax(0, 1fr) clamp(240px, 28vw, 340px)',
+          gridTemplateColumns: '16rem minmax(0, 1fr) clamp(240px, 28vw, 340px)',
           gridTemplateRows: '1fr 72px',
         }}
       >

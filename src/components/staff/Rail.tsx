@@ -25,9 +25,15 @@ export default function Rail() {
     !!hits && (hits.projects.length > 0 || hits.playlists.length > 0 || hits.tracks.length > 0)
 
   return (
-    <aside className="flex flex-col gap-[18px] overflow-auto border-r border-sequel-line px-4 py-[18px]">
+    // Width, font-size/line-height and padding match Sequel Track's own App
+    // Nav component in Webflow (nav_sidebar: 16rem, Creato 14/20, 2rem top
+    // /right/bottom, 3rem left) — read from the live styles, not guessed.
+    // Colour is deliberately not copied: that component sets Sequel Silver
+    // text for its own dark ground, which would be invisible on this rail's
+    // light one, and the approved mockup is light with dark text.
+    <aside className="flex flex-col gap-[18px] overflow-auto border-r border-sequel-line pb-8 pl-12 pr-8 pt-8 text-[14px] font-normal leading-[20px]">
       <Link to="/" className="flex items-center gap-[10px] text-sequel-ink no-underline">
-        <SequelLogo className="h-[34px]! w-[34px]!" />
+        <SequelLogo className="h-16! w-16!" />
         <span>Sequel Studio</span>
       </Link>
 

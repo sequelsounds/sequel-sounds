@@ -118,78 +118,90 @@ export default function Creator() {
     return () => clearTimeout(t)
   }, [notice])
 
-  const persist = useCallback(
-    (next: Row[]) => {
-      if (!playlistId) return
-      setRows(next)
-      actions.persistOrder.mutate({
-        playlistId,
-        rows: next.map(({ id, track_id, section_id, position }) => ({
-          id,
-          track_id,
-          section_id,
-          position,
-        })),
-      })
-    },
-    [playlistId, actions.persistOrder],
-  )
-
+  /**
+   * Handles a drop, creating a playlist first if none is open yet. That case
+   * used to be a silent no-op: with no playlist, the "No playlist open" state
+   * rendered no droppable at all, so a drag onto it had nothing to land on
+   * and onDragEnd fired with `over: null`. EmptyDrop below gives that state a
+   * real target, and this creates the playlist the drop is clearly asking for
+   * rather than discarding it.
+   */
   const onDrop = useCallback(
     (e: DragEndEvent) => {
       const { active, over } = e
-      if (!over || !playlistId) return
+      if (!over) return
       const a = active.data.current as DragData | undefined
       const o = over.data.current as DragData | undefined
       if (!a || !o) return
+      if (a.type !== 'track' && a.type !== 'pt') return
 
-      let next = [...rows]
-      let moving: Row
-      if (a.type === 'track') {
-        if (next.some((r) => r.track_id === a.track.id)) {
-          setNotice('Already in this playlist')
-          return
+      void (async () => {
+        let pid = playlistId
+        let base = rows
+        let secs = sections
+        if (!pid) {
+          pid = await actions.createPlaylist.mutateAsync({ projectId: routeProjectId })
+          open(pid)
+          base = []
+          secs = []
         }
-        moving = {
-          id: crypto.randomUUID(),
-          track_id: a.track.id,
-          section_id: null,
-          position: 0,
-          track: a.track,
-        }
-      } else if (a.type === 'pt') {
-        moving = { ...a.pt }
-        next = next.filter((r) => r.id !== moving.id)
-      } else {
-        return
-      }
 
-      if (o.type === 'pt') {
-        if (o.pt.id === moving.id) return
-        const idx = next.findIndex((r) => r.id === o.pt.id)
-        if (idx < 0) return
-        moving.section_id = o.pt.section_id
-        const fromAbove =
-          a.type === 'pt' &&
-          rows.findIndex((r) => r.id === moving.id) < rows.findIndex((r) => r.id === o.pt.id)
-        next.splice(fromAbove ? idx + 1 : idx, 0, moving)
-      } else if (o.type === 'section') {
-        moving.section_id = o.sectionId
-        let last = -1
-        next.forEach((r, i) => {
-          if (r.section_id === o.sectionId) last = i
+        let next = [...base]
+        let moving: Row
+        if (a.type === 'track') {
+          if (next.some((r) => r.track_id === a.track.id)) {
+            setNotice('Already in this playlist')
+            return
+          }
+          moving = {
+            id: crypto.randomUUID(),
+            track_id: a.track.id,
+            section_id: null,
+            position: 0,
+            track: a.track,
+          }
+        } else {
+          moving = { ...a.pt }
+          next = next.filter((r) => r.id !== moving.id)
+        }
+
+        if (o.type === 'pt') {
+          if (o.pt.id === moving.id) return
+          const idx = next.findIndex((r) => r.id === o.pt.id)
+          if (idx < 0) return
+          moving.section_id = o.pt.section_id
+          const fromAbove =
+            a.type === 'pt' &&
+            base.findIndex((r) => r.id === moving.id) < base.findIndex((r) => r.id === o.pt.id)
+          next.splice(fromAbove ? idx + 1 : idx, 0, moving)
+        } else if (o.type === 'section') {
+          moving.section_id = o.sectionId
+          let last = -1
+          next.forEach((r, i) => {
+            if (r.section_id === o.sectionId) last = i
+          })
+          next.splice(last + 1, 0, moving)
+        } else {
+          // The drop zone at the bottom: the end of the last section, or of
+          // the list when there are none.
+          moving.section_id = secs[secs.length - 1]?.id ?? null
+          next.push(moving)
+        }
+
+        const normalised = normalise(next, secs)
+        setRows(normalised)
+        actions.persistOrder.mutate({
+          playlistId: pid,
+          rows: normalised.map(({ id, track_id, section_id, position }) => ({
+            id,
+            track_id,
+            section_id,
+            position,
+          })),
         })
-        next.splice(last + 1, 0, moving)
-      } else {
-        // The drop zone at the bottom: the end of the last section, or of the
-        // list when there are none.
-        moving.section_id = sections[sections.length - 1]?.id ?? null
-        next.push(moving)
-      }
-
-      persist(normalise(next, sections))
+      })()
     },
-    [rows, sections, playlistId, persist],
+    [rows, sections, playlistId, routeProjectId, actions, open],
   )
 
   useEffect(() => {
@@ -299,7 +311,7 @@ export default function Creator() {
   return (
     <aside className="z-[2] flex min-h-0 min-w-0 flex-col overflow-hidden bg-sequel-white shadow-[-6px_0_24px_rgba(48,47,44,0.18)]">
       <div className="flex items-center justify-between bg-sequel-brown px-[18px] py-[14px] text-sequel-silver">
-        <h2 className="text-[15px] font-normal tracking-[.06em]">PLAYLIST CREATOR</h2>
+        <h2 className="font-title text-[15px] font-normal uppercase tracking-[.06em]">Playlist Creator</h2>
         <button
           type="button"
           title="New playlist"
@@ -311,10 +323,12 @@ export default function Creator() {
         </button>
       </div>
 
-      {!playlistId || (!data && !playlist.isPending) ? (
+      {!playlistId ? (
+        <EmptyDrop forProject={!!routeProjectId} />
+      ) : !data && !playlist.isPending ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-[13px] text-sequel-mid">
-          <p>No playlist open.</p>
-          <p>Press + to start one{routeProjectId ? ' for this project' : ''}, or pick one on the Playlists tab.</p>
+          <p>That playlist could not be found.</p>
+          <p>Pick another on the Playlists tab.</p>
         </div>
       ) : !data ? (
         <div className="p-[18px] text-[13px] text-sequel-mid">Loading…</div>
@@ -602,6 +616,24 @@ function CreatorTrack({
           ×
         </button>
       )}
+    </div>
+  )
+}
+
+function EmptyDrop({ forProject }: { forProject: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id: 'creator-empty', data: { type: 'end' } })
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-[13px] ${
+        isOver ? 'bg-sequel-well text-sequel-ink' : 'text-sequel-mid'
+      }`}
+    >
+      <p>No playlist open.</p>
+      <p>
+        Press + to start one{forProject ? ' for this project' : ''}, drop a track here to start
+        one, or pick one on the Playlists tab.
+      </p>
     </div>
   )
 }

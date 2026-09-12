@@ -57,7 +57,7 @@ export default function Playlists() {
         )}
         {ordered.map(([key, group]) => (
           <section key={key}>
-            <h2 className="submission-title px-7 pb-2 pt-4 uppercase">{group.title}</h2>
+            <h2 className="submission-title sentence-case font-sans px-7 pb-2 pt-4">{group.title}</h2>
             <PlaylistRows rows={group.rows} onOpen={openPlaylist} current={creator.playlistId} />
           </section>
         ))}

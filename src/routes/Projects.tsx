@@ -64,7 +64,7 @@ export default function Projects() {
                     onClick={() => navigate(`/projects/${p.id}`)}
                   >
                     <td className="pl-7">
-                      <span className="uppercase">{title}</span>
+                      <span className="sentence-case font-sans">{title}</span>
                       {number && <span className="secondary ml-2 text-xs">{number}</span>}
                     </td>
                     <td className="secondary">{p.client_name ?? ''}</td>

@@ -94,7 +94,7 @@ export default function Project() {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="font-title text-[clamp(18px,2.4vw,28px)] font-normal leading-[1.1] [overflow-wrap:anywhere]">
-              <span className="uppercase">{title}</span>
+              <span className="sentence-case font-sans">{title}</span>
               {number && (
                 <span className="ml-3 align-middle font-sans text-xs normal-case tracking-[.04em] text-sequel-mid">
                   {number}

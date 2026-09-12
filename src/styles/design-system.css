@@ -49,6 +49,11 @@
      whatever a project is actually named — punctuation, embedded digits, a
      name that arrives already mixed-case. */
   .sentence-case {
+    /* ::first-letter only applies to a block container — a plain inline
+       <span> silently ignores it, which left titles all-lowercase with no
+       capital at all. inline-block is enough to qualify without affecting
+       layout. */
+    display: inline-block;
     text-transform: lowercase;
   }
 
