@@ -964,7 +964,9 @@
 
   .submission-title {
     font-family: var(--font-sans);
-    font-weight: 400;
+    /* Medium, which is a real face in public/fonts — not the browser
+       thickening Regular for us. */
+    font-weight: 500;
     font-size: 17px;
     margin: 0;
   }
