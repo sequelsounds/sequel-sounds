@@ -731,7 +731,9 @@
   }
 
   .split-list {
-    width: 40%;
+    /* Half, and held there: as a plain flex item with width:50% it shrank
+       to its min-width and the halves came out 240/539. */
+    flex: 0 0 50%;
     min-width: 15rem;
     overflow: auto;
     border-right: 1px solid var(--color-sequel-line);
@@ -758,15 +760,57 @@
   }
 
   .split-row {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     width: 100%;
     padding: 12px 2rem;
+  }
+
+  .split-row-main {
+    flex: 1 1 auto;
+    min-width: 0;
     text-align: left;
     background: none;
     border: 0;
+    padding: 0;
     cursor: pointer;
     font: inherit;
     color: inherit;
+  }
+
+  /* DISCO's pattern: the row's actions arrive under the pointer rather than
+     sitting on every row. Focus brings them back for the keyboard. */
+  .split-row-actions {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    flex: none;
+  }
+
+  .split-row:hover .split-row-actions,
+  .split-row:focus-within .split-row-actions {
+    display: flex;
+  }
+
+  /* Named, not "every button inside the actions" — that also caught the
+     items inside the row's own menu and drew them as 22px silver squares
+     on a white panel. */
+  .icon-btn {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.75;
+  }
+
+  .icon-btn:hover {
+    opacity: 1;
   }
 
   .split-row[aria-current='true'] {

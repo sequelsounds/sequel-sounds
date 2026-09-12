@@ -2,6 +2,12 @@ import { useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import Search from '../components/staff/Search'
 import TrackTable from '../components/staff/TrackTable'
+import {
+  MailIcon,
+  MenuIcon,
+  PencilIcon,
+  ShareIcon,
+} from '../components/staff/icons'
 import { useCreator } from '../lib/creator'
 import { formatDate, plural } from '../lib/format'
 import {
@@ -60,6 +66,49 @@ function groupSubmissions(tracks: TrackWithUse[]): Submission[] {
     if (!g.note && t.notes) g.note = t.notes
   }
   return [...groups.values()].sort((a, b) => (a.latest < b.latest ? 1 : -1))
+}
+
+/** The row's ⋮, holding whatever did not earn an icon of its own. */
+function RowMenu({
+  items,
+}: {
+  items: { label: string; disabled?: boolean; onSelect: () => void }[]
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label="More"
+        title="More"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <MenuIcon />
+      </button>
+      {open && (
+        <>
+          {/* Click anywhere else closes it, including on another row. */}
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="menu text-[0.8rem]">
+            {items.map((i) => (
+              <button
+                key={i.label}
+                type="button"
+                disabled={i.disabled}
+                onClick={() => {
+                  setOpen(false)
+                  i.onSelect()
+                }}
+              >
+                {i.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
 }
 
 export default function Project() {
@@ -236,21 +285,66 @@ export default function Project() {
               </p>
             )}
             {playlists.data?.map((p) => (
-              <button
+              <div
                 key={p.id}
-                type="button"
                 className="split-row"
                 aria-current={open?.kind === 'playlist' && open.key === p.id}
-                onClick={() => setPicked({ kind: 'playlist', key: p.id })}
               >
-                <span className="split-row-title">{p.name}</span>
-                <span className="split-row-meta">
-                  <span className="pill">
-                    {plural(p.playlist_tracks[0]?.count ?? 0, 'track')}
+                <button
+                  type="button"
+                  className="split-row-main"
+                  onClick={() => setPicked({ kind: 'playlist', key: p.id })}
+                >
+                  <span className="split-row-title">{p.name}</span>
+                  <span className="split-row-meta">
+                    <span className="pill">
+                      {plural(p.playlist_tracks[0]?.count ?? 0, 'track')}
+                    </span>
+                    {formatDate(p.updated_at)}
                   </span>
-                  {formatDate(p.updated_at)}
-                </span>
-              </button>
+                </button>
+                <div className="split-row-actions">
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label="Edit in creator"
+                    title="Edit in creator"
+                    onClick={() => creator.open(p.id)}
+                  >
+                    <PencilIcon />
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label="Copy share link"
+                    title="Copy share link"
+                    onClick={() =>
+                      void navigator.clipboard.writeText(
+                        `${location.origin}/p/${p.token}`,
+                      )
+                    }
+                  >
+                    <ShareIcon />
+                  </button>
+                  <RowMenu
+                    items={[
+                      {
+                        label: 'Delete playlist',
+                        onSelect: () => {
+                          if (
+                            !confirm(
+                              `Delete “${p.name}”? The tracks stay in the project.`,
+                            )
+                          )
+                            return
+                          void actions.deletePlaylist.mutateAsync(p.id)
+                          if (open?.key === p.id) setPicked(null)
+                        },
+                      },
+                    ]}
+                  />
+                </div>
+              </div>
             ))}
 
             <div className="split-group">
@@ -262,21 +356,55 @@ export default function Project() {
               </p>
             )}
             {submissions.map((s) => (
-              <button
+              <div
                 key={s.key}
-                type="button"
                 className="split-row"
                 aria-current={open?.kind === 'submission' && open.key === s.key}
-                onClick={() => setPicked({ kind: 'submission', key: s.key })}
               >
-                <span className="split-row-title">{s.company}</span>
-                <span className="split-row-meta">
-                  <span className="pill">
-                    {plural(s.tracks.length, 'track')}
+                <button
+                  type="button"
+                  className="split-row-main"
+                  onClick={() => setPicked({ kind: 'submission', key: s.key })}
+                >
+                  <span className="split-row-title">{s.company}</span>
+                  <span className="split-row-meta">
+                    <span className="pill">
+                      {plural(s.tracks.length, 'track')}
+                    </span>
+                    {s.email && (
+                      <span className="min-w-0 truncate">{s.email}</span>
+                    )}
+                    <span className="shrink-0">{formatDate(s.latest)}</span>
                   </span>
-                  {formatDate(s.latest)}
-                </span>
-              </button>
+                </button>
+                <div className="split-row-actions">
+                  {s.email && (
+                    <a
+                      href={`mailto:${s.email}`}
+                      aria-label={`Email ${s.company}`}
+                      title={`Email ${s.company}`}
+                      className="icon-btn"
+                    >
+                      <MailIcon />
+                    </a>
+                  )}
+                  <RowMenu
+                    items={[
+                      {
+                        label: 'Copy email address',
+                        disabled: !s.email,
+                        onSelect: () =>
+                          void navigator.clipboard.writeText(s.email),
+                      },
+                      {
+                        label: 'Copy the inbox link',
+                        disabled: !project.data?.inboxes?.token,
+                        onSelect: () => void copyInbox(),
+                      },
+                    ]}
+                  />
+                </div>
+              </div>
             ))}
           </div>
 

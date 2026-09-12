@@ -135,3 +135,21 @@ export function ShareIcon(props: IconProps) {
     </Svg>
   )
 }
+
+export function PencilIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16v4Z" />
+      <line x1="14.5" x2="18.5" y1="5.5" y2="9.5" />
+    </Svg>
+  )
+}
+
+export function MailIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="5" width="18" height="14" />
+      <path d="M3 6.5 12 13l9-6.5" />
+    </Svg>
+  )
+}
