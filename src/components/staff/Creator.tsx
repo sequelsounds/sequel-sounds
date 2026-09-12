@@ -658,9 +658,11 @@ export default function Creator() {
         }}
       />
       <div className="flex items-center justify-between bg-sequel-brown px-[18px] py-[14px] text-sequel-silver">
-        {/* The word changed, the treatment did not: Fahkwang at 15px, 600,
-            uppercase, 0.06em — exactly as the bar has always been set. */}
-        <h2 className="font-title text-[15px] font-semibold uppercase tracking-[.06em]">
+        {/* Regular, not the 600 the bar asked for until today — that only
+            ever rendered as Regular anyway, because Regular was the one
+            face Fahkwang had. Now that the other five exist, the value has
+            to say what was always on screen. */}
+        <h2 className="font-title text-[15px] font-normal uppercase tracking-[.06em]">
           Playlister
         </h2>
         <div className="flex items-center gap-3">
