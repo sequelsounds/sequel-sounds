@@ -1,28 +1,13 @@
-import { useState } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { useSession } from '../../lib/auth'
-import { useCreator } from '../../lib/creator'
-import { useRecentProjects, useSearch } from '../../lib/queries'
+import { useRecentProjects } from '../../lib/queries'
 import { supabase } from '../../lib/supabase'
 import SequelLogo from '../SequelLogo'
 
-/** Left rail: brand, search, the three sections, recent projects. */
+/** Left rail: brand, the three sections, recent projects. */
 export default function Rail() {
   const session = useSession()
-  const navigate = useNavigate()
-  const creator = useCreator()
-  const [q, setQ] = useState('')
-  const results = useSearch(q)
   const recent = useRecentProjects()
-
-  const go = (to: string) => {
-    setQ('')
-    navigate(to)
-  }
-
-  const hits = results.data
-  const any =
-    !!hits && (hits.projects.length > 0 || hits.playlists.length > 0 || hits.tracks.length > 0)
 
   return (
     // Width, font-size/line-height and padding match Sequel Track's own App
@@ -31,74 +16,12 @@ export default function Rail() {
     // Colour is deliberately not copied: that component sets Sequel Silver
     // text for its own dark ground, which would be invisible on this rail's
     // light one, and the approved mockup is light with dark text.
-    <aside className="col-start-1 row-start-1 row-span-2 flex flex-col gap-[18px] overflow-auto border-r border-sequel-line pb-8 pl-12 pr-8 pt-8 text-[14px] font-normal leading-[20px]">
+    <aside className="col-start-1 row-start-2 flex flex-col gap-[18px] overflow-auto border-r border-sequel-line pb-8 pl-12 pr-8 pt-8 text-[14px] font-normal leading-[20px]">
       {/* The mark alone, as in Webflow's App Nav (app_logo_wrap is 4rem
           square and holds nothing but the image). */}
       <Link to="/" className="block w-16 text-sequel-ink no-underline">
         <SequelLogo className="h-16! w-16!" />
       </Link>
-
-      <div className="relative">
-        <input
-          type="search"
-          className="search-well"
-          placeholder="Search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          aria-label="Search projects, playlists and tracks"
-        />
-        {q.trim().length >= 2 && (
-          <div className="menu left-0 right-0 min-w-0 text-[13px]">
-            {!any && (
-              <div className="px-[14px] py-2 text-sequel-mid">
-                {results.isPending ? 'Searching…' : 'Nothing found'}
-              </div>
-            )}
-            {hits && hits.projects.length > 0 && (
-              <Group title="Projects">
-                {hits.projects.map((p) => (
-                  <button key={p.id} type="button" onClick={() => go(`/projects/${p.id}`)}>
-                    {p.name}
-                    {p.client_name && <span className="ml-2 text-sequel-mid">{p.client_name}</span>}
-                  </button>
-                ))}
-              </Group>
-            )}
-            {hits && hits.playlists.length > 0 && (
-              <Group title="Playlists">
-                {hits.playlists.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => {
-                      creator.open(p.id)
-                      go(p.project_id ? `/projects/${p.project_id}?tab=playlists` : '/playlists')
-                    }}
-                  >
-                    {p.name}
-                  </button>
-                ))}
-              </Group>
-            )}
-            {hits && hits.tracks.length > 0 && (
-              <Group title="Tracks">
-                {hits.tracks.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    // A track uploaded into an unattached playlist has no
-                    // project to open; the library is where it lives.
-                    onClick={() => go(t.project_id ? `/projects/${t.project_id}` : '/library')}
-                  >
-                    {t.title}
-                    {t.artist && <span className="ml-2 text-sequel-mid">{t.artist}</span>}
-                  </button>
-                ))}
-              </Group>
-            )}
-          </div>
-        )}
-      </div>
 
       <nav>
         <NavLink to="/" end className="nav-link">
@@ -113,8 +36,10 @@ export default function Rail() {
       </nav>
 
       {recent.data && recent.data.length > 0 && (
-        <div>
-          <h3 className="mb-1.5 ml-2 text-xs font-normal text-sequel-mid">Recent</h3>
+        // Well clear of the nav above it: at the shared 18px gap the heading
+        // read as a fourth nav item rather than the start of a new section.
+        <div className="mt-6">
+          <h3 className="mb-2 ml-2 text-xs font-normal text-sequel-mid">Recent</h3>
           {recent.data.map((p) => (
             <Link
               key={p.id}
@@ -144,16 +69,5 @@ export default function Rail() {
         </button>
       </div>
     </aside>
-  )
-}
-
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="py-1">
-      <div className="px-[14px] pb-1 pt-1 text-[11px] uppercase tracking-[.06em] text-sequel-mid">
-        {title}
-      </div>
-      {children}
-    </div>
   )
 }

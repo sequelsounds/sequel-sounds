@@ -14,6 +14,7 @@ import { Outlet } from 'react-router-dom'
 import Creator from '../components/staff/Creator'
 import Player from '../components/staff/Player'
 import Rail from '../components/staff/Rail'
+import Search from '../components/staff/Search'
 import { CreatorProvider, useCreator } from '../lib/creator'
 import { PlayerProvider } from '../lib/player'
 
@@ -69,14 +70,18 @@ function Shell() {
         className="grid h-screen overflow-hidden bg-sequel-silver text-[14px] leading-[1.4] text-sequel-ink"
         style={{
           gridTemplateColumns: '16rem minmax(0, 1fr) 24rem',
-          gridTemplateRows: '2rem 1fr 72px',
+          gridTemplateRows: '3.5rem 1fr 72px',
         }}
       >
-        {/* The strip starts after the nav, so the rail's edge runs unbroken
-            from the top of the window to the player. Placement is explicit
-            rather than by source order: the rail spans two rows, which auto
-            flow would otherwise have to guess at. */}
-        <div className="col-start-2 col-span-2 row-start-1 border-b border-sequel-line" />
+        {/* A header bar across the whole width, holding the one search. It
+            spans the nav as well so the field sits where it always has —
+            top left — while belonging to the bar rather than the rail. Tall
+            enough for a field rather than the 2rem spacer it replaces. */}
+        <div className="col-start-1 col-span-3 row-start-1 flex items-center gap-6 border-b border-sequel-line pl-12 pr-7">
+          <div className="w-[calc(16rem-5rem)] shrink-0">
+            <Search />
+          </div>
+        </div>
         <Rail />
         <main className="col-start-2 row-start-2 flex min-w-0 flex-col overflow-hidden">
           <Outlet />
