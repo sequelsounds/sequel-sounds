@@ -64,6 +64,16 @@
     align-items: center;
   }
 
+  /* vertical_divider, 1px x 1.5rem in the same half-strength brown as the
+     band's own rule. In Webflow it is what separates the search from the
+     stats beside it; here it separates the search from the tabs. */
+  .tab-band-divider {
+    width: 1px;
+    height: 1.5rem;
+    flex: none;
+    background: var(--color-sequel-line);
+  }
+
   /* ---------------------------------------------------------- page headings
    * header_app, copied from its own element tree rather than guessed at:
    *

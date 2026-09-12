@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { ChevronIcon } from '../components/staff/icons'
+import Search from '../components/staff/Search'
 import TrackTable from '../components/staff/TrackTable'
 import { useCreator } from '../lib/creator'
 import { formatDate, plural } from '../lib/format'
@@ -34,12 +35,18 @@ type Submission = {
 function groupSubmissions(tracks: TrackWithUse[]): Submission[] {
   const groups = new Map<string, Submission>()
   for (const t of tracks) {
-    const key = t.submission_id ?? `${t.submitter_email ?? ''}|${t.created_at.slice(0, 13)}`
+    const key =
+      t.submission_id ??
+      `${t.submitter_email ?? ''}|${t.created_at.slice(0, 13)}`
     let g = groups.get(key)
     if (!g) {
       g = {
         key,
-        company: t.submitter_company || t.submitter_name || t.submitter_email || 'Unknown partner',
+        company:
+          t.submitter_company ||
+          t.submitter_name ||
+          t.submitter_email ||
+          'Unknown partner',
         email: t.submitter_email ?? '',
         note: t.notes,
         latest: t.created_at,
@@ -68,7 +75,10 @@ export default function Project() {
   const [copied, setCopied] = useState(false)
   const [toggled, setToggled] = useState<Record<string, boolean>>({})
 
-  const submissions = useMemo(() => groupSubmissions(tracks.data ?? []), [tracks.data])
+  const submissions = useMemo(
+    () => groupSubmissions(tracks.data ?? []),
+    [tracks.data],
+  )
   const { number, title } = splitProjectName(project.data?.name ?? '')
   const trackUrl = trackProjectUrl(project.data?.xano_uuid ?? null)
 
@@ -87,7 +97,8 @@ export default function Project() {
     setParams(p, { replace: true })
   }
 
-  if (project.error) return <p className="form-error px-7 py-4">{project.error.message}</p>
+  if (project.error)
+    return <p className="form-error px-7 py-4">{project.error.message}</p>
 
   return (
     <>
@@ -107,7 +118,12 @@ export default function Project() {
               {copied ? 'Copied' : 'Copy inbox link'}
             </button>
             {trackUrl && (
-              <a className="btn btn-tool btn-quiet" href={trackUrl} target="_blank" rel="noreferrer">
+              <a
+                className="btn btn-tool btn-quiet"
+                href={trackUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
                 Open in Track
               </a>
             )}
@@ -116,44 +132,88 @@ export default function Project() {
         <div className="page-subtitle">{number || ' '}</div>
       </div>
 
-      <div role="tablist" className="tab-band gap-[26px]">
-          <button type="button" role="tab" className="tab" aria-selected={tab === 'inbox'} onClick={() => setTab('inbox')}>
+      {/* tab_bar_app: the search first at 40%, then the divider, then what
+          the band is for on this page — as the Projects page puts its stats
+          after the same two. */}
+      <div className="tab-band">
+        <div className="tab-band-search">
+          <Search />
+        </div>
+        <div className="tab-band-divider mx-6" />
+        <div
+          role="tablist"
+          className="flex items-end gap-[26px] self-stretch"
+        >
+          <button
+            type="button"
+            role="tab"
+            className="tab"
+            aria-selected={tab === 'inbox'}
+            onClick={() => setTab('inbox')}
+          >
             Inbox
             {tracks.data && (
               <span className="count">
-                {plural(submissions.length, 'submission')} · {plural(tracks.data.length, 'track')}
+                {plural(submissions.length, 'submission')} ·{' '}
+                {plural(tracks.data.length, 'track')}
               </span>
             )}
           </button>
-          <button type="button" role="tab" className="tab" aria-selected={tab === 'playlists'} onClick={() => setTab('playlists')}>
+          <button
+            type="button"
+            role="tab"
+            className="tab"
+            aria-selected={tab === 'playlists'}
+            onClick={() => setTab('playlists')}
+          >
             Playlists
-            {playlists.data && <span className="count">{playlists.data.length}</span>}
+            {playlists.data && (
+              <span className="count">{playlists.data.length}</span>
+            )}
           </button>
-        <button type="button" role="tab" className="tab" aria-selected={tab === 'activity'} onClick={() => setTab('activity')}>
-          Activity
-        </button>
+          <button
+            type="button"
+            role="tab"
+            className="tab"
+            aria-selected={tab === 'activity'}
+            onClick={() => setTab('activity')}
+          >
+            Activity
+          </button>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
         {tab === 'inbox' && (
           <>
-            {tracks.isPending && <p className="px-7 py-4 text-sequel-mid">Loading…</p>}
-            {tracks.error && <p className="form-error px-7 py-4">{tracks.error.message}</p>}
+            {tracks.isPending && (
+              <p className="px-7 py-4 text-sequel-mid">Loading…</p>
+            )}
+            {tracks.error && (
+              <p className="form-error px-7 py-4">{tracks.error.message}</p>
+            )}
             {tracks.data && submissions.length === 0 && (
               <p className="px-7 py-6 text-sequel-mid">
-                Nothing has been sent to this inbox yet. Copy the link above and pass it to partners.
+                Nothing has been sent to this inbox yet. Copy the link above and
+                pass it to partners.
               </p>
             )}
             {submissions.map((s, i) => {
               const open = toggled[s.key] ?? i === 0
-              const meta = [s.email, formatDate(s.latest), plural(s.tracks.length, 'track')]
+              const meta = [
+                s.email,
+                formatDate(s.latest),
+                plural(s.tracks.length, 'track'),
+              ]
                 .filter(Boolean)
                 .join(' · ')
               return open ? (
                 <section key={s.key}>
                   <div
                     className="submission-open"
-                    onClick={() => setToggled((t) => ({ ...t, [s.key]: false }))}
+                    onClick={() =>
+                      setToggled((t) => ({ ...t, [s.key]: false }))
+                    }
                   >
                     <h2 className="submission-title">{s.company}</h2>
                     <span className="min-w-0 truncate text-[13px] text-sequel-mid">
@@ -171,7 +231,9 @@ export default function Project() {
                   onClick={() => setToggled((t) => ({ ...t, [s.key]: true }))}
                 >
                   <h2 className="submission-title">{s.company}</h2>
-                  <span className="min-w-0 truncate text-[13px] text-sequel-mid">{meta}</span>
+                  <span className="min-w-0 truncate text-[13px] text-sequel-mid">
+                    {meta}
+                  </span>
                   <ChevronIcon className="ml-auto shrink-0 -rotate-90" />
                 </div>
               )
@@ -186,7 +248,9 @@ export default function Project() {
                 type="button"
                 className="btn btn-tool btn-outline"
                 onClick={async () => {
-                  const newId = await actions.createPlaylist.mutateAsync({ projectId: id ?? null })
+                  const newId = await actions.createPlaylist.mutateAsync({
+                    projectId: id ?? null,
+                  })
                   creator.open(newId)
                 }}
               >
@@ -194,18 +258,29 @@ export default function Project() {
               </button>
             </div>
             {playlists.data && playlists.data.length === 0 && (
-              <p className="px-7 py-6 text-sequel-mid">No playlists for this project yet.</p>
+              <p className="px-7 py-6 text-sequel-mid">
+                No playlists for this project yet.
+              </p>
             )}
             {playlists.data && playlists.data.length > 0 && (
-              <PlaylistRows rows={playlists.data} onOpen={(p) => creator.open(p.id)} current={creator.playlistId} />
+              <PlaylistRows
+                rows={playlists.data}
+                onOpen={(p) => creator.open(p.id)}
+                current={creator.playlistId}
+              />
             )}
           </>
         )}
 
         {tab === 'activity' && (
           <div className="px-7 py-6 text-sequel-mid">
-            <p>Activity is recorded from the viewer page — who opened each playlist, what they played and for how long.</p>
-            <p className="mt-2">Nothing to show until the first playlist is shared.</p>
+            <p>
+              Activity is recorded from the viewer page — who opened each
+              playlist, what they played and for how long.
+            </p>
+            <p className="mt-2">
+              Nothing to show until the first playlist is shared.
+            </p>
           </div>
         )}
       </div>

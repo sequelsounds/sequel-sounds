@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import Search from '../components/staff/Search'
 import { plural } from '../lib/format'
 import { splitProjectName } from '../lib/projectName'
 import { useProjects } from '../lib/queries'
@@ -19,9 +20,20 @@ export default function Projects() {
           {projects.data ? plural(projects.data.length, 'project') : '\u00a0'}
         </div>
       </div>
+      {/* tab_bar_app: the search takes 40% of the band, as Form Block 3 does. */}
+      <div className="tab-band">
+        <div className="tab-band-search">
+          <Search />
+        </div>
+      </div>
+
       <div className="min-h-0 flex-1 overflow-auto">
-        {projects.isPending && <p className="px-7 py-4 text-sequel-mid">Loading…</p>}
-        {projects.error && <p className="form-error px-7 py-4">{projects.error.message}</p>}
+        {projects.isPending && (
+          <p className="px-7 py-4 text-sequel-mid">Loading…</p>
+        )}
+        {projects.error && (
+          <p className="form-error px-7 py-4">{projects.error.message}</p>
+        )}
         {projects.data && (
           <table className="track-table">
             <colgroup>
@@ -53,11 +65,17 @@ export default function Projects() {
                   >
                     <td className="pl-7">
                       <span className="sentence-case font-sans">{title}</span>
-                      {number && <span className="secondary ml-2 text-xs">{number}</span>}
+                      {number && (
+                        <span className="secondary ml-2 text-xs">{number}</span>
+                      )}
                     </td>
                     <td className="secondary">{p.client_name ?? ''}</td>
-                    <td className="secondary">{tracks > 0 ? plural(tracks, 'track') : '—'}</td>
-                    <td className="secondary">{playlists > 0 ? playlists : '—'}</td>
+                    <td className="secondary">
+                      {tracks > 0 ? plural(tracks, 'track') : '—'}
+                    </td>
+                    <td className="secondary">
+                      {playlists > 0 ? playlists : '—'}
+                    </td>
                     <td className="secondary">{p.status ?? ''}</td>
                   </tr>
                 )
