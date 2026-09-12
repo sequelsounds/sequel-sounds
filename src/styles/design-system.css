@@ -622,11 +622,14 @@
   }
 
   /* Creator list rows. Same inversion on hover as the table. */
+  /* Same rhythm as a track row in the list beside it: 15px above and below
+     a 40px cover, so a track is the same height whichever side of the page
+     it is on. */
   .creator-track {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 18px;
+    padding: 15px 18px;
     border-left: 2px solid transparent;
     cursor: grab;
   }
@@ -647,8 +650,8 @@
   }
 
   .creator-track .art {
-    width: 28px;
-    height: 28px;
+    width: 40px;
+    height: 40px;
     flex-shrink: 0;
   }
 

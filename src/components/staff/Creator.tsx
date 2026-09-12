@@ -640,15 +640,31 @@ export default function Creator() {
         <h2 className="font-title text-[15px] font-semibold uppercase tracking-[.06em]">
           Playlist Creator
         </h2>
-        <button
-          type="button"
-          title="New playlist"
-          aria-label="New playlist"
-          onClick={() => void newPlaylist()}
-          className="grid h-6 w-6 place-items-center border-2 border-sequel-silver text-lg leading-none"
-        >
-          +
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            title="New playlist"
+            aria-label="New playlist"
+            onClick={() => void newPlaylist()}
+            className="grid h-6 w-6 place-items-center border-2 border-sequel-silver text-lg leading-none"
+          >
+            +
+          </button>
+          {/* Puts the panel back to "No playlist open". The handle on the
+              edge only hides the panel; this is how you finish with a list
+              without hiding the thing you build the next one in. */}
+          {playlistId && (
+            <button
+              type="button"
+              title="Close this playlist"
+              aria-label="Close this playlist"
+              onClick={() => open(null)}
+              className="grid h-6 w-6 place-items-center text-xl leading-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
 
       {!playlistId ? (
