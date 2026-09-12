@@ -963,7 +963,7 @@
   }
 
   .submission-title {
-    font-family: var(--font-title);
+    font-family: var(--font-sans);
     font-weight: 400;
     font-size: 17px;
     margin: 0;
