@@ -11,7 +11,7 @@ export default function Projects() {
   return (
     <>
       <div className="border-b border-sequel-line px-7 pb-[18px] pt-[22px]">
-        <h1 className="font-title text-[clamp(18px,2.4vw,28px)] font-normal uppercase leading-[1.1]">
+        <h1 className="page-title">
           Projects
         </h1>
       </div>

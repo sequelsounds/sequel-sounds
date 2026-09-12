@@ -34,7 +34,7 @@ export default function Playlists() {
     <>
       <div className="border-b border-sequel-line px-7 pb-[18px] pt-[22px]">
         <div className="flex items-end justify-between gap-4">
-          <h1 className="font-title text-[clamp(18px,2.4vw,28px)] font-normal uppercase leading-[1.1]">
+          <h1 className="page-title">
             Playlists
           </h1>
           <button
