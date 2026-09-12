@@ -759,21 +759,26 @@
     /* Basis 0, not auto: on auto the panes' full content length counts as
        the size it wants, and the bands above shrink to pay for it. */
     flex: 1 1 0%;
+    /* The same gutter around the pair as between them, as DISCO's two
+       panels have — they read as two things on the page rather than one
+       area with a line down it. */
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  /* Both take an even share of what the gutter leaves. A 50% basis would
+     not halve it any more — the padding and the gap come out of the same
+     width. */
+  .split-list,
+  .split-detail {
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow: auto;
+    border: 1px solid var(--color-sequel-line);
   }
 
   .split-list {
-    /* Half, and held there: as a plain flex item with width:50% it shrank
-       to its min-width and the halves came out 240/539. */
-    flex: 0 0 50%;
     min-width: 15rem;
-    overflow: auto;
-    border-right: 1px solid var(--color-sequel-line);
-  }
-
-  .split-detail {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow: auto;
   }
 
   /* Staff playlists first, then the inbox, each under its own label. */
@@ -782,7 +787,7 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
-    padding: 18px 2rem 6px;
+    padding: 18px 1.25rem 6px;
     font-size: 0.7rem;
     font-family: var(--font-mono);
     font-weight: 300;
@@ -795,7 +800,7 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 12px 2rem;
+    padding: 12px 1.25rem;
   }
 
   .split-row-main {
@@ -875,9 +880,17 @@
     color: var(--color-sequel-silver);
   }
 
+  .split-detail .track-row td:first-child {
+    padding-left: 1.25rem;
+  }
+
+  .split-detail .track-row td:last-child {
+    padding-right: 1.25rem;
+  }
+
   /* The head of the right column: what is open, and who sent it. */
   .detail-head {
-    padding: 18px 2rem 14px;
+    padding: 18px 1.25rem 14px;
     border-bottom: 1px solid var(--color-sequel-line);
   }
 

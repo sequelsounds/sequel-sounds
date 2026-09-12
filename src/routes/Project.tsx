@@ -239,7 +239,7 @@ export default function Project() {
             </button>
           </div>
           {playlists.data?.length === 0 && (
-            <p className="px-8 pb-2 text-[0.8rem] text-sequel-mid">None yet.</p>
+            <p className="px-5 pb-2 text-[0.8rem] text-sequel-mid">None yet.</p>
           )}
           {playlists.data?.map((p) => (
             <div
@@ -308,7 +308,7 @@ export default function Project() {
             <span>Inbox</span>
           </div>
           {tracks.data && submissions.length === 0 && (
-            <p className="px-8 pb-4 text-[0.8rem] text-sequel-mid">
+            <p className="px-5 pb-4 text-[0.8rem] text-sequel-mid">
               Nothing sent yet. Copy the link above and pass it to partners.
             </p>
           )}
