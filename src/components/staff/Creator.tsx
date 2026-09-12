@@ -658,10 +658,11 @@ export default function Creator() {
         }}
       />
       <div className="flex items-center justify-between bg-sequel-brown px-[18px] py-[14px] text-sequel-silver">
-        {/* Creato at the same 17px/500 as the pane titles below it, rather
-            than Fahkwang in caps — the bar names the panel, it is not a
-            page heading. */}
-        <h2 className="font-sans text-[17px] font-medium">Playlister</h2>
+        {/* The word changed, the treatment did not: Fahkwang at 15px, 600,
+            uppercase, 0.06em — exactly as the bar has always been set. */}
+        <h2 className="font-title text-[15px] font-semibold uppercase tracking-[.06em]">
+          Playlister
+        </h2>
         <div className="flex items-center gap-3">
           <button
             type="button"
