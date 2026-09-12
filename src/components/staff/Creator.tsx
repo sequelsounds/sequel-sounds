@@ -709,10 +709,7 @@ export default function Creator() {
               items={menuItems}
             />
           </div>
-          <EmptyDrop
-            forProject={!!routeProjectId}
-            onClick={() => fileInput.current?.click()}
-          />
+          <EmptyDrop onClick={() => fileInput.current?.click()} />
         </>
       ) : !data && !playlist.isPending ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-[13px] text-sequel-mid">
@@ -1187,13 +1184,7 @@ function CreatorTrack({
   )
 }
 
-function EmptyDrop({
-  forProject,
-  onClick,
-}: {
-  forProject: boolean
-  onClick: () => void
-}) {
+function EmptyDrop({ onClick }: { onClick: () => void }) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'creator-empty',
     data: { type: 'end' },
@@ -1209,7 +1200,7 @@ function EmptyDrop({
           the panel asks for a file the same way whether it is holding a
           list or waiting for its first one. */}
       <span
-        className={`flex w-full flex-col items-center justify-center gap-3 border border-dashed px-4 py-10 text-center ${
+        className={`flex w-full flex-col items-center justify-center gap-3 border border-dashed px-4 py-5 text-center ${
           isOver
             ? 'border-sequel-brown bg-sequel-well text-sequel-ink'
             : 'border-sequel-line text-sequel-mid'
@@ -1218,10 +1209,6 @@ function EmptyDrop({
         <UploadFileIcon size="1.5rem" />
         <span>
           Drag files here, or <span className="underline">click to upload</span>
-        </span>
-        <span className="text-sequel-mid">
-          Or name it above and save — either way it becomes a playlist
-          {forProject ? ' for this project' : ''}.
         </span>
       </span>
     </button>
@@ -1238,7 +1225,7 @@ function EndDrop({ empty, onClick }: { empty: boolean; onClick: () => void }) {
       type="button"
       ref={setNodeRef}
       onClick={onClick}
-      className={`mx-[18px] my-[10px] flex w-[calc(100%-36px)] cursor-pointer flex-col items-center justify-center gap-3 border border-dashed px-4 py-10 text-center text-[13px] ${
+      className={`mx-[18px] my-[10px] flex w-[calc(100%-36px)] cursor-pointer flex-col items-center justify-center gap-3 border border-dashed px-4 py-5 text-center text-[13px] ${
         isOver
           ? 'border-sequel-brown bg-sequel-well text-sequel-ink'
           : 'border-sequel-line text-sequel-mid'
