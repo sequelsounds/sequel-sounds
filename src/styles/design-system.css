@@ -457,21 +457,19 @@
     flex-shrink: 0;
   }
 
+  /* No box on focus, drawn or otherwise: the caret already says where you are,
+     and a border appearing around the name the moment it is clicked is the
+     loudest thing in the panel. Same call the login fields make. */
   .creator-title {
     font: inherit;
-    font-size: 18px;
+    font-size: 0.8rem;
     font-weight: 500;
     width: 100%;
-    border: 1px solid transparent;
+    border: 0;
     background-color: transparent;
-    padding: 2px 4px;
-    margin-left: -4px;
+    padding: 2px 0;
     color: var(--color-sequel-ink);
     outline: none;
-  }
-
-  .creator-title:focus {
-    border-color: var(--color-sequel-brown);
   }
 
   .switch {
