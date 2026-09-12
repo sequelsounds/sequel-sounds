@@ -42,6 +42,20 @@
     line-height: 1.25rem;
   }
 
+  /* Tailwind's case utilities stop at uppercase/lowercase/capitalize — none of
+     them render "Nachips" from a name stored as "NACHIPS" or "nachips".
+     Lowercasing the string and re-capitalising only its first letter via
+     ::first-letter does that without a JS transform, and keeps working on
+     whatever a project is actually named — punctuation, embedded digits, a
+     name that arrives already mixed-case. */
+  .sentence-case {
+    text-transform: lowercase;
+  }
+
+  .sentence-case::first-letter {
+    text-transform: uppercase;
+  }
+
   /* Corner furniture — copyright, help links. Quiet until hovered. */
   .corner-note {
     font-size: 0.8rem;

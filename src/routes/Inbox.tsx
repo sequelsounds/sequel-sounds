@@ -244,8 +244,8 @@ function Inbox({ token }: { token: string }) {
 
   const projectName = inbox.data?.projects_mirror?.name ?? ''
   useEffect(() => {
-    document.title = projectName || 'Upload'
-  }, [projectName])
+    document.title = 'Sequel | Upload'
+  }, [])
 
   const partnerReady = isComplete(partner)
   const pendingIds = rows.filter((r) => r.state === 'ready').map((r) => r.id)
@@ -265,10 +265,13 @@ function Inbox({ token }: { token: string }) {
         {/* Height is reserved so the page does not jump when the name lands,
             but nothing is drawn in the gap — a placeholder is more noticeable
             than the empty space it is meant to cover. */}
-        <header className="min-h-10">
-          <h1 className="font-title text-[2rem] font-normal leading-tight">
+        <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 min-h-10">
+          <h1 className="sentence-case font-sans text-[2rem] font-normal leading-tight">
             {projectName}
           </h1>
+          <span className="font-title shrink-0 text-[3rem] uppercase leading-none">
+            Upload
+          </span>
         </header>
 
         {/* ---- who is sending, asked once per browser ---- */}
