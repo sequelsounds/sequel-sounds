@@ -559,7 +559,19 @@
     gap: 14px;
   }
 
-  .row-actions button {
+  /* The one cell that must not clip. Every other cell hides its overflow to
+     get the ellipsis on a long title; this one holds a menu that is wider
+     than the column and opens below it, and hidden overflow left the panel
+     showing as a blank sliver with the words cut off outside the cell. */
+  .track-row td.actions-cell {
+    overflow: visible;
+  }
+
+  /* The row's own marks, named — not "every button inside the actions".
+     That also caught the items in the menu one of those marks opens: on a
+     hovered row they took the row's silver and vanished against the menu's
+     white panel, which is a blank box where the words should be. */
+  .row-actions .icon-btn {
     display: grid;
     place-items: center;
     width: 24px;
@@ -572,16 +584,17 @@
     border: 0;
     background: none;
     color: var(--color-sequel-ink);
+    opacity: 1;
     cursor: pointer;
     transition: color 150ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
-  .track-row:hover .row-actions button {
+  .track-row:hover .row-actions .icon-btn {
     color: var(--color-sequel-silver);
   }
 
-  .row-actions button:hover,
-  .track-row:hover .row-actions button:hover {
+  .row-actions .icon-btn:hover,
+  .track-row:hover .row-actions .icon-btn:hover {
     color: inherit;
   }
 

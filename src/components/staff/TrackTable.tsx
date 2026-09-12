@@ -141,7 +141,7 @@ function TrackRow({
       </td>
       {!lean && (
         <>
-          <td>
+          <td className="actions-cell">
             {/* Row actions. Not draggable: pointerdown here must not start a drag,
               or the click never lands. */}
             <div
@@ -150,6 +150,7 @@ function TrackRow({
             >
               <button
                 type="button"
+                className="icon-btn"
                 aria-label="Track details"
                 title="Track details"
                 onClick={(e) => {
@@ -161,6 +162,7 @@ function TrackRow({
               </button>
               <button
                 type="button"
+                className="icon-btn"
                 aria-label="Copy share link"
                 title={
                   copied ? 'Link copied' : 'Copy a link to this track alone'
