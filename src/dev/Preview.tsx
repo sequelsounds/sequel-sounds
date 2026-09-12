@@ -190,6 +190,19 @@ export default function Preview() {
     })
     c.setQueryData(['projects'], projectSummaries)
     c.setQueryData(['project', P1], project)
+    // A project nobody has sent anything to yet — /__preview/projects/p0 —
+    // so the empty states are something you can look at rather than reason
+    // about.
+    c.setQueryData(['project', 'p0'], {
+      ...project,
+      id: 'p0',
+      xano_id: '4830',
+      name: 'Veggie Love',
+      client_name: 'Knorr',
+      sequel_no: '24-COM-25-II',
+    })
+    c.setQueryData(['tracks', 'project', 'p0'], [])
+    c.setQueryData(['playlists', 'p0'], [])
     c.setQueryData(['tracks', 'project', P1], tracks)
     c.setQueryData(['tracks', 'library', ''], tracks)
     c.setQueryData(['playlists', 'all'], playlists)

@@ -374,85 +374,80 @@ export default function Project() {
           ))}
         </div>
 
-        <div className="split-detail">
-          {tracks.isPending && (
-            <p className="px-7 py-4 text-sequel-mid">Loading…</p>
-          )}
-          {tracks.error && (
-            <p className="form-error px-7 py-4">{tracks.error.message}</p>
-          )}
-          {!open && tracks.data && (
-            <p className="px-7 py-6 text-sequel-mid">
-              Nothing here yet. A partner's first drop, or a playlist you start,
-              opens on this side.
-            </p>
-          )}
-
-          {openSubmission && (
-            <>
-              <div className="pane-head">
-                <div className="min-w-0">
-                  <h2 className="submission-title truncate">
-                    {openSubmission.company}
-                  </h2>
-                  <div className="detail-meta">
-                    {plural(openSubmission.tracks.length, 'track')} ·{' '}
-                    {formatDate(openSubmission.latest)}
-                  </div>
-                </div>
-              </div>
-              {(openSubmission.email || openSubmission.note) && (
-                <div className="detail-from">
-                  {openSubmission.email && (
-                    <div>
-                      From <strong>{openSubmission.company}</strong>
-                      <span className="ml-2 text-sequel-mid">
-                        {openSubmission.email}
-                      </span>
+        {/* No second pane until there is something to read in it — an empty
+            box explaining its own emptiness is worse than no box. The left
+            one takes the width on its own. */}
+        {(open || tracks.error) && (
+          <div className="split-detail">
+            {tracks.error && (
+              <p className="form-error px-5 py-4">{tracks.error.message}</p>
+            )}
+            {openSubmission && (
+              <>
+                <div className="pane-head">
+                  <div className="min-w-0">
+                    <h2 className="submission-title truncate">
+                      {openSubmission.company}
+                    </h2>
+                    <div className="detail-meta">
+                      {plural(openSubmission.tracks.length, 'track')} ·{' '}
+                      {formatDate(openSubmission.latest)}
                     </div>
-                  )}
-                  {openSubmission.note && (
-                    <p className="mt-2">“{openSubmission.note}”</p>
-                  )}
-                </div>
-              )}
-              <TrackTable tracks={openSubmission.tracks} lean />
-            </>
-          )}
-
-          {open?.kind === 'playlist' && openPlaylist.data && (
-            <>
-              <div className="pane-head">
-                <div className="min-w-0">
-                  <h2 className="submission-title truncate">
-                    {openPlaylist.data.name}
-                  </h2>
-                  <div className="detail-meta">
-                    {plural(playlistTracks.length, 'track')} ·{' '}
-                    {formatDate(openPlaylist.data.updated_at)}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="icon-btn shrink-0 text-sequel-brown"
-                  title="Edit in creator"
-                  aria-label="Edit in creator"
-                  onClick={() => creator.open(openPlaylist.data!.id)}
-                >
-                  <PencilIcon size="1.25rem" />
-                </button>
-              </div>
-              {playlistTracks.length === 0 ? (
-                <p className="px-7 py-6 text-sequel-mid">
-                  Nothing in this playlist yet. Drag tracks in from a
-                  submission, or drop files on the creator.
-                </p>
-              ) : (
-                <TrackTable tracks={playlistTracks} lean />
-              )}
-            </>
-          )}
-        </div>
+                {(openSubmission.email || openSubmission.note) && (
+                  <div className="detail-from">
+                    {openSubmission.email && (
+                      <div>
+                        From <strong>{openSubmission.company}</strong>
+                        <span className="ml-2 text-sequel-mid">
+                          {openSubmission.email}
+                        </span>
+                      </div>
+                    )}
+                    {openSubmission.note && (
+                      <p className="mt-2">“{openSubmission.note}”</p>
+                    )}
+                  </div>
+                )}
+                <TrackTable tracks={openSubmission.tracks} lean />
+              </>
+            )}
+
+            {open?.kind === 'playlist' && openPlaylist.data && (
+              <>
+                <div className="pane-head">
+                  <div className="min-w-0">
+                    <h2 className="submission-title truncate">
+                      {openPlaylist.data.name}
+                    </h2>
+                    <div className="detail-meta">
+                      {plural(playlistTracks.length, 'track')} ·{' '}
+                      {formatDate(openPlaylist.data.updated_at)}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="icon-btn shrink-0 text-sequel-brown"
+                    title="Edit in creator"
+                    aria-label="Edit in creator"
+                    onClick={() => creator.open(openPlaylist.data!.id)}
+                  >
+                    <PencilIcon size="1.25rem" />
+                  </button>
+                </div>
+                {playlistTracks.length === 0 ? (
+                  <p className="px-7 py-6 text-sequel-mid">
+                    Nothing in this playlist yet. Drag tracks in from a
+                    submission, or drop files on the creator.
+                  </p>
+                ) : (
+                  <TrackTable tracks={playlistTracks} lean />
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </>
   )
