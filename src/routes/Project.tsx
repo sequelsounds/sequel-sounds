@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import Search from '../components/staff/Search'
 import TrackTable from '../components/staff/TrackTable'
 import {
@@ -20,8 +20,6 @@ import {
   type TrackWithUse,
 } from '../lib/queries'
 import { trackProjectUrl } from '../lib/track'
-
-type Tab = 'playlists' | 'activity'
 
 /** What the right-hand pane is showing. */
 type Open = { kind: 'playlist' | 'submission'; key: string }
@@ -113,9 +111,6 @@ function RowMenu({
 
 export default function Project() {
   const { id } = useParams()
-  const [params, setParams] = useSearchParams()
-  // ?tab=inbox predates the split; both halves live in one view now.
-  const tab: Tab = params.get('tab') === 'activity' ? 'activity' : 'playlists'
   const project = useProject(id)
   const tracks = useProjectTracks(id)
   const playlists = usePlaylists(id)
@@ -178,13 +173,6 @@ export default function Project() {
     setTimeout(() => setCopied(false), 1500)
   }
 
-  const setTab = (next: Tab) => {
-    const p = new URLSearchParams(params)
-    if (next === 'playlists') p.delete('tab')
-    else p.set('tab', next)
-    setParams(p, { replace: true })
-  }
-
   if (project.error)
     return <p className="form-error px-7 py-4">{project.error.message}</p>
 
@@ -224,269 +212,229 @@ export default function Project() {
         <div className="page-subtitle">{sequelNo || ' '}</div>
       </div>
 
-      {/* tab_bar_app: the search first at 40%, then the divider, then what
-          the band is for on this page — as the Projects page puts its stats
-          after the same two. */}
+      {/* tab_bar_app: the search and nothing else. The split below labels
+          its own two halves, so a tab strip was naming them twice. */}
       <div className="tab-band">
         <div className="tab-band-search">
           <Search />
         </div>
-        <div className="tab-band-divider mx-6" />
-        <div role="tablist" className="flex items-end gap-[26px] self-stretch">
-          <button
-            type="button"
-            role="tab"
-            className="tab"
-            aria-selected={tab === 'playlists'}
-            onClick={() => setTab('playlists')}
-          >
-            Playlists
-          </button>
-          <button
-            type="button"
-            role="tab"
-            className="tab"
-            aria-selected={tab === 'activity'}
-            onClick={() => setTab('activity')}
-          >
-            Activity
-          </button>
-        </div>
       </div>
 
-      {tab === 'playlists' && (
-        <div className="split">
-          <div className="split-list">
-            <div className="split-group">
-              <span>Playlists</span>
+      <div className="split">
+        <div className="split-list">
+          <div className="split-group">
+            <span>Playlists</span>
+            <button
+              type="button"
+              className="underline"
+              onClick={async () => {
+                const newId = await actions.createPlaylist.mutateAsync({
+                  projectId: id ?? null,
+                })
+                creator.open(newId)
+                setPicked({ kind: 'playlist', key: newId })
+              }}
+            >
+              New
+            </button>
+          </div>
+          {playlists.data?.length === 0 && (
+            <p className="px-8 pb-2 text-[0.8rem] text-sequel-mid">None yet.</p>
+          )}
+          {playlists.data?.map((p) => (
+            <div
+              key={p.id}
+              className="split-row"
+              aria-current={open?.kind === 'playlist' && open.key === p.id}
+            >
               <button
                 type="button"
-                className="underline"
-                onClick={async () => {
-                  const newId = await actions.createPlaylist.mutateAsync({
-                    projectId: id ?? null,
-                  })
-                  creator.open(newId)
-                  setPicked({ kind: 'playlist', key: newId })
-                }}
+                className="split-row-main"
+                onClick={() => setPicked({ kind: 'playlist', key: p.id })}
               >
-                New
+                <span className="split-row-title">{p.name}</span>
+                <span className="split-row-meta">
+                  <span className="pill">
+                    {plural(p.playlist_tracks[0]?.count ?? 0, 'track')}
+                  </span>
+                  {formatDate(p.updated_at)}
+                </span>
               </button>
-            </div>
-            {playlists.data?.length === 0 && (
-              <p className="px-8 pb-2 text-[0.8rem] text-sequel-mid">
-                None yet.
-              </p>
-            )}
-            {playlists.data?.map((p) => (
-              <div
-                key={p.id}
-                className="split-row"
-                aria-current={open?.kind === 'playlist' && open.key === p.id}
-              >
+              <div className="split-row-actions">
                 <button
                   type="button"
-                  className="split-row-main"
-                  onClick={() => setPicked({ kind: 'playlist', key: p.id })}
+                  className="icon-btn"
+                  aria-label="Edit in creator"
+                  title="Edit in creator"
+                  onClick={() => creator.open(p.id)}
                 >
-                  <span className="split-row-title">{p.name}</span>
-                  <span className="split-row-meta">
-                    <span className="pill">
-                      {plural(p.playlist_tracks[0]?.count ?? 0, 'track')}
-                    </span>
-                    {formatDate(p.updated_at)}
-                  </span>
+                  <PencilIcon />
                 </button>
-                <div className="split-row-actions">
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    aria-label="Edit in creator"
-                    title="Edit in creator"
-                    onClick={() => creator.open(p.id)}
-                  >
-                    <PencilIcon />
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    aria-label="Copy share link"
-                    title="Copy share link"
-                    onClick={() =>
-                      void navigator.clipboard.writeText(
-                        `${location.origin}/p/${p.token}`,
-                      )
-                    }
-                  >
-                    <ShareIcon />
-                  </button>
-                  <RowMenu
-                    items={[
-                      {
-                        label: 'Delete playlist',
-                        onSelect: () => {
-                          if (
-                            !confirm(
-                              `Delete “${p.name}”? The tracks stay in the project.`,
-                            )
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Copy share link"
+                  title="Copy share link"
+                  onClick={() =>
+                    void navigator.clipboard.writeText(
+                      `${location.origin}/p/${p.token}`,
+                    )
+                  }
+                >
+                  <ShareIcon />
+                </button>
+                <RowMenu
+                  items={[
+                    {
+                      label: 'Delete playlist',
+                      onSelect: () => {
+                        if (
+                          !confirm(
+                            `Delete “${p.name}”? The tracks stay in the project.`,
                           )
-                            return
-                          void actions.deletePlaylist.mutateAsync(p.id)
-                          if (open?.key === p.id) setPicked(null)
-                        },
+                        )
+                          return
+                        void actions.deletePlaylist.mutateAsync(p.id)
+                        if (open?.key === p.id) setPicked(null)
                       },
-                    ]}
-                  />
-                </div>
+                    },
+                  ]}
+                />
               </div>
-            ))}
-
-            <div className="split-group">
-              <span>Inbox</span>
             </div>
-            {tracks.data && submissions.length === 0 && (
-              <p className="px-8 pb-4 text-[0.8rem] text-sequel-mid">
-                Nothing sent yet. Copy the link above and pass it to partners.
-              </p>
-            )}
-            {submissions.map((s) => (
-              <div
-                key={s.key}
-                className="split-row"
-                aria-current={open?.kind === 'submission' && open.key === s.key}
+          ))}
+
+          <div className="split-group">
+            <span>Inbox</span>
+          </div>
+          {tracks.data && submissions.length === 0 && (
+            <p className="px-8 pb-4 text-[0.8rem] text-sequel-mid">
+              Nothing sent yet. Copy the link above and pass it to partners.
+            </p>
+          )}
+          {submissions.map((s) => (
+            <div
+              key={s.key}
+              className="split-row"
+              aria-current={open?.kind === 'submission' && open.key === s.key}
+            >
+              <button
+                type="button"
+                className="split-row-main"
+                onClick={() => setPicked({ kind: 'submission', key: s.key })}
               >
+                <span className="split-row-title">{s.company}</span>
+                <span className="split-row-meta">
+                  <span className="pill">
+                    {plural(s.tracks.length, 'track')}
+                  </span>
+                  {s.email && (
+                    <span className="min-w-0 truncate">{s.email}</span>
+                  )}
+                  <span className="shrink-0">{formatDate(s.latest)}</span>
+                </span>
+              </button>
+              <div className="split-row-actions">
+                {s.email && (
+                  <a
+                    href={`mailto:${s.email}`}
+                    aria-label={`Email ${s.company}`}
+                    title={`Email ${s.company}`}
+                    className="icon-btn"
+                  >
+                    <MailIcon />
+                  </a>
+                )}
+                <RowMenu
+                  items={[
+                    {
+                      label: 'Copy email address',
+                      disabled: !s.email,
+                      onSelect: () =>
+                        void navigator.clipboard.writeText(s.email),
+                    },
+                    {
+                      label: 'Copy the inbox link',
+                      disabled: !project.data?.inboxes?.token,
+                      onSelect: () => void copyInbox(),
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="split-detail">
+          {tracks.isPending && (
+            <p className="px-7 py-4 text-sequel-mid">Loading…</p>
+          )}
+          {tracks.error && (
+            <p className="form-error px-7 py-4">{tracks.error.message}</p>
+          )}
+          {!open && tracks.data && (
+            <p className="px-7 py-6 text-sequel-mid">
+              Nothing here yet. A partner's first drop, or a playlist you start,
+              opens on this side.
+            </p>
+          )}
+
+          {openSubmission && (
+            <>
+              <div className="detail-head">
+                <h2 className="submission-title">{openSubmission.company}</h2>
+                <div className="detail-meta">
+                  {plural(openSubmission.tracks.length, 'track')} ·{' '}
+                  {formatDate(openSubmission.latest)}
+                </div>
+                {(openSubmission.email || openSubmission.note) && (
+                  <div className="detail-from">
+                    {openSubmission.email && (
+                      <div>
+                        From <strong>{openSubmission.company}</strong>
+                        <span className="ml-2 text-sequel-mid">
+                          {openSubmission.email}
+                        </span>
+                      </div>
+                    )}
+                    {openSubmission.note && (
+                      <p className="mt-2">“{openSubmission.note}”</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <TrackTable tracks={openSubmission.tracks} />
+            </>
+          )}
+
+          {open?.kind === 'playlist' && openPlaylist.data && (
+            <>
+              <div className="detail-head">
+                <h2 className="submission-title">{openPlaylist.data.name}</h2>
+                <div className="detail-meta">
+                  {plural(playlistTracks.length, 'track')} ·{' '}
+                  {formatDate(openPlaylist.data.updated_at)}
+                </div>
                 <button
                   type="button"
-                  className="split-row-main"
-                  onClick={() => setPicked({ kind: 'submission', key: s.key })}
+                  className="btn btn-tool btn-outline mt-3"
+                  onClick={() => creator.open(openPlaylist.data!.id)}
                 >
-                  <span className="split-row-title">{s.company}</span>
-                  <span className="split-row-meta">
-                    <span className="pill">
-                      {plural(s.tracks.length, 'track')}
-                    </span>
-                    {s.email && (
-                      <span className="min-w-0 truncate">{s.email}</span>
-                    )}
-                    <span className="shrink-0">{formatDate(s.latest)}</span>
-                  </span>
+                  Edit in creator
                 </button>
-                <div className="split-row-actions">
-                  {s.email && (
-                    <a
-                      href={`mailto:${s.email}`}
-                      aria-label={`Email ${s.company}`}
-                      title={`Email ${s.company}`}
-                      className="icon-btn"
-                    >
-                      <MailIcon />
-                    </a>
-                  )}
-                  <RowMenu
-                    items={[
-                      {
-                        label: 'Copy email address',
-                        disabled: !s.email,
-                        onSelect: () =>
-                          void navigator.clipboard.writeText(s.email),
-                      },
-                      {
-                        label: 'Copy the inbox link',
-                        disabled: !project.data?.inboxes?.token,
-                        onSelect: () => void copyInbox(),
-                      },
-                    ]}
-                  />
-                </div>
               </div>
-            ))}
-          </div>
-
-          <div className="split-detail">
-            {tracks.isPending && (
-              <p className="px-7 py-4 text-sequel-mid">Loading…</p>
-            )}
-            {tracks.error && (
-              <p className="form-error px-7 py-4">{tracks.error.message}</p>
-            )}
-            {!open && tracks.data && (
-              <p className="px-7 py-6 text-sequel-mid">
-                Nothing here yet. A partner's first drop, or a playlist you
-                start, opens on this side.
-              </p>
-            )}
-
-            {openSubmission && (
-              <>
-                <div className="detail-head">
-                  <h2 className="submission-title">{openSubmission.company}</h2>
-                  <div className="detail-meta">
-                    {plural(openSubmission.tracks.length, 'track')} ·{' '}
-                    {formatDate(openSubmission.latest)}
-                  </div>
-                  {(openSubmission.email || openSubmission.note) && (
-                    <div className="detail-from">
-                      {openSubmission.email && (
-                        <div>
-                          From <strong>{openSubmission.company}</strong>
-                          <span className="ml-2 text-sequel-mid">
-                            {openSubmission.email}
-                          </span>
-                        </div>
-                      )}
-                      {openSubmission.note && (
-                        <p className="mt-2">“{openSubmission.note}”</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <TrackTable tracks={openSubmission.tracks} />
-              </>
-            )}
-
-            {open?.kind === 'playlist' && openPlaylist.data && (
-              <>
-                <div className="detail-head">
-                  <h2 className="submission-title">{openPlaylist.data.name}</h2>
-                  <div className="detail-meta">
-                    {plural(playlistTracks.length, 'track')} ·{' '}
-                    {formatDate(openPlaylist.data.updated_at)}
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-tool btn-outline mt-3"
-                    onClick={() => creator.open(openPlaylist.data!.id)}
-                  >
-                    Edit in creator
-                  </button>
-                </div>
-                {playlistTracks.length === 0 ? (
-                  <p className="px-7 py-6 text-sequel-mid">
-                    Nothing in this playlist yet. Drag tracks in from a
-                    submission, or drop files on the creator.
-                  </p>
-                ) : (
-                  <TrackTable tracks={playlistTracks} />
-                )}
-              </>
-            )}
-          </div>
+              {playlistTracks.length === 0 ? (
+                <p className="px-7 py-6 text-sequel-mid">
+                  Nothing in this playlist yet. Drag tracks in from a
+                  submission, or drop files on the creator.
+                </p>
+              ) : (
+                <TrackTable tracks={playlistTracks} />
+              )}
+            </>
+          )}
         </div>
-      )}
-
-      {tab === 'activity' && (
-        <div className="min-h-0 flex-1 overflow-auto">
-          <div className="px-7 py-6 text-sequel-mid">
-            <p>
-              Activity is recorded from the viewer page — who opened each
-              playlist, what they played and for how long.
-            </p>
-            <p className="mt-2">
-              Nothing to show until the first playlist is shared.
-            </p>
-          </div>
-        </div>
-      )}
+      </div>
     </>
   )
 }

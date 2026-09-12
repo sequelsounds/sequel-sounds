@@ -42,6 +42,9 @@
    */
   .header-band {
     display: flex;
+    /* Never give the height up. As a plain flex child it is shrinkable, and
+       a tall scrolling area below took 10px off it. */
+    flex: none;
     height: 6rem;
     flex-direction: column;
     padding: 0 2rem;
@@ -50,6 +53,7 @@
 
   .tab-band {
     display: flex;
+    flex: none;
     height: 3.5rem;
     align-items: center;
     padding: 0 2rem;
@@ -752,7 +756,9 @@
   .split {
     display: flex;
     min-height: 0;
-    flex: 1 1 auto;
+    /* Basis 0, not auto: on auto the panes' full content length counts as
+       the size it wants, and the bands above shrink to pay for it. */
+    flex: 1 1 0%;
   }
 
   .split-list {
