@@ -884,6 +884,20 @@
     color: var(--color-sequel-silver);
   }
 
+  /* The row inverts, so the pill has to as well — the same rule the track
+     rows and the Creator's rows already carry. Without it the count went
+     dark-on-brown and disappeared under the pointer. */
+  .split-row:hover .pill {
+    color: var(--color-sequel-silver);
+    border-color: var(--color-sequel-silver);
+  }
+
+  /* Its 8px indent is for sitting after a title mid-line; here it starts
+     the line, and that margin pushed the meta out of line with the title. */
+  .split-row-meta .pill {
+    margin-left: 0;
+  }
+
   .split-detail .track-row td:first-child {
     padding-left: 1.25rem;
   }
