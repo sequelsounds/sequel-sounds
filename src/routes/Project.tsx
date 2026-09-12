@@ -403,7 +403,7 @@ export default function Project() {
                   </div>
                 )}
               </div>
-              <TrackTable tracks={openSubmission.tracks} />
+              <TrackTable tracks={openSubmission.tracks} lean />
             </>
           )}
 
@@ -433,7 +433,7 @@ export default function Project() {
                   submission, or drop files on the creator.
                 </p>
               ) : (
-                <TrackTable tracks={playlistTracks} />
+                <TrackTable tracks={playlistTracks} lean />
               )}
             </>
           )}

@@ -9,6 +9,12 @@ import TrackMeta from './TrackMeta'
 
 type Props = {
   tracks: TrackWithUse[]
+  /**
+   * Drops the per-row actions and the duration, for the project page's
+   * right-hand pane: at half the width there is no room for columns that
+   * the Library, on a full page, has all the space in the world for.
+   */
+  lean?: boolean
 }
 
 /**
@@ -17,7 +23,7 @@ type Props = {
  * does. The queue handed to the player is this table's order, so next and
  * previous walk the list on screen.
  */
-export default function TrackTable({ tracks }: Props) {
+export default function TrackTable({ tracks, lean = false }: Props) {
   const queue = useMemo(() => tracks.map(toPlayerTrack), [tracks])
   // Held here rather than per row: the arrows in the dialog step through this
   // table's order, which a row does not know.
@@ -26,37 +32,42 @@ export default function TrackTable({ tracks }: Props) {
 
   return (
     <>
-    <table className="track-table">
-      <colgroup>
-        <col style={{ width: 34 }} />
-        <col style={{ width: 56 }} />
-        <col />
-        <col style={{ width: 86 }} />
-        <col style={{ width: 80 }} />
-      </colgroup>
-      <tbody>
-        {tracks.map((track, index) => (
-          <TrackRow
-            key={track.id}
-            track={track}
-            index={index}
-            queue={queue}
-            onEdit={() => setEditing(index)}
-          />
-        ))}
-      </tbody>
-    </table>
-    {editingTrack && (
-      <TrackMeta
-        // Keyed so stepping to another track rebuilds the form rather than
-        // leaving the previous track's edits in the fields.
-        key={editingTrack.id}
-        track={editingTrack}
-        onClose={() => setEditing(null)}
-        onPrev={editing! > 0 ? () => setEditing(editing! - 1) : undefined}
-        onNext={editing! < tracks.length - 1 ? () => setEditing(editing! + 1) : undefined}
-      />
-    )}
+      <table className="track-table">
+        <colgroup>
+          <col style={{ width: 34 }} />
+          <col style={{ width: 56 }} />
+          <col />
+          {!lean && <col style={{ width: 86 }} />}
+          {!lean && <col style={{ width: 80 }} />}
+        </colgroup>
+        <tbody>
+          {tracks.map((track, index) => (
+            <TrackRow
+              key={track.id}
+              track={track}
+              index={index}
+              queue={queue}
+              lean={lean}
+              onEdit={() => setEditing(index)}
+            />
+          ))}
+        </tbody>
+      </table>
+      {editingTrack && (
+        <TrackMeta
+          // Keyed so stepping to another track rebuilds the form rather than
+          // leaving the previous track's edits in the fields.
+          key={editingTrack.id}
+          track={editingTrack}
+          onClose={() => setEditing(null)}
+          onPrev={editing! > 0 ? () => setEditing(editing! - 1) : undefined}
+          onNext={
+            editing! < tracks.length - 1
+              ? () => setEditing(editing! + 1)
+              : undefined
+          }
+        />
+      )}
     </>
   )
 }
@@ -65,11 +76,13 @@ function TrackRow({
   track,
   index,
   queue,
+  lean,
   onEdit,
 }: {
   track: TrackWithUse
   index: number
   queue: PlayerTrack[]
+  lean: boolean
   onEdit: () => void
 }) {
   const player = usePlayer()
@@ -114,46 +127,59 @@ function TrackRow({
       <td>
         <div className="truncate">
           {track.title}
-          {inPlaylists > 0 && <span className="pill">in {plural(inPlaylists, 'playlist')}</span>}
+          {inPlaylists > 0 && (
+            <span className="pill">in {plural(inPlaylists, 'playlist')}</span>
+          )}
         </div>
         <div className="secondary mt-0.5 truncate text-xs">
-          {secondary || (track.processing_status !== 'ready' ? 'Processing…' : '')}
+          {secondary ||
+            (track.processing_status !== 'ready' ? 'Processing…' : '')}
         </div>
       </td>
-      <td>
-        {/* Row actions. Not draggable: pointerdown here must not start a drag,
-            or the click never lands. */}
-        <div
-          className="row-actions"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            aria-label="Track details"
-            title="Track details"
-            onClick={(e) => {
-              e.stopPropagation()
-              onEdit()
-            }}
-          >
-            <InfoIcon />
-          </button>
-          <button
-            type="button"
-            aria-label="Copy share link"
-            title={copied ? 'Link copied' : 'Copy a link to this track alone'}
-            onClick={async (e) => {
-              e.stopPropagation()
-              await navigator.clipboard.writeText(`${location.origin}/t/${track.share_token}`)
-              setCopied(true)
-              setTimeout(() => setCopied(false), 1500)
-            }}
-          >
-            <ShareIcon />
-          </button>
-        </div>
-      </td>
-      <td className="secondary pr-5 text-right">{formatDuration(track.duration_seconds)}</td>
+      {!lean && (
+        <>
+          <td>
+            {/* Row actions. Not draggable: pointerdown here must not start a drag,
+              or the click never lands. */}
+            <div
+              className="row-actions"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                aria-label="Track details"
+                title="Track details"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit()
+                }}
+              >
+                <InfoIcon />
+              </button>
+              <button
+                type="button"
+                aria-label="Copy share link"
+                title={
+                  copied ? 'Link copied' : 'Copy a link to this track alone'
+                }
+                onClick={async (e) => {
+                  e.stopPropagation()
+                  await navigator.clipboard.writeText(
+                    `${location.origin}/t/${track.share_token}`,
+                  )
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 1500)
+                }}
+              >
+                <ShareIcon />
+              </button>
+            </div>
+          </td>
+          <td className="secondary pr-5 text-right">
+            {formatDuration(track.duration_seconds)}
+          </td>
+        </>
+      )}
     </tr>
   )
 }
