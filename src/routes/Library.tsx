@@ -16,7 +16,10 @@ export default function Library() {
             <h1 className="font-title text-[clamp(18px,2.4vw,28px)] font-normal uppercase leading-[1.1]">
               Library
             </h1>
-            <div className="mt-1 text-sequel-mid">
+            {/* Creato Light at full strength. The weight does the quietening,
+                so the colour does not have to — a faded grey under a Light
+                face reads as washed out rather than secondary. */}
+            <div className="-mt-0.5 font-sans text-[14px] font-light leading-[20px] text-sequel-ink">
               {tracks.data ? plural(tracks.data.length, 'track') : ' '}
             </div>
           </div>
