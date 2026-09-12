@@ -255,7 +255,11 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
           ))}
         </div>
 
-        <div className="flex min-h-0 flex-1 overflow-auto px-7 py-6">
+        {/* Metadata is the tallest tab, so it sets the height and the rest
+            fill it. Without this the dialog resized on every tab change —
+            660px on Metadata, 318px on Notes, 268px on Tags — which read as
+            the dialog jumping about rather than the content changing. */}
+        <div className="flex min-h-[27rem] flex-1 overflow-auto px-7 py-6">
           {tab === 'metadata' ? (
             <div className="flex w-full gap-7">
               {/* ---- artwork ---- */}
@@ -454,8 +458,10 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
               <span className="field-label block">
                 Staff notes — never shown to partners or clients
               </span>
-              <input
+              <textarea
+                rows={14}
                 className={`${field} mt-2`}
+                placeholder="Anything the team should know about this track."
                 value={form.staff_notes ?? ''}
                 onChange={(e) => set('staff_notes', e.target.value)}
               />
@@ -466,7 +472,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
                 Every tag as the file carried it, exactly as ffprobe read it. Read-only — this is
                 the original the fields above were taken from.
               </p>
-              <pre className="max-h-[22rem] overflow-auto border border-sequel-line bg-sequel-well p-3 text-[11px] font-light [white-space:pre-wrap]">
+              <pre className="field-boxed max-h-[22rem] overflow-auto font-mono! text-[11px]! [white-space:pre-wrap]">
                 {detail.data?.embedded_tags
                   ? JSON.stringify(detail.data.embedded_tags, null, 2)
                   : 'Nothing embedded — this track has not been processed yet.'}
@@ -490,7 +496,9 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
               setIdCopied(true)
               setTimeout(() => setIdCopied(false), 1500)
             }}
-            className="min-w-0 truncate text-[11px] font-light underline"
+            // Not underlined: it is an identifier, not a link. The underline
+            // on hover is enough to say it does something.
+            className="min-w-0 truncate text-[11px] font-light hover:underline"
           >
             {idCopied ? 'ID copied' : `ID: ${track.id}`}
           </button>
