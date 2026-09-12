@@ -58,6 +58,7 @@ so a partial failure is always about exactly one record.
 | Field | Required | Notes |
 | --- | --- | --- |
 | `xano_id` | **yes** | Xano's own id, as a string. The upsert key. |
+| `uuid` | **yes, in practice** | The Project Master List **UUID** column. Track's project page is `https://www.sequelsounds.app/project?uuid={uuid}`, and Studio's **Open in Track** button is built from this — without it the button does not appear. Malformed values become null. |
 | `name` | **yes** | Shown to partners on the inbox page. |
 | `client_name` | no | Internal — never rendered on partner-facing pages. |
 | `status` | no | Free text, stored as-is. |
@@ -182,6 +183,7 @@ curl -X POST "$SUPABASE_URL/functions/v1/xano-webhook" \
     "type": "project",
     "record": {
       "xano_id": "4821",
+      "uuid": "0b7a1e2c-3d4f-4a5b-8c6d-7e8f9a0b1c2d",
       "name": "Unilever - Spring Campaign",
       "client_name": "Unilever",
       "status": "active",

@@ -448,6 +448,7 @@ export type Database = {
           status: string | null
           synced_at: string
           xano_id: string
+          xano_uuid: string | null
         }
         Insert: {
           brief?: string | null
@@ -461,6 +462,7 @@ export type Database = {
           status?: string | null
           synced_at?: string
           xano_id: string
+          xano_uuid?: string | null
         }
         Update: {
           brief?: string | null
@@ -474,6 +476,7 @@ export type Database = {
           status?: string | null
           synced_at?: string
           xano_id?: string
+          xano_uuid?: string | null
         }
         Relationships: []
       }

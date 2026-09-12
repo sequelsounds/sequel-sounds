@@ -69,6 +69,7 @@ export default function Project() {
 
   const submissions = useMemo(() => groupSubmissions(tracks.data ?? []), [tracks.data])
   const { number, title } = splitProjectName(project.data?.name ?? '')
+  const trackUrl = trackProjectUrl(project.data?.xano_uuid ?? null)
 
   const copyInbox = async () => {
     const token = project.data?.inboxes?.token
@@ -111,13 +112,8 @@ export default function Project() {
             >
               {copied ? 'Copied' : 'Copy inbox link'}
             </button>
-            {project.data && (
-              <a
-                className="btn btn-tool btn-quiet"
-                href={trackProjectUrl(project.data.xano_id)}
-                target="_blank"
-                rel="noreferrer"
-              >
+            {trackUrl && (
+              <a className="btn btn-tool btn-quiet" href={trackUrl} target="_blank" rel="noreferrer">
                 Open in Track
               </a>
             )}

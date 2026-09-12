@@ -69,6 +69,12 @@ function text(value: unknown): string | null {
   return trimmed === '' ? null : trimmed
 }
 
+/** A uuid column rejects anything else, so a malformed value becomes null rather than a 500. */
+function uuid(value: unknown): string | null {
+  const s = text(value)?.toLowerCase() ?? null
+  return s && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s) ? s : null
+}
+
 /** A date column will reject "", so anything unparseable becomes null. */
 function date(value: unknown): string | null {
   const s = text(value)
@@ -181,6 +187,8 @@ Deno.serve(async (req) => {
     type === 'project'
       ? {
           xano_id: xanoId,
+          // Track's project page is keyed by this, not by xano_id.
+          xano_uuid: uuid(record.uuid),
           name,
           client_name: text(record.client_name),
           status: text(record.status),

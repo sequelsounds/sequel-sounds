@@ -67,7 +67,7 @@ export function useProjects() {
 
 export type ProjectDetail = Pick<
   Tables<'projects_mirror'>,
-  'id' | 'xano_id' | 'name' | 'client_name' | 'status' | 'brief'
+  'id' | 'xano_id' | 'xano_uuid' | 'name' | 'client_name' | 'status' | 'brief'
 > & { inboxes: { token: string; is_active: boolean } | null }
 
 export function useProject(id: string | undefined) {
@@ -77,7 +77,7 @@ export function useProject(id: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects_mirror')
-        .select('id, xano_id, name, client_name, status, brief, inboxes(token, is_active)')
+        .select('id, xano_id, xano_uuid, name, client_name, status, brief, inboxes(token, is_active)')
         .eq('id', id!)
         .single()
       if (error) throw error

@@ -30,6 +30,15 @@ than guess a drop from timestamps and sender, the inbox page mints one
 `submission_id` per send and every row in that send carries it. A retry
 keeps the id. Rows from before the column fall back to sender-and-hour.
 
+## Open in Track is keyed by the project's UUID
+
+**2026-09-12.** Track's project page is
+`https://www.sequelsounds.app/project?uuid={uuid}` — singular, and the uuid is
+the Project Master List's UUID column, not the numeric id the mirror already
+keyed on. So the mirror carries both: `xano_id` stays the upsert key, and the
+webhook now takes `uuid` into `xano_uuid`. A project without one shows no
+button rather than a wrong link.
+
 ## Open in Studio goes to /projects/:id, not /p/:id
 
 **2026-09-12.** The spec wrote `studio.sequelsounds.com/p/{id}`, but `/p/` is

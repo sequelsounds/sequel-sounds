@@ -86,6 +86,7 @@ const byTitle = (t: string) => tracks.find((x) => x.title.startsWith(t))!
 const project: ProjectDetail = {
   id: P1,
   xano_id: '4821',
+  xano_uuid: '0b7a1e2c-3d4f-4a5b-8c6d-7e8f9a0b1c2d',
   name: '256-OLD-26-II Nachips',
   client_name: 'Old El Paso · Hogarth',
   status: 'active',

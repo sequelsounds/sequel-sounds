@@ -174,3 +174,5 @@ contract in [`xano-sync.md`](xano-sync.md).
   removed, `submission_id`, sections, playlist switches, `project_assets`,
   `viewer_profiles`, `events`, `theme_presets`, `staff_project_visits`, and
   token policies opened to signed-in viewers
+- `0007_project_xano_uuid` — `projects_mirror.xano_uuid`, what Track's
+  project page is keyed by
