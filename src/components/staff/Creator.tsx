@@ -111,6 +111,7 @@ export default function Creator() {
   const session = useSession()
   const [attaching, setAttaching] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
   const data = playlist.data ?? null
@@ -438,9 +439,15 @@ export default function Creator() {
 
   // ------------------------------------------------------------ actions
 
+  // Renaming saves when the field is left, or on Enter, like everything else
+  // in this panel. There is no Save button: to click one you have to leave
+  // the field first, which saved it — so it was never clickable when it had
+  // anything to do. A note in its place says the rename landed.
   const saveTitle = () => {
     if (!data || !dirty) return
     actions.updatePlaylist.mutate({ id: data.id, name: title.trim() })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1600)
   }
 
   const newPlaylist = async () => {
@@ -595,9 +602,11 @@ export default function Creator() {
                 Done
               </button>
             ) : (
-              <button type="button" className="btn btn-tool btn-outline" disabled={!dirty} onClick={saveTitle}>
-                Save
-              </button>
+              saved && (
+                <span className="mt-[6px] shrink-0 font-mono text-[0.7rem] uppercase text-sequel-mid">
+                  Saved
+                </span>
+              )
             )}
             <Menu
               label={<MenuIcon />}
