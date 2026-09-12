@@ -11,12 +11,12 @@ export default function Projects() {
   return (
     <>
       <div className="header-band">
-        <div className="page-eyebrow">Let's check in on…</div>
+        <div className="page-eyebrow">Studio</div>
         <div className="title-row">
-          <h1 className="page-title">Your projects</h1>
+          <h1 className="page-title">Projects</h1>
         </div>
         <div className="page-subtitle">
-          {projects.data ? plural(projects.data.length, 'project') : '\u00a0'}
+          {projects.data ? `#${projects.data.length}` : '\u00a0'}
         </div>
       </div>
       {/* tab_bar_app: the search takes 40% of the band, as Form Block 3 does. */}
