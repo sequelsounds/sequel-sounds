@@ -95,17 +95,28 @@ function Shell() {
         >
           <Creator />
         </div>
-        {creator.collapsed && (
-          <button
-            type="button"
-            className="creator-tab"
-            title="Show the Playlist Creator"
-            aria-label="Show the Playlist Creator"
-            onClick={() => creator.setCollapsed(false)}
-          >
-            <ChevronIcon className="rotate-90" />
-          </button>
-        )}
+        {/* Rides the panel's own edge, open or shut, so the control never
+            moves anywhere but with the thing it moves. */}
+        <button
+          type="button"
+          className={`creator-tab ${creator.collapsed ? 'is-collapsed' : ''}`}
+          title={
+            creator.collapsed
+              ? 'Show the Playlist Creator'
+              : 'Hide the Playlist Creator'
+          }
+          aria-label={
+            creator.collapsed
+              ? 'Show the Playlist Creator'
+              : 'Hide the Playlist Creator'
+          }
+          aria-expanded={!creator.collapsed}
+          onClick={() => creator.setCollapsed(!creator.collapsed)}
+        >
+          <ChevronIcon
+            className={creator.collapsed ? 'rotate-90' : '-rotate-90'}
+          />
+        </button>
         <Player />
       </div>
       <DragOverlay dropAnimation={null}>
