@@ -206,7 +206,8 @@
     width: 100%;
     padding: 0.4rem 0 0.5rem;
     border: none;
-    border-bottom: 1px solid color-mix(in srgb, var(--surface-fg) 80%, transparent);
+    border-bottom: 1px solid
+      color-mix(in srgb, var(--surface-fg) 80%, transparent);
     background-color: transparent;
     color: var(--surface-fg);
     font-family: var(--font-sans);
@@ -307,7 +308,11 @@
   }
 
   .btn-light:hover:not(:disabled) {
-    background-color: color-mix(in srgb, var(--color-sequel-silver) 82%, transparent);
+    background-color: color-mix(
+      in srgb,
+      var(--color-sequel-silver) 82%,
+      transparent
+    );
   }
 
   /* Dark fill — for use on a light surface. */
@@ -878,7 +883,11 @@
 
   .volume-line {
     width: 100%;
-    background-color: color-mix(in srgb, var(--color-sequel-silver) 35%, transparent);
+    background-color: color-mix(
+      in srgb,
+      var(--color-sequel-silver) 35%,
+      transparent
+    );
   }
 
   .volume-fill {
@@ -1024,6 +1033,17 @@
 
   .icon-btn:hover {
     opacity: 1;
+  }
+
+  /* A slot that is there to keep the row's three controls in line, rather
+     than an action anyone can take. */
+  .icon-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .icon-btn:disabled:hover {
+    opacity: 0.3;
   }
 
   .split-row[aria-current='true'] {

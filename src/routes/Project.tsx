@@ -4,12 +4,7 @@ import Search from '../components/staff/Search'
 import Confirm from '../components/staff/Confirm'
 import RowMenu from '../components/staff/RowMenu'
 import TrackTable from '../components/staff/TrackTable'
-import {
-  MailIcon,
-  PencilIcon,
-  ShareIcon,
-  TrashIcon,
-} from '../components/staff/icons'
+import { MailIcon, PencilIcon, ShareIcon } from '../components/staff/icons'
 import { useCreator } from '../lib/creator'
 import { formatDate, plural } from '../lib/format'
 import {
@@ -270,15 +265,14 @@ export default function Project() {
                 >
                   <ShareIcon />
                 </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Delete playlist"
-                  title="Delete playlist"
-                  onClick={() => setDeleting(p)}
-                >
-                  <TrashIcon />
-                </button>
+                <RowMenu
+                  items={[
+                    {
+                      label: 'Delete playlist',
+                      onSelect: () => setDeleting(p),
+                    },
+                  ]}
+                />
               </div>
             </div>
           ))}
@@ -314,7 +308,10 @@ export default function Project() {
                 </span>
               </button>
               <div className="split-row-actions">
-                {s.email && (
+                {/* Held open when there is no address, so every row in the
+                    list ends with the same three controls in the same
+                    places rather than shuffling left by one. */}
+                {s.email ? (
                   <a
                     href={`mailto:${s.email}`}
                     aria-label={`Email ${s.company}`}
@@ -323,7 +320,27 @@ export default function Project() {
                   >
                     <MailIcon />
                   </a>
+                ) : (
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    disabled
+                    aria-label="No email address"
+                    title="No email address"
+                  >
+                    <MailIcon />
+                  </button>
                 )}
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Copy the inbox link"
+                  title="Copy the inbox link"
+                  disabled={!project.data?.inboxes?.token}
+                  onClick={() => void copyInbox()}
+                >
+                  <ShareIcon />
+                </button>
                 <RowMenu
                   items={[
                     {
@@ -331,11 +348,6 @@ export default function Project() {
                       disabled: !s.email,
                       onSelect: () =>
                         void navigator.clipboard.writeText(s.email),
-                    },
-                    {
-                      label: 'Copy the inbox link',
-                      disabled: !project.data?.inboxes?.token,
-                      onSelect: () => void copyInbox(),
                     },
                   ]}
                 />
