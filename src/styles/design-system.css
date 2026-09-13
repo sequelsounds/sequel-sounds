@@ -2278,6 +2278,12 @@
     position: relative;
     grid-template-columns: 0.75fr 0.25fr 0.25fr 0.25fr 0.25fr;
     gap: 0.025rem;
+    /* Track puts the pointer on the cells rather than the row — partner_row
+       itself sets no cursor and project-row-field-title, project-row-field and
+       text-block-50 each set their own — which leaves the arrow showing over
+       the gaps between them. One cursor on the row is the same answer without
+       the holes. */
+    cursor: pointer;
   }
 
   /* Text Block 50: the type cell, which is the one cell on the row set solid
