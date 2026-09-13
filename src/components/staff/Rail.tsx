@@ -30,6 +30,11 @@ export default function Rail() {
         <NavLink to="/library" className="nav-link">
           Library
         </NavLink>
+        {/* Sequel Track, still read-only. Sits with the others rather than in
+            its own section: the two apps are converging, not staying apart. */}
+        <NavLink to="/track" className="nav-link">
+          Track
+        </NavLink>
       </nav>
 
       {recent.data && recent.data.length > 0 && (

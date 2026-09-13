@@ -12,6 +12,7 @@ import Projects from './routes/Projects'
 import SharedPlaylist from './routes/SharedPlaylist'
 import SharedTrack from './routes/SharedTrack'
 import StaffLayout from './routes/StaffLayout'
+import TrackProjects from './routes/TrackProjects'
 import LoadingModal from './components/Loader'
 
 // Dev only: the shell over fixture data, for checking layout without a
@@ -65,6 +66,8 @@ export default function App() {
         <Route path="/playlists" element={<Playlists />} />
         <Route path="/playlists/:id" element={<PlaylistRoute />} />
         <Route path="/library" element={<Library />} />
+        {/* Sequel Track, read-only against the Xano mirror while it migrates */}
+        <Route path="/track" element={<TrackProjects />} />
       </Route>
 
       {Preview && (
