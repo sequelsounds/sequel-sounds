@@ -2384,6 +2384,42 @@
     color: var(--color-sequel-silver);
   }
 
+
+  /* ========================================================== the users list
+   * dashboard_user_row and dashboard_user_titles, on one grid: 1.5fr then four
+   * 1fr, and a 16px gap rather than the hairline the directory rows use.
+   * Rows are 3.5rem, between the project list's 4rem and the 3rem elsewhere.
+   */
+  .user-list-grid {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;
+    gap: 16px;
+    padding: 0 2rem;
+    align-items: center;
+  }
+
+  .user-list-head {
+    flex: none;
+    min-height: 2rem;
+    max-height: 2rem;
+    border-bottom: 1px solid var(--color-sequel-line);
+    color: var(--color-sequel-brown);
+  }
+
+  .user-list-row {
+    min-height: 3.5rem;
+    max-height: 3.5rem;
+    color: var(--color-sequel-brown);
+    cursor: pointer;
+    transition: background-color 160ms ease;
+  }
+
+  .user-list-row:hover {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
   /* ============================================================== the app nav
    * Sequel Track's App Nav component, value for value:
    *

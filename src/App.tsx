@@ -15,6 +15,8 @@ import Roster from './routes/Roster'
 import RosterMember from './routes/RosterMember'
 import Song from './routes/Song'
 import Songs from './routes/Songs'
+import User from './routes/User'
+import Users from './routes/Users'
 import Project from './routes/Project'
 import Projects from './routes/Projects'
 import SharedPlaylist from './routes/SharedPlaylist'
@@ -82,6 +84,8 @@ export default function App() {
         <Route path="/roster/:uuid" element={<RosterMember />} />
         <Route path="/songs" element={<Songs />} />
         <Route path="/songs/:uuid" element={<Song />} />
+        <Route path="/users" element={<Users />} />
+        <Route path="/users/:uuid" element={<User />} />
         <Route path="/playlists" element={<Playlists />} />
         <Route path="/playlists/:id" element={<PlaylistRoute />} />
         <Route path="/library" element={<Library />} />

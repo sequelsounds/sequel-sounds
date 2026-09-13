@@ -445,6 +445,16 @@ export type ClientProject = {
   campaign_name: string | null
   projects_status: number | null
   stage_text: string | null
+  /**
+   * ⚠️ A SECOND, OLDER status vocabulary on the same project, and the one the
+   * user page's Projects tab shows: Project Submitted, Quote(s) Supplied,
+   * Creative Development, Contracting, Invoicing, Complete, Closed — against
+   * `stage_text`'s New / Quoting / Creative / Approvals / Contracting /
+   * Complete / Cancelled / Archived. The same project can read Complete on the
+   * client page and Invoicing on the user page, and "Sapa 2026 Extension"
+   * does.
+   */
+  legacy_status_text: string | null
   // The counters key on this, not on service_name: 1 Composition,
   // 2 Commercial, 3 Library, 4 Sonic Branding, 5 Sound Design, 6 Talent.
   services_id: number | null
@@ -775,6 +785,103 @@ export function useSong(uuid: string | undefined) {
         .maybeSingle()
       if (error) throw error
       return (data as SequelSong) ?? null
+    },
+  })
+}
+
+/** A person in Track's directory — an agency, brand, freelance, AdPro or supplier contact. */
+export type TrackUser = {
+  id: number
+  uuid: string | null
+  name: string | null
+  email: string | null
+  job_title: string | null
+  phone_number: string | null
+  created_at: string | null
+  notes: string | null
+  user_type: number | null
+  user_type_title: string | null
+  status: number | null
+  status_title: string | null
+  company: number | null
+  company_name: string | null
+  company_uuid: string | null
+  /** The CLIENT's country, reached through the company. Users have no country. */
+  country_title: string | null
+}
+
+/** Staff. get_users excludes both, so /users is only external people. */
+const INTERNAL_USER_TYPES = [1, 2]
+
+/**
+ * The directory behind `/users`.
+ *
+ * ⚠️ Staff are excluded — user_type 1 (Admin) and 2 (Sequel) — which is why
+ * this returns 146 of the 149 rows on the table. Xano's own note is worth
+ * repeating: a new internal user type has to be added to that filter or it
+ * starts appearing in a client-facing list.
+ *
+ * Newest first, which is Track's `sort = {created_at: "desc"}` and the one
+ * list in the app not ordered by name.
+ *
+ * ⚠️ With `id` descending as a tiebreak, which Track does not have. Users were
+ * created in batches, so ties are common — three share 2026-09-06 19:51:39.734
+ * — and Track's order inside a tie is whatever the store returns, which moves
+ * when a row is edited. The two lists therefore agree everywhere the order is
+ * defined and differ inside ties, where Track has no answer to match.
+ */
+export function useTrackUsers() {
+  return useQuery({
+    queryKey: ['mirror', 'users'],
+    queryFn: async (): Promise<TrackUser[]> => {
+      const { data, error } = await mirror
+        .from('user_directory')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+      if (error) throw error
+      return ((data ?? []) as TrackUser[]).filter(
+        (u) => u.user_type == null || !INTERNAL_USER_TYPES.includes(u.user_type),
+      )
+    },
+  })
+}
+
+/**
+ * One person, for `/users/:uuid`.
+ *
+ * No type filter: get_user_by_uuid has none either, so a Sequel account is off
+ * the list and still opens by URL.
+ */
+export function useTrackUser(uuid: string | undefined) {
+  return useQuery({
+    enabled: !!uuid,
+    queryKey: ['mirror', 'user', uuid],
+    queryFn: async (): Promise<TrackUser | null> => {
+      const { data, error } = await mirror
+        .from('user_directory')
+        .select('*')
+        .eq('uuid', uuid!)
+        .maybeSingle()
+      if (error) throw error
+      return (data as TrackUser) ?? null
+    },
+  })
+}
+
+/** The person's projects — the ones they are the client contact on. */
+export function useUserProjects(userId: number | undefined) {
+  return useQuery({
+    enabled: Number.isFinite(userId),
+    queryKey: ['mirror', 'user-projects', userId],
+    queryFn: async (): Promise<ClientProject[]> => {
+      const { data, error } = await mirror
+        .from('client_projects')
+        .select('*')
+        .eq('client_user_id', userId!)
+        .order('id', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as ClientProject[]
     },
   })
 }

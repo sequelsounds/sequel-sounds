@@ -1,0 +1,211 @@
+import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Loader } from '../components/Loader'
+import { useTrackUser, useUserProjects, type ClientProject } from '../lib/xanoMirror'
+
+/**
+ * One person — Sequel Track's `/view-user`, rebuilt.
+ *
+ * Four tabs, of which Track has three built and labels the fourth honestly:
+ * the Stats tab says "Coming soon!", which is reproduced rather than filled in
+ * or hidden. It is the only unbuilt tab in Track that says so.
+ *
+ * The Projects tab is the same five-column row as the client page's, on the
+ * same class — but in a different order: title, brand, number, **service**,
+ * **status**, where the client page has status before service. Checked on both
+ * pages rather than assumed.
+ *
+ * Read-only. Track edits the name, type, status, company and notes here.
+ */
+
+const TABS = ['Overview', 'Projects', 'Stats', 'Notes'] as const
+type Tab = (typeof TABS)[number]
+
+/**
+ * "9th Sep, 2026" — the Joined tile's format, ordinal and all.
+ *
+ * The months are a literal list rather than toLocaleDateString's `short`,
+ * which returns "Sept" for September in current ICU and so disagreed with
+ * Track on exactly one month of the year.
+ */
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+]
+
+function joinedDate(value: string | null): string {
+  if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  const day = d.getDate()
+  const tens = day % 100
+  const suffix =
+    tens >= 11 && tens <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][day % 10] ?? 'th')
+  return `${day}${suffix} ${MONTHS[d.getMonth()]}, ${d.getFullYear()}`
+}
+
+function Stat({
+  label,
+  value,
+  className = '',
+}: {
+  label: string
+  value: string | number | null | undefined
+  className?: string
+}) {
+  return (
+    <div className={`stat ${className}`}>
+      <span className="stat-label">{label}</span>
+      <span className="stat-value">{value ?? ''}</span>
+    </div>
+  )
+}
+
+function Field({
+  label,
+  value,
+  textarea,
+}: {
+  label: string
+  value: string | number | null | undefined
+  textarea?: boolean
+}) {
+  const v = value === null || value === undefined ? '' : String(value)
+  return (
+    <div className="edit-field">
+      <label className="edit-field-label">{label}</label>
+      {textarea ? (
+        <textarea className="edit-field-input edit-field-input-text" value={v} readOnly />
+      ) : (
+        <input className="edit-field-input" value={v} readOnly />
+      )}
+    </div>
+  )
+}
+
+export default function User() {
+  const { uuid } = useParams()
+  const navigate = useNavigate()
+  const user = useTrackUser(uuid)
+  const projects = useUserProjects(user.data?.id)
+  const [tab, setTab] = useState<Tab>('Overview')
+
+  if (user.isPending) {
+    return (
+      <div className="flex flex-1 justify-center py-16">
+        <Loader />
+      </div>
+    )
+  }
+  if (user.error) return <p className="form-error px-8 py-8">{user.error.message}</p>
+  if (!user.data) return <p className="empty-note py-8">No user with that link.</p>
+
+  const u = user.data
+  const rows = projects.data ?? []
+
+  return (
+    <>
+      <div className="header-band">
+        <div className="page-eyebrow">Let&rsquo;s say hello to...</div>
+        <div className="title-row">
+          <h1 className="page-title">{u.name ?? `Untitled (#${u.id})`}</h1>
+        </div>
+        <div className="page-subtitle">
+          {u.email ? (
+            <a href={`mailto:${u.email}`} className="text-inherit no-underline">
+              {u.email}
+            </a>
+          ) : (
+            ' '
+          )}
+        </div>
+      </div>
+
+      <div className="tab-band">
+        <Stat label="Joined" value={joinedDate(u.created_at)} className="mx-0" />
+        <div className="tab-band-divider" />
+        <Stat label="Company" value={u.company_name} />
+        <div className="tab-band-divider" />
+        {/* Counts the same projects the tab lists, so the two cannot disagree. */}
+        <Stat label="Projects" value={rows.length} />
+        <div className="tab-band-divider" />
+        <Stat label="Status" value={u.status_title} />
+      </div>
+
+      <div className="project-tabs is-plain" role="tablist">
+        {TABS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+            className="project-tab"
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-auto pt-8">
+        {tab === 'Overview' && (
+          <div className="edit-form">
+            <Field label="Name" value={u.name} />
+            {/* Read-only on Track too: the email is the login. */}
+            <Field label="Email" value={u.email} />
+            <Field label="User Type" value={u.user_type_title} />
+            <Field label="Status" value={u.status_title} />
+            <Field label="Company" value={u.company_name} />
+          </div>
+        )}
+
+        {tab === 'Projects' && (
+          <>
+            {projects.isPending && (
+              <div className="flex justify-center py-16">
+                <Loader />
+              </div>
+            )}
+            {projects.error && (
+              <p className="form-error px-8 py-4">{projects.error.message}</p>
+            )}
+            {rows.map((p: ClientProject) => (
+              <div
+                key={p.id}
+                className="client-project-row"
+                onClick={() => navigate(`/projects/${p.id}`)}
+              >
+                <span className="project-list-title" title={p.title ?? undefined}>
+                  {p.title ?? `Untitled (#${p.id})`}
+                </span>
+                <span className="project-list-cell">{p.brand}</span>
+                <span className="project-list-cell">{p.sequel_no}</span>
+                {/* Service before status here, the other way round on the
+                    client page. Same class, same grid, different order. */}
+                <span className="project-list-cell">{p.service_name}</span>
+                {/* ⚠️ And a different status. This tab reads the legacy text
+                    column, not the FK the client page and /projects read, so
+                    the same project can say Complete there and Invoicing
+                    here. Track's binding is .Project_Status; reproduced. */}
+                <span className="project-list-cell">{p.legacy_status_text}</span>
+              </div>
+            ))}
+            {projects.data && rows.length === 0 && (
+              <p className="empty-note py-6">Nothing here yet</p>
+            )}
+          </>
+        )}
+
+        {/* Track's own words, and the only unbuilt tab in the app that admits
+            to being unbuilt. */}
+        {tab === 'Stats' && <p className="empty-note py-6">Coming soon!</p>}
+
+        {tab === 'Notes' && (
+          <div className="edit-form">
+            <Field label="Notes" value={u.notes} textarea />
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
