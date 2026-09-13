@@ -25,17 +25,58 @@ export type Project = {
   title: string | null
   sequel_no: string | null
   brand: string | null
+  campaign_name: string | null
+  product: string | null
+  brand_no: string | null
+  project_type: string | null
   stage: string | null
+  record_status: string | null
   client_group: string | null
   agency: string | null
+  country: string | null
+  region: string | null
+  brand_category: string | null
   service: string | null
   supervisor: string | null
+  adpro_lead: string | null
+  client_user: string | null
+  term: string | null
+  territory: string | null
+  media: string | null
+  scripts: string | null
+  durations: string | null
+  cutdowns: boolean | null
+  extension_yn: boolean | null
+  proposed_start_date: string | null
   proposed_air_date: string | null
   confirmed_first_air_date: string | null
+  created_at: string | null
   pipeline_gbp: number | null
-  record_status: string | null
-  studio_link: string | null
   studio_inbox_link: string | null
+  studio_link: string | null
+  disco_inbox_link: string | null
+  final_disco_link: string | null
+  notes: string | null
+  notes_or_request: string | null
+}
+
+export type Song = {
+  id: number
+  track_title: string | null
+  composer: string | null
+  registration_status: string | null
+  schedule_a_status: string | null
+  ownership: string | null
+  duration: string | null
+  tunecode: string | null
+  status: string | null
+}
+
+export type CreativeLink = {
+  id: number
+  name: string | null
+  url: string | null
+  created_at: string | null
 }
 
 export type Quote = {
@@ -201,5 +242,39 @@ export function useProjectFiles(id: number | undefined) {
     enabled: Number.isFinite(id),
     queryKey: ['mirror', 'files', id],
     queryFn: () => rows<ProjectFile>('project_files', id!, 'id'),
+  })
+}
+
+export function useProjectSongs(id: number | undefined) {
+  return useQuery({
+    enabled: Number.isFinite(id),
+    queryKey: ['mirror', 'songs', id],
+    queryFn: async (): Promise<Song[]> => {
+      const { data, error } = await mirror
+        .from('sequel_songs')
+        .select(
+          'id, track_title, composer, registration_status, schedule_a_status, ownership, duration, tunecode, status',
+        )
+        .eq('project_master_list_id', id!)
+        .order('id', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as Song[]
+    },
+  })
+}
+
+export function useProjectCreativeLinks(id: number | undefined) {
+  return useQuery({
+    enabled: Number.isFinite(id),
+    queryKey: ['mirror', 'creative', id],
+    queryFn: async (): Promise<CreativeLink[]> => {
+      const { data, error } = await mirror
+        .from('creative_links')
+        .select('id, name, url, created_at')
+        .eq('project_master_list_id', id!)
+        .order('id', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as CreativeLink[]
+    },
   })
 }
