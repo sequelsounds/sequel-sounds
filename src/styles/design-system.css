@@ -2062,7 +2062,9 @@
     width: 0.7rem;
     overflow: hidden;
     font-size: 0.8rem;
-    line-height: 0.8rem;
+    /* Same clipping trap as the cells above: overflow: hidden on a line box the
+       height of the type. $ and £ both drop below the baseline. */
+    line-height: 1rem;
     font-weight: 300;
   }
 
@@ -2140,7 +2142,12 @@
   .project-list-title {
     overflow: hidden;
     font-size: 0.8rem;
-    line-height: 0.8rem;
+    /* 1rem, not Webflow's 0.8rem. This cell needs the ellipsis, so it needs
+       overflow: hidden, and a line box only as tall as the type then clips
+       every descender. Track gets away with 0.8rem because it declares no
+       overflow. The row centres its cells, so the taller box changes nothing
+       but the room the glyphs have. */
+    line-height: 1rem;
     font-weight: 500;
     text-transform: capitalize;
     text-overflow: ellipsis;
@@ -2151,7 +2158,9 @@
   .project-list-cell {
     overflow: hidden;
     font-size: 0.8rem;
-    line-height: 0.7rem;
+    /* 1rem for the same reason as .project-list-title above — and this one was
+       worse, a 0.7rem box holding 0.8rem type. */
+    line-height: 1rem;
     font-weight: 300;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2316,13 +2325,17 @@
 
   /* Text Block 50: the type cell, which is the one cell on the row set solid
      rather than on the 1rem leading the others use. */
+  /* ⚠️ No overflow, deliberately. Webflow's text-block-50 sets a line box the
+     same height as the type — 0.8rem on 0.8rem — and declares no overflow, so
+     the descenders in "Registered" simply hang outside it. Adding
+     `overflow: hidden` for an ellipsis, as this class first did, turns that
+     into a clip: the bottom of every g, y and p is sliced off. Either the line
+     box grows or the overflow goes. Track's answer is the overflow, and these
+     values are short enough not to need the ellipsis. */
   .row-type {
-    overflow: hidden;
     font-size: 0.8rem;
     line-height: 0.8rem;
     font-weight: 300;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   /* asset-delete-wrapper: the two action cells, each filling its column so

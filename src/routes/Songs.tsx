@@ -158,7 +158,12 @@ export default function Songs() {
                   every row today they agree. */}
               <span className="row-field">{s.composer}</span>
               <span className="row-field">{s.brand}</span>
-              <span className="row-type">{s.registration_status}</span>
+              {/* .row-field, not .row-type: Webflow gives this cell
+                  project-row-field on the songs row, where the clients,
+                  partners and roster rows use text-block-50 for their fourth
+                  column. Same-looking cell, different class, and a 1rem line
+                  box rather than 0.8rem. */}
+              <span className="row-field">{s.registration_status}</span>
               <span className="row-action is-inert" title="Share — not rebuilt yet">
                 <ShareIcon />
               </span>
