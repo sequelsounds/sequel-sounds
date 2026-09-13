@@ -2573,6 +2573,7 @@
 
   .year-btn {
     padding: 0.3rem 0.9rem;
+    line-height: 20px;
     border: 1px solid var(--color-sequel-brown);
     background: transparent;
     color: var(--color-sequel-brown);
@@ -2600,6 +2601,12 @@
     flex-direction: column;
     padding-top: 1.5rem;
     color: var(--color-sequel-brown);
+    /* ⚠️ An absolute 20px, not a ratio. Webflow's body sets line-height: 20px
+       and every line in these panes inherits it; the app shell here sets 1.4,
+       which made every row 2-5px shorter than Track's and the year buttons
+       27px instead of 32. Rules below that name their own line-height match
+       Track's own and still win. */
+    line-height: 20px;
   }
 
   .fee-mix-total {
@@ -2799,6 +2806,7 @@
     padding: 1.5rem 2rem 2rem 0;
     color: var(--color-sequel-brown);
     font-weight: 300;
+    line-height: 20px;
   }
 
   /* The Team table is the one league that sits in an outer tab pane rather
@@ -2887,6 +2895,7 @@
     padding: 1.5rem 2rem 1.5rem 0;
     color: var(--color-sequel-brown);
     font-weight: 300;
+    line-height: 20px;
   }
 
   .uni-headline {
@@ -2962,6 +2971,10 @@
     flex: 1;
   }
 
+  /* Chart.js draws its legend inside the canvas, under 40-odd pixels of air
+     and above another 45, and the legendGap plugin adds 28 more. That air is
+     what keeps Track's plot from running to the bottom of the pane, so it is
+     reproduced here as padding rather than left out. */
   .chart-legend {
     display: flex;
     flex: none;
@@ -2969,8 +2982,9 @@
     align-items: center;
     column-gap: 20px;
     row-gap: 8px;
-    padding: 20px 10px 0;
+    padding: 42px 10px 45px 30px;
     font-size: 12px;
+    line-height: 1;
   }
 
   .chart-legend-item {

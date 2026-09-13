@@ -676,12 +676,19 @@ export default function Management() {
         <div className="page-subtitle">Here&rsquo;s your overview&hellip;</div>
       </div>
 
+      {/* vertical_divider between every pair, 1px x 1.5rem — and the first
+          stat sits flush with the band's own 2rem inset (stats_wrap left). */}
       <div className="tab-band">
         <Stat label="Spend" value={money(sum('spend'))} first />
+        <div className="tab-band-divider" />
         <Stat label="Invoiced" value={money(sum('invoiced'))} />
+        <div className="tab-band-divider" />
         <Stat label="Profit" value={money(sum('profit'))} />
+        <div className="tab-band-divider" />
         <Stat label="Invoices" value={String(current.length)} />
+        <div className="tab-band-divider" />
         <Stat label="Average" value={money(current.length ? sum('profit') / current.length : 0)} />
+        <div className="tab-band-divider" />
         <Stat
           label="Outstanding"
           value={money(
@@ -690,7 +697,9 @@ export default function Management() {
               .reduce((acc, row) => acc + (Number(row.invoiced) || 0), 0),
           )}
         />
+        <div className="tab-band-divider" />
         <Stat label="Studios" value={money(sum('studios'))} />
+        <div className="tab-band-divider" />
         <Stat label="Avoidance" value={money(sum('cost_avoidance'))} />
       </div>
 
@@ -731,8 +740,11 @@ export default function Management() {
         </div>
       )}
 
+      {/* Track's Stats pane carries the padding: 1rem above the chart tabs,
+          2rem in from the right and beneath. The Team pane below has none of
+          it — its own table supplies the inset instead. */}
       {query.data && invoices.length > 0 && outer === 'stats' && (
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col pt-4 pr-8 pb-8">
           <div className="chart-tabs" role="tablist" aria-label="Chart">
             {PANES.map((p) => (
               <button
@@ -748,7 +760,8 @@ export default function Management() {
             ))}
           </div>
 
-          <div className="ml-8 min-h-0 flex-1">
+          {/* mgmt_pane_fill: every pane sits 2rem below the chart tabs. */}
+          <div className="ml-8 mt-8 min-h-0 flex-1">
             {pane === 'revenue' && (
               <LineChart
                 format={money}
@@ -838,7 +851,7 @@ export default function Management() {
       {query.data && outer === 'recent' && <div className="min-h-0 flex-1" />}
 
       {query.data && invoices.length > 0 && outer === 'team' && (
-        <div className="min-h-0 flex-1">
+        <div className="mt-8 min-h-0 flex-1">
           <League
             rows={forYear}
             year={year}

@@ -26,7 +26,10 @@ export type ChartSeries = {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-const PAD = { top: 8, right: 10, bottom: 26 }
+// Measured off Track's canvas at 1440: the top gridline sits 16px down, the
+// December point 19px in from the right, and the month labels 23px under the
+// baseline. Absolute, because Chart.js's paddings are absolute too.
+const PAD = { top: 16, right: 19, bottom: 26 }
 const TENSION = 0.25
 
 /**
@@ -120,7 +123,7 @@ export default function LineChart({
     // The gutter is as wide as the widest figure in it, so a count of
     // projects does not get the same 64px a six-figure sum needs.
     const longest = Math.max(...lines.map((v) => format(v).length), 1)
-    return { lines, top, padLeft: Math.max(28, longest * 7 + 16) }
+    return { lines, top, padLeft: Math.max(28, longest * 7 + 24) }
   }, [series, format])
 
   const innerW = Math.max(0, w - scale.padLeft - PAD.right)
@@ -131,13 +134,13 @@ export default function LineChart({
 
   if (w === 0 || h === 0)
     return (
-      <div className="flex h-full min-h-0 flex-col pb-8">
+      <div className="flex h-full min-h-0 flex-col">
         <div ref={wrap} className="chart-wrap" />
       </div>
     )
 
   return (
-    <div className="flex h-full min-h-0 flex-col pb-8">
+    <div className="flex h-full min-h-0 flex-col">
       <div
         ref={wrap}
         className="chart-wrap"
