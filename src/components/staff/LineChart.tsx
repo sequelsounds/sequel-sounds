@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 
 /**
  * The two line charts on `/management`: Revenue and Projects.
@@ -94,9 +94,14 @@ export default function LineChart({
   /** How a value reads in the axis and the tooltip — money, or a whole count. */
   format: (value: number) => string
 }) {
+  // Two charts can be on the page at once, so the clip needs its own id.
+  // ⚠️ useId returns ":r0:" — the colons are not valid in a url(#...) reference,
+  // so they come out before it is used as one.
+  const wipeId = 'wipe' + useId().replace(/:/g, '')
   const wrap = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
   const [hover, setHover] = useState<number | null>(null)
+  const [reveal, setReveal] = useState(0)
 
   // The pane is a flex child of a tab that starts hidden, so the first
   // measurement is zero and has to be taken again when it appears.
@@ -110,6 +115,23 @@ export default function LineChart({
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+
+  // The lines draw in from the left, once, when the pane first has a size —
+  // Chart.js's own second of easeOutQuart. The pane unmounts when you leave
+  // the tab, so coming back replays it, which is what Track does.
+  const ready = size.w > 0 && size.h > 0
+  useEffect(() => {
+    if (!ready) return
+    let raf = 0
+    const started = performance.now()
+    const step = (now: number) => {
+      const t = Math.min(1, (now - started) / 1000)
+      setReveal(1 - (1 - t) ** 4)
+      if (t < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [ready])
 
   const { w, h } = size
 
@@ -194,30 +216,38 @@ export default function LineChart({
             </text>
           ))}
 
-          {series.map((s) => (
-            <path
-              key={s.label}
-              d={path(s.data.map((v, i) => (v == null ? null : { x: x(i), y: y(v) })))}
-              fill="none"
-              stroke={s.colour}
-              strokeWidth={s.solid ? 1.5 : 1}
-              strokeDasharray={s.solid ? undefined : '4 4'}
-              strokeLinecap="round"
-            />
-          ))}
+          {/* Only the lines are wiped in. The axis, its figures and the grid
+              are there from the first frame, as they are on Track. */}
+          <clipPath id={wipeId}>
+            <rect x="0" y="0" width={reveal * w} height={h} />
+          </clipPath>
 
-          {hover != null &&
-            series.map((s) =>
-              s.data[hover] == null ? null : (
-                <circle
-                  key={s.label}
-                  cx={x(hover)}
-                  cy={y(s.data[hover] as number)}
-                  r={4}
-                  fill={s.colour}
-                />
-              ),
-            )}
+          <g clipPath={`url(#${wipeId})`}>
+            {series.map((s) => (
+              <path
+                key={s.label}
+                d={path(s.data.map((v, i) => (v == null ? null : { x: x(i), y: y(v) })))}
+                fill="none"
+                stroke={s.colour}
+                strokeWidth={s.solid ? 1.5 : 1}
+                strokeDasharray={s.solid ? undefined : '4 4'}
+                strokeLinecap="round"
+              />
+            ))}
+
+            {hover != null &&
+              series.map((s) =>
+                s.data[hover] == null ? null : (
+                  <circle
+                    key={s.label}
+                    cx={x(hover)}
+                    cy={y(s.data[hover] as number)}
+                    r={4}
+                    fill={s.colour}
+                  />
+                ),
+              )}
+          </g>
         </svg>
 
         {/* Chart.js's own tooltip, reproduced: it sits BESIDE the month with a
