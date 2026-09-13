@@ -5,6 +5,20 @@ the product is, `docs/product-spec.md` for what is being built, and
 `docs/mockups/sequel-studio-mockup.html` for what the staff app looks like;
 this file is about how to work here.
 
+**The Sequel Track rebuild notes are NOT in this repo.** They live in the
+claude.ai Project "Sequel App", deliberately — they are about Track, which is
+being replaced, and they die with it. Read them from there with the Projects
+tool, not from disk:
+
+- `claude/sequel-track-supabase-migration.md` — the cold-start brief: what is
+  built, what the mirror views are, and the traps that have cost time. Read
+  this first for anything touching Track's data.
+- `claude/sequel-track-known-issues.md` — what is broken, in which stack, and
+  what is waiting on a decision.
+
+The same Project holds the per-page and per-endpoint notes for Track itself
+(Xano, Wized, Webflow), which are the spec for anything still being copied.
+
 ## Commands
 
 ```bash
