@@ -605,3 +605,85 @@ export function usePartner(uuid: string | undefined) {
     },
   })
 }
+
+/**
+ * A composition team, as `/roster` lists them.
+ *
+ * The other half of `Supplier List`: `get_roster` is `Supplier_Type ==
+ * "Composition Team"` where `get_all_suppliers` is everything else.
+ */
+export type RosterMember = {
+  id: number
+  uuid: string | null
+  title: string | null
+  supplier_type: string | null
+  briefing_list: string | null
+  approved: boolean | null
+  strengths: string | null
+  brief_email: string | null
+  finance_email: string | null
+  website: string | null
+  phone_number: string | null
+  city: string | null
+  bio: string | null
+  studio_setup: string | null
+  stand_out_work: string | null
+  composition_showreel: string | null
+  sounddesign_showreel: string | null
+  final_mix_showreel: string | null
+  library_link: string | null
+  access_to_vocalist: boolean | null
+  sound_design: boolean | null
+  final_mix: boolean | null
+  composer_library: boolean | null
+  /** Not Sent / Pending / Complete / NA. "Signed" on the list counts Complete. */
+  ca_status: string | null
+  qbo_vendor_id: string | null
+  country_id: number | null
+  country_text: string | null
+  region_id: number | null
+  region_text: string | null
+}
+
+/**
+ * Every composition team, by name.
+ *
+ * Ordered here for the same reason as the partners list: `get_roster` is a bare
+ * query with no `sort`, so Track shows heap order and there is nothing to copy.
+ */
+export function useRoster() {
+  return useQuery({
+    queryKey: ['mirror', 'roster'],
+    queryFn: async (): Promise<RosterMember[]> => {
+      const { data, error } = await mirror
+        .from('roster_list')
+        .select('*')
+        .order('title', { ascending: true })
+      if (error) throw error
+      return (data ?? []) as RosterMember[]
+    },
+  })
+}
+
+/**
+ * One composition team.
+ *
+ * Off `roster_list` rather than `partner_detail`: the roster page shows four
+ * fields the partner page deleted — the two showreels, the library url and the
+ * studio — and this view already carries them.
+ */
+export function useRosterMember(uuid: string | undefined) {
+  return useQuery({
+    enabled: !!uuid,
+    queryKey: ['mirror', 'roster-member', uuid],
+    queryFn: async (): Promise<RosterMember | null> => {
+      const { data, error } = await mirror
+        .from('roster_list')
+        .select('*')
+        .eq('uuid', uuid!)
+        .maybeSingle()
+      if (error) throw error
+      return (data as RosterMember) ?? null
+    },
+  })
+}

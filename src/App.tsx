@@ -11,6 +11,8 @@ import Login from './routes/Login'
 import Partner from './routes/Partner'
 import Partners from './routes/Partners'
 import Playlists, { PlaylistRoute } from './routes/Playlists'
+import Roster from './routes/Roster'
+import RosterMember from './routes/RosterMember'
 import Project from './routes/Project'
 import Projects from './routes/Projects'
 import SharedPlaylist from './routes/SharedPlaylist'
@@ -74,6 +76,8 @@ export default function App() {
         <Route path="/clients/:uuid" element={<Client />} />
         <Route path="/partners" element={<Partners />} />
         <Route path="/partners/:uuid" element={<Partner />} />
+        <Route path="/roster" element={<Roster />} />
+        <Route path="/roster/:uuid" element={<RosterMember />} />
         <Route path="/playlists" element={<Playlists />} />
         <Route path="/playlists/:id" element={<PlaylistRoute />} />
         <Route path="/library" element={<Library />} />

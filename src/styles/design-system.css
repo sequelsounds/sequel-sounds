@@ -2304,6 +2304,16 @@
     cursor: pointer;
   }
 
+  /* roster_row: six columns where partner_row has five — the roster list adds
+     a City column before Country, and its fourth is the CA status rather than
+     the supplier type. Same 3rem and the same hairline gap. */
+  .project-row-roster {
+    position: relative;
+    grid-template-columns: 0.75fr 0.25fr 0.25fr 0.25fr 0.25fr 0.25fr;
+    gap: 0.025rem;
+    cursor: pointer;
+  }
+
   /* Text Block 50: the type cell, which is the one cell on the row set solid
      rather than on the 1rem leading the others use. */
   .row-type {
