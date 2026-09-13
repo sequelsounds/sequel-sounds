@@ -487,7 +487,7 @@ export default function Project() {
       )}
       {dropping && (
         <Confirm
-          title={`Delete what ${dropping.company} sent?`}
+          title={`Delete the ${dropping.company} submission?`}
           body={[
             `${plural(unusedIn(dropping).length, 'track')} will be removed from the library and from storage. This cannot be undone.`,
             dropping.tracks.length - unusedIn(dropping).length > 0 &&
