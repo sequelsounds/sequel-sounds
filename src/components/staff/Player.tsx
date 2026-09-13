@@ -1,6 +1,14 @@
 import { formatDuration } from '../../lib/format'
 import { usePeaks, usePlayer } from '../../lib/player'
-import { FilmIcon, NextIcon, PauseIcon, PlayIcon, PrevIcon } from './icons'
+import {
+  FilmIcon,
+  NextIcon,
+  PauseIcon,
+  PlayIcon,
+  PrevIcon,
+  VolumeIcon,
+  VolumeMuteIcon,
+} from './icons'
 import Waveform from './Waveform'
 
 /** The bottom bar. Mounted once in the layout, so it outlives every route. */
@@ -13,7 +21,9 @@ export default function Player() {
   return (
     <footer
       className="col-start-1 col-span-3 row-start-3 grid items-center gap-[18px] bg-sequel-brown px-[22px] text-sequel-silver"
-      style={{ gridTemplateColumns: '44px minmax(120px, 300px) 1fr 100px 60px' }}
+      style={{
+        gridTemplateColumns: '44px minmax(120px, 300px) 1fr 100px auto',
+      }}
     >
       <button
         type="button"
@@ -60,6 +70,30 @@ export default function Player() {
         {formatDuration(player.position)} / {formatDuration(duration)}
       </div>
       <div className="flex items-center justify-end gap-4">
+        {/* Click the mark to mute, drag the slider to set the level. Muting
+            keeps the level, so unmuting comes back where it was. */}
+        <button
+          type="button"
+          onClick={player.toggleMute}
+          aria-label={player.muted ? 'Unmute' : 'Mute'}
+          title={player.muted ? 'Unmute' : 'Mute'}
+        >
+          {player.muted || player.volume === 0 ? (
+            <VolumeMuteIcon size="1.1rem" />
+          ) : (
+            <VolumeIcon size="1.1rem" />
+          )}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={player.muted ? 0 : player.volume}
+          onChange={(e) => player.setVolume(Number(e.target.value))}
+          aria-label="Volume"
+          className="volume-slider"
+        />
         <button
           type="button"
           onClick={player.prev}

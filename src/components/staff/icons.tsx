@@ -219,3 +219,23 @@ export function ImageIcon(props: IconProps) {
     </Svg>
   )
 }
+
+export function VolumeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4Z" />
+      <path d="M16 9.5a4 4 0 0 1 0 5" />
+      <path d="M18.5 7a7.5 7.5 0 0 1 0 10" />
+    </Svg>
+  )
+}
+
+export function VolumeMuteIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4Z" />
+      <path d="m16 9.5 5 5" />
+      <path d="m21 9.5-5 5" />
+    </Svg>
+  )
+}

@@ -59,6 +59,8 @@ type PlayerState = {
   error: string | null
   /** Whether the film is showing over the page. Sound plays either way. */
   filmOpen: boolean
+  volume: number
+  muted: boolean
 }
 
 type PlayerApi = PlayerState & {
@@ -71,9 +73,32 @@ type PlayerApi = PlayerState & {
   isCurrent: (id: string) => boolean
   openFilm: () => void
   closeFilm: () => void
+  setVolume: (v: number) => void
+  toggleMute: () => void
 }
 
 const PlayerContext = createContext<PlayerApi | null>(null)
+
+/**
+ * Volume is per person, not per session: someone who works quietly should not
+ * have to turn it down again every morning. Stored as a number so a muted
+ * player still remembers what to come back to.
+ */
+const VOLUME_KEY = 'sequel.player.volume'
+
+function storedVolume(): number {
+  try {
+    const raw = localStorage.getItem(VOLUME_KEY)
+    // Nothing stored means full, not silent. `Number(null)` is 0, and 0 is a
+    // legitimate volume, so the absence has to be checked before the parse —
+    // otherwise a first visit is a player that plays nothing.
+    if (raw === null) return 1
+    const level = Number(raw)
+    return Number.isFinite(level) && level >= 0 && level <= 1 ? level : 1
+  } catch {
+    return 1
+  }
+}
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   // Rendered below, once, and only ever touched from effects and handlers —
@@ -89,6 +114,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     duration: 0,
     error: null,
     filmOpen: false,
+    volume: storedVolume(),
+    muted: false,
   })
   const current = state.index >= 0 ? (state.queue[state.index] ?? null) : null
 
@@ -129,6 +156,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // after the await so a fast second click cannot start the earlier track.
   const currentId = current?.id ?? null
   const currentKey = current?.preview_key ?? null
+
+  // The element takes its level from state rather than the other way round,
+  // so a track starting mid-session comes in at the level already set.
+  useEffect(() => {
+    const el = media()
+    if (!el) return
+    el.volume = state.volume
+    el.muted = state.muted
+  }, [media, state.volume, state.muted, currentId])
+
   useEffect(() => {
     const el = media()
     if (!el) return
@@ -226,6 +263,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     )
   }, [currentId, currentKind])
 
+  const setVolume = useCallback((v: number) => {
+    const next = Math.max(0, Math.min(1, v))
+    try {
+      localStorage.setItem(VOLUME_KEY, String(next))
+    } catch {
+      // Not remembering is fine.
+    }
+    // Moving the slider at all is a way of unmuting: the alternative is a
+    // silent player and a slider that looks like it should have fixed it.
+    setState((s) => ({ ...s, volume: next, muted: next === 0 ? s.muted : false }))
+  }, [])
+
+  const toggleMute = useCallback(() => {
+    setState((s) => ({ ...s, muted: !s.muted }))
+  }, [])
+
   const openFilm = useCallback(() => setState((s) => ({ ...s, filmOpen: true })), [])
   const closeFilm = useCallback(() => setState((s) => ({ ...s, filmOpen: false })), [])
 
@@ -243,8 +296,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       isCurrent,
       openFilm,
       closeFilm,
+      setVolume,
+      toggleMute,
     }),
-    [state, current, play, toggle, next, prev, seek, isCurrent, openFilm, closeFilm],
+    [
+      state,
+      current,
+      play,
+      toggle,
+      next,
+      prev,
+      seek,
+      isCurrent,
+      openFilm,
+      closeFilm,
+      setVolume,
+      toggleMute,
+    ],
   )
 
   return (
@@ -253,7 +321,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       <FilmStage
         ref={video}
         open={state.filmOpen && current?.kind === 'video'}
+        playing={state.playing}
         title={current?.title ?? ''}
+        onToggle={toggle}
         onClose={closeFilm}
       />
     </PlayerContext>

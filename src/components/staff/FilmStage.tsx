@@ -1,9 +1,12 @@
 import { useEffect, type Ref } from 'react'
+import { PauseIcon, PlayIcon } from './icons'
 
 type Props = {
   ref: Ref<HTMLVideoElement>
   open: boolean
+  playing: boolean
   title: string
+  onToggle: () => void
   onClose: () => void
 }
 
@@ -19,7 +22,14 @@ type Props = {
  * Closing leaves it playing. A film's soundtrack is still a take somebody is
  * listening to, and the transport in the bar below goes on driving it.
  */
-export default function FilmStage({ ref, open, title, onClose }: Props) {
+export default function FilmStage({
+  ref,
+  open,
+  playing,
+  title,
+  onToggle,
+  onClose,
+}: Props) {
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -46,20 +56,35 @@ export default function FilmStage({ ref, open, title, onClose }: Props) {
       <video
         ref={ref}
         playsInline
+        onClick={open ? onToggle : undefined}
         aria-label={open ? `${title} — film` : undefined}
         className={open ? 'film-video' : 'film-video is-away'}
       />
 
       {open && (
-        <button
-          type="button"
-          className="film-close"
-          aria-label="Close the film"
-          title="Close the film — the sound keeps playing"
-          onClick={onClose}
-        >
-          ×
-        </button>
+        <>
+          {/* The picture itself is the button — which is what anyone will
+              try first — and this says so. Always there while paused;
+              while playing it waits for the pointer, so it is not sitting
+              over the middle of a shot being judged. */}
+          <button
+            type="button"
+            className={`film-toggle ${playing ? 'is-playing' : ''}`}
+            aria-label={playing ? 'Pause' : 'Play'}
+            onClick={onToggle}
+          >
+            {playing ? <PauseIcon size="2rem" /> : <PlayIcon size="2rem" />}
+          </button>
+          <button
+            type="button"
+            className="film-close"
+            aria-label="Close the film"
+            title="Close the film — the sound keeps playing"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </>
       )}
     </>
   )

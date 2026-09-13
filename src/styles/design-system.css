@@ -828,6 +828,58 @@
     background: none;
   }
 
+  /* Centred on the picture. Always visible while paused; while playing it
+     waits for the pointer, so nothing sits over the middle of a shot. */
+  .film-toggle {
+    position: fixed;
+    z-index: 62;
+    left: 50%;
+    top: calc((100vh - 4.5rem) / 2);
+    transform: translate(-50%, -50%);
+    display: grid;
+    place-items: center;
+    width: 5rem;
+    height: 5rem;
+    border: 0;
+    background-color: rgba(28, 27, 25, 0.55);
+    color: var(--color-sequel-silver);
+    cursor: pointer;
+    transition: opacity 160ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .film-toggle.is-playing {
+    opacity: 0;
+  }
+
+  .film-toggle.is-playing:hover,
+  .film-toggle.is-playing:focus-visible {
+    opacity: 1;
+  }
+
+  /* The slider. Drawn rather than left to the user agent, which renders a
+     different control on every platform and none of them in this palette. */
+  .volume-slider {
+    width: 5rem;
+    height: 2px;
+    appearance: none;
+    background-color: color-mix(in srgb, var(--color-sequel-silver) 35%, transparent);
+    cursor: pointer;
+  }
+
+  .volume-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    background-color: var(--color-sequel-silver);
+  }
+
+  .volume-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border: 0;
+    background-color: var(--color-sequel-silver);
+  }
+
   .film-close {
     position: fixed;
     z-index: 62;
