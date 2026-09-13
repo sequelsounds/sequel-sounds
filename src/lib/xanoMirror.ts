@@ -357,3 +357,61 @@ export function useProjectCreativeLinks(id: number | undefined) {
     },
   })
 }
+
+/**
+ * A client company, as `/clients` and `/client` show it.
+ *
+ * ⚠️ `Clients.UUID` is uppercase in Xano while `Supplier List.uuid` is
+ * lowercase — a real inconsistency between two tables that are otherwise
+ * handled identically, and the cause of a day lost to a misleading Xano error
+ * in August. The mirror lower-cases every column on the way in, so it is
+ * `uuid` here and the trap does not survive the crossing.
+ */
+export type Client = {
+  id: number
+  uuid: string | null
+  company: string | null
+  city: string | null
+  street_address: string | null
+  postal_code: string | null
+  invoice_email: string | null
+  accounts_payable_email: string | null
+  qbo_customer_id: string | null
+  invoice_instructions: string | null
+  status: string | null
+  country_id: number | null
+  country_text: string | null
+  // The five regions the tabs filter on: 1 Asia Pacific, 2 Europe, 3 Latin
+  // America, 4 North America, 5 Middle East & Turkey. The tabs key on the id
+  // rather than the label, as everything else in Track does.
+  region_id: number | null
+  region_text: string | null
+  client_type_id: number | null
+  client_type_text: string | null
+}
+
+/**
+ * Every live client, in Track's order.
+ *
+ * The sort is Track's, not Postgres': Xano orders `Company` by byte, so the
+ * list runs digits, then capitals, then lowercase — "11:11 …", "360FX Milan",
+ * … "Weber Shandwick New York", "adam&eve\TBWA London". A plain JavaScript
+ * `<` compares UTF-16 code units and reproduces exactly that, which is why the
+ * ordering is done here rather than asked of PostgREST, whose default
+ * collation would put adam&eve third.
+ *
+ * The view already drops archived clients (`status != 'Archived'`, so a blank
+ * status still shows) and resolves country, region and type.
+ */
+export function useClients() {
+  return useQuery({
+    queryKey: ['mirror', 'clients'],
+    queryFn: async (): Promise<Client[]> => {
+      const { data, error } = await mirror.from('client_list').select('*')
+      if (error) throw error
+      return ((data ?? []) as Client[]).sort((a, b) =>
+        (a.company ?? '') < (b.company ?? '') ? -1 : (a.company ?? '') > (b.company ?? '') ? 1 : 0,
+      )
+    },
+  })
+}

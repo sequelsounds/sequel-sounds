@@ -2176,6 +2176,102 @@
     color: var(--color-sequel-brown);
   }
 
+
+  /* ======================================================== the clients list
+   * Track's `/clients`, read off the running page and its Webflow style
+   * records. The page was duplicated from `/partners`, so the row is still
+   * `partner_row` and the tabs are still `roster-tabs` — the names below say
+   * which record each value came from.
+   */
+
+  /* app-search-form: 30% of the band, where the projects list gives its
+     search 40%. */
+  .tab-band-search.is-narrow {
+    width: 30%;
+  }
+
+  /* roster-tabs-wrap: 2rem tall, 1rem in at the left and 2rem at the right,
+     on the same half-strength rule as the bands above it. Not .project-tabs:
+     these carry 1rem of margin between them as well as their padding, so they
+     sit further apart than the tabs on a project. */
+  .filter-tabs {
+    display: flex;
+    flex: none;
+    height: 2rem;
+    padding-left: 1rem;
+    padding-right: 2rem;
+    border-bottom: 1px solid var(--color-sequel-line);
+  }
+
+  /* roster-tabs. The current one is marked by a box-shadow rather than a
+     border — 1px of brown sitting exactly on the strip's own rule, which a
+     border-bottom would have to displace the text to make room for. */
+  .filter-tab {
+    display: flex;
+    height: 2rem;
+    margin-right: 1rem;
+    padding: 0 1rem;
+    align-items: center;
+    border: none;
+    background: none;
+    color: var(--color-sequel-brown);
+    cursor: pointer;
+  }
+
+  .filter-tab[aria-selected='true'] {
+    box-shadow: 0 1px 0 0 var(--color-sequel-brown);
+  }
+
+  /* roster-tab-text. The 0.5rem of padding above it is Webflow's, and it is
+     what sets the label low in the tab rather than centred in it. */
+  .filter-tab-text {
+    padding-top: 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  /* partner_row: five columns and the same 0.025rem hairline gap as the quote
+     and invoice rows, on .project-row's own 3rem and hover. */
+  .project-row-client {
+    position: relative;
+    grid-template-columns: 0.75fr 0.25fr 0.25fr 0.25fr 0.25fr;
+    gap: 0.025rem;
+  }
+
+  /* Text Block 50: the type cell, which is the one cell on the row set solid
+     rather than on the 1rem leading the others use. */
+  .row-type {
+    overflow: hidden;
+    font-size: 0.8rem;
+    line-height: 0.8rem;
+    font-weight: 300;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* asset-delete-wrapper: the two action cells, each filling its column so
+     the mark inside lands on the column's centre rather than its start —
+     .project-row justifies everything else to the left. */
+  .row-action {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Drawn, and deliberately dead: every write on this page is still Xano's.
+     Said with the cursor rather than by fading the mark out, because Track
+     shows it at full strength and the row is what is being recreated. */
+  .row-action.is-inert {
+    cursor: not-allowed;
+  }
+
   /* ============================================================== the app nav
    * Sequel Track's App Nav component, value for value:
    *
