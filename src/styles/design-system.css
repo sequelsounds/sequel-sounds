@@ -2175,4 +2175,83 @@
   .project-search::placeholder {
     color: var(--color-sequel-brown);
   }
+
+  /* ============================================================== the app nav
+   * Sequel Track's App Nav component, value for value:
+   *
+   *   nav_sidebar    16rem, flex 0 0 16rem, column, padding 2rem 2rem 2rem 3rem,
+   *                  on Sequel Silver with one rule down its right
+   *   app_logo_wrap  4rem square, 6rem beneath
+   *   nav_links_app  margin-bottom 1rem
+   *   nav_text_app   0.8rem weight 400, 0.5rem above and below
+   *
+   * The flex-basis and flex-shrink are not decoration: without them a wide
+   * chart inside the page pushed its intrinsic width up through the flex
+   * ancestors and took the space out of the nav.
+   */
+  .nav-sidebar {
+    display: flex;
+    flex: 0 0 16rem;
+    width: 16rem;
+    height: 100%;
+    flex-direction: column;
+    overflow: auto;
+    padding: 2rem 2rem 2rem 3rem;
+    background-color: var(--color-sequel-silver);
+    border-right: 1px solid var(--color-sequel-line);
+  }
+
+  .app-logo-wrap {
+    width: 4rem;
+    height: 4rem;
+    margin-bottom: 6rem;
+    flex: none;
+    color: var(--color-sequel-brown);
+    text-decoration: none;
+  }
+
+  .nav-link-app {
+    flex: none;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    border: none;
+    background: none;
+    color: var(--color-sequel-brown);
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1;
+    text-decoration: none;
+  }
+
+  /* Track marks no current page at all. This does, with weight rather than
+     colour, so the marker cannot be mistaken for a disabled item. */
+  .nav-link-app[aria-current='page'] {
+    font-weight: 500;
+  }
+
+  /* Shown, not hidden, and not clickable: these pages have not been rebuilt.
+     Dimming them says so honestly; leaving them out would not. */
+  .nav-link-app.is-unbuilt {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  /* Studio's two pages, which are not in Track's nav and are here only until
+     the project page's Music tab absorbs them. */
+  .nav-aside {
+    display: flex;
+    flex-direction: column;
+    margin-top: auto;
+    padding-top: 2rem;
+  }
+
+  .nav-aside-title {
+    margin-bottom: 0.5rem;
+    color: var(--color-sequel-mid);
+    font-size: 0.7rem;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
 }
