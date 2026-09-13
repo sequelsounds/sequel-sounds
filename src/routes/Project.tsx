@@ -30,6 +30,18 @@ function unusedIn(drop: Submission): TrackWithUse[] {
   return drop.tracks.filter((t) => t.playlist_tracks.length === 0)
 }
 
+/**
+ * How many playlists are holding on to this drop. A count of the tracks
+ * alone reads as though they went somewhere together, and six tracks can be
+ * six people's picks across six playlists.
+ */
+function playlistsHolding(drop: Submission): number {
+  const ids = new Set<string>()
+  for (const t of drop.tracks)
+    for (const pt of t.playlist_tracks) ids.add(pt.playlist_id)
+  return ids.size
+}
+
 /** What the right-hand pane is showing. */
 type Open = { kind: 'playlist' | 'submission'; key: string }
 
@@ -372,7 +384,7 @@ export default function Project() {
                   disabled={unusedIn(s).length === 0}
                   title={
                     unusedIn(s).length === 0
-                      ? 'Every track in this drop is in a playlist'
+                      ? 'Every track in this drop is already in a playlist'
                       : 'Delete this drop'
                   }
                   onClick={() => setDropping(s)}
@@ -477,9 +489,9 @@ export default function Project() {
         <Confirm
           title={`Delete what ${dropping.company} sent?`}
           body={[
-            `${plural(unusedIn(dropping).length, 'track')} will go from the library and from storage. This cannot be undone.`,
+            `${plural(unusedIn(dropping).length, 'track')} will be removed from the library and from storage. This cannot be undone.`,
             dropping.tracks.length - unusedIn(dropping).length > 0 &&
-              `The other ${dropping.tracks.length - unusedIn(dropping).length} are in a playlist and stay where they are.`,
+              `The other ${dropping.tracks.length - unusedIn(dropping).length} are already in ${plural(playlistsHolding(dropping), 'playlist')} and stay where they are.`,
           ]
             .filter(Boolean)
             .join(' ')}
