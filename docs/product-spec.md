@@ -77,3 +77,31 @@ See the layout reference above for the approved screen.
 3. Viewer sign-in + viewer page + comments.
 4. Video sync.
 5. Themes, activity views.
+
+## Known gaps
+
+Things that exist as data but not yet as anything you can use. Checked
+against the live database, 13 Sep.
+
+**Video does not play.** The player is one `new Audio()` element living above
+the router — audio only, with nowhere to put a picture. Every video track
+has its `preview.mp4` and it is signed like any other key, so the
+soundtrack comes through and nothing appears. Needs a surface: a video
+element the player swaps to for a film, with the transport, the waveform
+and next/previous still driving it, and somewhere for it to sit — the
+player bar is 72px, so either it opens over the page or the Creator's
+picture section becomes the place films are watched.
+
+**Project assets have no page.** `project_assets` is populated by the
+webhook — briefs, contracts, artwork — and nothing lists them. The
+placeholder squares already know how to draw a pdf, an image and a
+document for when they do.
+
+**Activity has no page.** The `events` table records viewer plays; the tab
+that used to hold the empty state was removed with the split view.
+
+**Deleted objects are not reclaimed.** The bucket has versioning on, so
+`delete-track` writes delete markers and the bytes stay — 341MB of
+noncurrent versions as of tonight. Purging them needs
+`s3:ListBucketVersions` and `s3:DeleteObjectVersion` and makes deletes
+genuinely permanent, which is a decision rather than a bug.
