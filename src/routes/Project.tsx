@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
-import { formatBytes, formatDate, formatMoney } from '../lib/format'
+import { formatBytes, formatMoney } from '../lib/format'
 import {
   useProject,
   useProjectBriefs,
@@ -12,20 +12,23 @@ import {
   useProjectQuotes,
   useProjectSongs,
 } from '../lib/xanoMirror'
+import type { Brief, Contract, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../lib/xanoMirror'
 
 /**
- * One project.
+ * One project — Sequel Track's `/project`, rebuilt.
  *
- * The tabs, their order and the field groupings are read off the live Sequel
- * Track page rather than invented — Overview / Client / Terms / Assets /
- * Estimates / Briefs / Creative / Invoicing / Songs / Contracting / Notes, and
- * each tab holds what it holds there. An earlier version of this page had
- * seven tabs of my own devising, which is not a migration.
+ * Nothing on this page was designed here. The tabs and their order, the field
+ * names and their groupings, the column ratios, the empty-state wording and
+ * the date formats are all read out of the Webflow element tree and the Wized
+ * bindings behind it, and checked against the page rendered on the staging
+ * branch. Where a comment names a class (project_quote_row) or a binding
+ * (project_age_in_days), that is the source it came from.
  *
- * Read-only. Track still runs on Xano and is the only thing that writes: the
- * editing, the quote wizard and the invoice wizard are not here yet. Those are
- * the bulk of the real page — 512 Wized bindings on it, against the ~1,250 in
- * the whole app — and they come one at a time.
+ * It is read-only. Xano is still the only writer, so the controls are marked
+ * readonly rather than made to look live, and the add-new buttons are present
+ * but disabled — the wizards behind them (11 steps for a quote, 15 for an
+ * invoice), the uploads and the inline editing are the bulk of the real page
+ * and are not built yet.
  */
 
 const TABS = [
@@ -43,31 +46,168 @@ const TABS = [
 ] as const
 type Tab = (typeof TABS)[number]
 
+/** "4 Sep 2026" — the header's own format (project_created_date). */
+const longDate = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+
+/** "04 Sep 26" — the format the rows use (project_asset_date_txt). */
+const shortDate = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit',
+  month: 'short',
+  year: '2-digit',
+})
+
+function fmt(f: Intl.DateTimeFormat, value: string | null | undefined) {
+  // Xano writes "" rather than null for an unset date, so both are nothing.
+  if (!value) return ''
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? '' : f.format(d)
+}
+
+/**
+ * project_age_in_days: days from created_at to the closing date if there is
+ * one, otherwise to today.
+ */
+function ageInDays(created: string | null, closed: string | null) {
+  if (!created) return ''
+  const start = new Date(created)
+  if (Number.isNaN(start.getTime())) return ''
+  const end = closed ? new Date(closed) : new Date()
+  const to = Number.isNaN(end.getTime()) ? new Date() : end
+  const days = Math.floor(Math.abs(+to - +start) / 86_400_000)
+  return `${days} days`
+}
+
 const yesNo = (v: boolean | null | undefined) =>
-  v === null || v === undefined ? null : v ? 'Yes' : 'No'
+  v === null || v === undefined ? '' : v ? 'Yes' : 'No'
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+/** A stat in the strip: Stats_txt over Status_value. */
+function Stat({
+  label,
+  value,
+  className = '',
+}: {
+  label: string
+  value: string | null | undefined
+  className?: string
+}) {
   return (
-    <div className="border-b border-sequel-line py-3">
-      <div className="field-label">{label}</div>
-      <div className="mt-1 break-words">{value || '—'}</div>
+    <div className={`stat ${className}`}>
+      <span className="stat-label">{label}</span>
+      <span className="stat-value">{value || ''}</span>
     </div>
   )
 }
 
-function Stat({ label, value }: { label: string; value: React.ReactNode }) {
+/** project edit field group wrap: a label over a fixed-height control. */
+function Field({
+  label,
+  value,
+  textarea,
+}: {
+  label: string
+  value: string | number | null | undefined
+  textarea?: boolean
+}) {
+  const v = value === null || value === undefined ? '' : String(value)
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="field-label">{label}</span>
-      <span className="text-[13px]">{value || '—'}</span>
+    <div className="edit-field">
+      <label className="edit-field-label">{label}</label>
+      {textarea ? (
+        <textarea className="edit-field-input edit-field-input-text" value={v} readOnly />
+      ) : (
+        <input className="edit-field-input" value={v} readOnly />
+      )}
     </div>
   )
 }
 
-function Fields({ children }: { children: React.ReactNode }) {
+/** Form Block 8 / creative link form: 40% wide, 2rem in from the left. */
+function Form({ children }: { children: React.ReactNode }) {
+  return <div className="edit-form">{children}</div>
+}
+
+/** App subtitle wraps: the tab's own subtitle, and the button that adds to it. */
+function PaneBar({ title, action }: { title: string; action?: string }) {
   return (
-    <div className="grid max-w-3xl grid-cols-2 gap-x-10 px-7 py-4">{children}</div>
+    <div className="pane-bar">
+      <div className="pane-title">{title}</div>
+      {action && (
+        <button type="button" className="btn btn-mono btn-outline" disabled>
+          {action}
+        </button>
+      )}
+    </div>
   )
+}
+
+type List<T> = { isPending: boolean; error: Error | null; data?: T[] }
+
+/**
+ * A list pane: the bar, then either the rows or the note that says there are
+ * none. Every list is a grid of its own shape — `variant` picks which.
+ */
+function Rows<T>({
+  title,
+  action,
+  empty,
+  state,
+  variant,
+  row,
+}: {
+  title: string
+  action?: string
+  empty: string
+  state: List<T>
+  variant: 'quote' | 'invoice' | 'asset' | 'brief' | 'contract' | 'song'
+  row: (item: T) => React.ReactNode
+}) {
+  return (
+    <>
+      <PaneBar title={title} action={action} />
+      {state.isPending && (
+        <div className="flex justify-center py-16">
+          <Loader />
+        </div>
+      )}
+      {state.error && <p className="form-error px-8 py-4">{state.error.message}</p>}
+      {state.data?.length === 0 && <p className="empty-note">{empty}</p>}
+      {state.data?.map((item, i) => (
+        <div key={i} className={`project-row project-row-${variant}`}>
+          {row(item)}
+        </div>
+      ))}
+    </>
+  )
+}
+
+const Title = ({ children }: { children: React.ReactNode }) => (
+  <span className="row-title">{children}</span>
+)
+const Cell = ({ children }: { children: React.ReactNode }) => (
+  <span className="row-field">{children}</span>
+)
+
+/** brief_row_col1 and brief_row_col2, which say more than the raw status. */
+function briefSummary(b: Brief) {
+  if (b.status === 'Requested') {
+    if (b.source === 'internal') return b.name || 'Being filled in'
+    return b.name || 'Waiting on client'
+  }
+  return b.one_sentence_brief || b.name || 'Brief'
+}
+
+function briefState(b: Brief) {
+  if (b.source === 'upload') return 'Uploaded'
+  if (b.status === 'Submitted') return 'Submitted'
+  if (b.status === 'Requested') {
+    if (!b.share_link_live) return 'Link expired'
+    return b.source === 'internal' ? 'In progress' : 'Link sent'
+  }
+  return b.status ?? ''
 }
 
 export default function Project() {
@@ -84,18 +224,6 @@ export default function Project() {
   const songs = useProjectSongs(projectId)
   const creative = useProjectCreativeLinks(projectId)
 
-  // Counts on the tabs, so the shape of a project is legible before clicking:
-  // nine contracts and no estimates is a different project from the reverse.
-  const counts: Partial<Record<Tab, number | undefined>> = {
-    Assets: files.data?.length,
-    Estimates: quotes.data?.length,
-    Briefs: briefs.data?.length,
-    Creative: creative.data?.length,
-    Invoicing: invoices.data?.length,
-    Songs: songs.data?.length,
-    Contracting: contracts.data?.length,
-  }
-
   if (project.isPending) {
     return (
       <div className="flex justify-center py-16">
@@ -104,11 +232,11 @@ export default function Project() {
     )
   }
   if (project.error) {
-    return <p className="form-error px-7 py-4">{project.error.message}</p>
+    return <p className="form-error px-8 py-4">{project.error.message}</p>
   }
   if (!project.data) {
     return (
-      <p className="px-7 py-6 text-sequel-mid">
+      <p className="empty-note py-6">
         No project with that id, or you do not have access to it.
       </p>
     )
@@ -118,339 +246,253 @@ export default function Project() {
 
   return (
     <>
-      {/* header_app: brand above, title, then the person — as on Track. */}
+      {/* header_app: brand, title, then the client user — who is a mailto
+          link on Track, so they are one here too. */}
       <div className="header-band">
-        <div className="page-eyebrow">{p.brand ?? 'Project'}</div>
+        <div className="page-eyebrow">{p.brand ?? ''}</div>
         <div className="title-row">
           <h1 className="page-title">{p.title ?? `Untitled (#${p.id})`}</h1>
         </div>
-        <div className="page-subtitle">{p.supervisor ?? ' '}</div>
-      </div>
-
-      {/* tab_bar_app on Track is a stats strip, not the tabs: started and
-          deadline dates, then type, number and status. */}
-      <div className="tab-band">
-        <div className="flex items-center gap-7">
-          <Stat
-            label="Started"
-            value={p.created_at ? formatDate(p.created_at) : p.proposed_start_date}
-          />
-          <Stat
-            label="Air date"
-            value={
-              p.confirmed_first_air_date
-                ? formatDate(p.confirmed_first_air_date)
-                : p.proposed_air_date
-                  ? formatDate(p.proposed_air_date)
-                  : null
-            }
-          />
-          <Stat label="Type" value={p.service ?? p.project_type} />
-          <Stat label="No." value={p.sequel_no} />
-          <Stat label="Status" value={p.stage} />
+        <div className="page-subtitle">
+          {p.client_user_email ? (
+            <a href={`mailto:${p.client_user_email}`} className="text-inherit no-underline">
+              {p.client_user ?? p.client_user_email}
+            </a>
+          ) : (
+            (p.client_user ?? ' ')
+          )}
         </div>
       </div>
 
-      <div className="border-b border-sequel-line px-7">
-        <nav className="flex flex-wrap gap-5">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`cursor-pointer border-b-2 pb-2 pt-1 text-[13px] ${
-                tab === t
-                  ? 'border-sequel-brown text-sequel-ink'
-                  : 'border-transparent text-sequel-mid hover:text-sequel-ink'
-              }`}
-            >
-              {t}
-              {counts[t] !== undefined && counts[t]! > 0 && (
-                <span className="ml-1.5 text-sequel-mid">{counts[t]}</span>
-              )}
-            </button>
-          ))}
-        </nav>
+      {/* tab_bar_app is a stats strip on this page, not the tabs: the start
+          date and how long the project has been running, then three stats. */}
+      <div className="tab-band">
+        <Stat label="Started" value={fmt(longDate, p.created_at)} className="mx-0" />
+        <div className="mx-8 h-px w-6 flex-none bg-sequel-line" />
+        <Stat
+          label="Active"
+          value={ageInDays(p.created_at, p.closed_cancelled_date)}
+          className="ml-0 mr-8"
+        />
+        <div className="tab-band-divider" />
+        <Stat label="Type" value={p.service} />
+        <div className="tab-band-divider" />
+        <Stat label="No." value={p.sequel_no} />
+        <div className="tab-band-divider" />
+        <Stat label="Status" value={p.stage} />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="project-tabs" role="tablist">
+        {TABS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+            className="project-tab"
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* Every Tab Pane opens with 2rem of air. */}
+      <div className="min-h-0 flex-1 overflow-auto pt-8">
         {tab === 'Overview' && (
-          <Fields>
-            <Field label="Title" value={p.title} />
-            <Field label="Status" value={p.stage} />
-            <Field label="Campaign name" value={p.campaign_name} />
-            <Field label="Proposed start date" value={p.proposed_start_date} />
-            <Field
-              label="Projected pipeline GBP"
-              value={p.pipeline_gbp ? formatMoney(p.pipeline_gbp, '£') : null}
-            />
-            <Field label="Supervisor" value={p.supervisor} />
-            <Field label="Service" value={p.service} />
-          </Fields>
+          <>
+            <PaneBar title="overview" />
+            <Form>
+              <Field label="Title" value={p.title} />
+              <Field label="Status" value={p.stage} />
+              <Field label="Campaign Name" value={p.campaign_name} />
+              <Field label="Proposed Start Date" value={p.proposed_start_date} />
+              {/* Track shows this one raw — "4000", not "4,000.00". It is a
+                  number you type into, not an amount you read. */}
+              <Field label="Projected Pipeline GBP" value={p.pipeline_gbp} />
+              <Field label="Supervisor" value={p.supervisor} />
+              <Field label="Service" value={p.service} />
+            </Form>
+          </>
         )}
 
         {tab === 'Client' && (
-          <Fields>
-            <Field label="User" value={p.client_user} />
-            <Field label="Client" value={p.client_group} />
-            <Field label="Brand" value={p.brand} />
-            <Field label="Product" value={p.product} />
-            <Field label="Brand no." value={p.brand_no} />
-            <Field label="AdPro lead" value={p.adpro_lead} />
-            <Field label="Brand category" value={p.brand_category} />
-            <Field label="Agency" value={p.agency} />
-            <Field label="Country" value={p.country} />
-            <Field label="Region" value={p.region} />
-          </Fields>
+          <>
+            <PaneBar title="client" />
+            <Form>
+              {/* On Track this first field is a search that picks the user;
+                  here it is the user it found. */}
+              <Field label="User" value={p.client_user} />
+              <Field label="Client" value={p.client_group} />
+              <Field label="Brand" value={p.brand} />
+              <Field label="Product" value={p.product} />
+              <Field label="Brand No." value={p.brand_no} />
+              <Field label="AdPro Lead" value={p.adpro_lead} />
+              <Field label="Brand Category" value={p.brand_category} />
+              <Field label="Agency" value={p.agency} />
+              <Field label="Country" value={p.country} />
+              <Field label="Region" value={p.region} />
+            </Form>
+          </>
         )}
 
         {tab === 'Terms' && (
-          <Fields>
-            <Field label="Term" value={p.term} />
-            <Field label="Territory" value={p.territory} />
-            <Field label="Media" value={p.media} />
-            <Field label="Scripts" value={p.scripts} />
-            <Field label="Durations" value={p.durations} />
-            <Field label="Cutdowns" value={yesNo(p.cutdowns)} />
-            <Field label="Extension" value={yesNo(p.extension_yn)} />
-          </Fields>
+          <>
+            <PaneBar title="Terms" />
+            <Form>
+              <Field label="Term" value={p.term} />
+              <Field label="Territory" value={p.territory} />
+              {/* Media and Scripts are the two textareas on Track. */}
+              <Field label="Media" value={p.media} textarea />
+              <Field label="Scripts" value={p.scripts} textarea />
+              <Field label="Durations" value={p.durations} />
+              <Field label="Cutdowns" value={yesNo(p.cutdowns)} />
+              <Field label="Extension" value={yesNo(p.extension_yn)} />
+            </Form>
+          </>
         )}
 
         {tab === 'Assets' && (
-          <Table
+          <Rows<ProjectFile>
+            title="Assets"
+            action="+ New ASSET"
+            empty="Nothing here yet, click the New Asset button to get started"
             state={files}
-            what="assets"
-            head={['File', 'Tag', 'Size', 'Uploaded by', 'Added']}
-            widths={[undefined, 120, 90, 160, 110]}
-            row={(f) => [
-              f.file_name ?? f.description,
-              f.asset_tag,
-              formatBytes(f.file_size),
-              f.uploaded_by,
-              f.created_at ? formatDate(f.created_at) : null,
-            ]}
+            variant="asset"
+            row={(f) => (
+              <>
+                <Title>{f.description || f.file_name}</Title>
+                <Cell>{f.file_name}</Cell>
+                <Cell>{formatBytes(f.file_size)}</Cell>
+                <Cell>{fmt(shortDate, f.created_at)}</Cell>
+                {/* asset_row_tag is hidden rather than blank when untagged:
+                    assets filed before tags existed have none. */}
+                <span>{f.asset_tag && <span className="row-flag">{f.asset_tag}</span>}</span>
+              </>
+            )}
           />
         )}
 
         {tab === 'Estimates' && (
-          <Table
+          <Rows<Quote>
+            title="ESTIMATES"
+            action="CREATE ESTIMATE"
+            empty="Nothing here yet, click the Create Estimate button to get started"
             state={quotes}
-            what="estimates"
-            head={['Quote', 'Status', 'Type', 'Service', 'Total', 'Raised']}
-            widths={[90, 120, 110, 130, 160, 100]}
-            row={(q) => [
-              `#${q.id}`,
-              q.status,
-              q.music_type,
-              q.service,
-              formatMoney(q.grand_total_amount, q.currency),
-              q.created_at ? formatDate(q.created_at) : null,
-            ]}
+            variant="quote"
+            row={(q) => (
+              <>
+                <Title>{q.description}</Title>
+                <Cell>{q.music_type}</Cell>
+                {/* project item row cost wrap: symbol and amount together,
+                    the symbol in a fixed column so the amounts line up. */}
+                <span className="row-cost">
+                  <span className="row-cost-symbol">{q.currency}</span>
+                  <span className="row-field">{formatMoney(q.grand_total_amount)}</span>
+                </span>
+                <Cell>{fmt(shortDate, q.created_at)}</Cell>
+              </>
+            )}
           />
         )}
 
         {tab === 'Briefs' && (
-          <Table
+          <Rows<Brief>
+            title="Briefs"
+            action="+ NEW BRIEF"
+            empty="No briefs yet. Request one from the client or add it yourself."
             state={briefs}
-            what="briefs"
-            head={['Brief', 'Type', 'Status', 'Source', 'Client deadline', 'Submitted']}
-            widths={[undefined, 120, 120, 110, 130, 110]}
-            row={(b) => [
-              b.name ?? b.one_sentence_brief,
-              b.brief_type,
-              b.status,
-              b.source,
-              b.client_deadline ? formatDate(b.client_deadline) : null,
-              b.submitted_at ? formatDate(b.submitted_at) : null,
-            ]}
+            variant="brief"
+            row={(b) => (
+              <>
+                <Title>{briefSummary(b)}</Title>
+                <Cell>{b.brief_type}</Cell>
+                <Cell>{briefState(b)}</Cell>
+                <Cell>{fmt(longDate, b.submitted_at ?? b.created_at)}</Cell>
+              </>
+            )}
           />
         )}
 
         {tab === 'Creative' && (
           <>
-            <Fields>
-              <Field
-                label="Studio inbox link"
-                value={
-                  p.studio_inbox_link ? (
-                    <a href={p.studio_inbox_link} className="underline">
-                      {p.studio_inbox_link}
-                    </a>
-                  ) : null
-                }
-              />
-              <Field
-                label="Sequel Studio"
-                value={
-                  p.studio_link ? (
-                    <a href={p.studio_link} className="underline">
-                      Open in Studio
-                    </a>
-                  ) : null
-                }
-              />
-              <Field
-                label="DISCO inbox"
-                value={
-                  p.disco_inbox_link ? (
-                    <a href={p.disco_inbox_link} className="underline">
-                      {p.disco_inbox_link}
-                    </a>
-                  ) : null
-                }
-              />
-              <Field
-                label="Final DISCO link"
-                value={
-                  p.final_disco_link ? (
-                    <a href={p.final_disco_link} className="underline">
-                      {p.final_disco_link}
-                    </a>
-                  ) : null
-                }
-              />
-            </Fields>
-            <Table
-              state={creative}
-              what="creative links"
-              head={['Name', 'Link', 'Added']}
-              widths={[260, undefined, 110]}
-              row={(l) => [
-                l.name,
-                l.url,
-                l.created_at ? formatDate(l.created_at) : null,
-              ]}
-            />
+            <PaneBar title="Creative" action="+ Creative Link" />
+            <Form>
+              <Field label="Studio Inbox Link" value={p.studio_inbox_link} />
+              <Field label="Sequel Studio" value={p.studio_link} />
+            </Form>
+            {creative.data?.map((l: CreativeLink) => (
+              <div key={l.id} className="project-row project-row-link">
+                <Title>{l.name}</Title>
+                <Cell>{l.url}</Cell>
+              </div>
+            ))}
           </>
         )}
 
         {tab === 'Invoicing' && (
-          <Table
+          <Rows<Invoice>
+            title="invoicing"
+            action="+ New INVOICE"
+            empty="Nothing here yet, click the New invoice button to get started"
             state={invoices}
-            what="invoices"
-            head={['Invoice', 'Status', 'Client', 'Total', 'Invoiced', 'Due']}
-            widths={[100, 140, undefined, 150, 110, 110]}
-            row={(i) => [
-              i.invoice_number ?? `#${i.id}`,
-              i.status,
-              i.client,
-              formatMoney(i.total_amount, i.currency),
-              i.invoice_date ? formatDate(i.invoice_date) : null,
-              i.due_date ? formatDate(i.due_date) : null,
-            ]}
+            variant="invoice"
+            row={(i) => (
+              <>
+                <Title>{i.description || 'Untitled invoice'}</Title>
+                <span className="row-cost-symbol">{i.currency}</span>
+                <Cell>{formatMoney(i.total_amount)}</Cell>
+                <Cell>{i.invoice_number}</Cell>
+                <Cell>{fmt(shortDate, i.invoice_date)}</Cell>
+                <Cell>{i.status}</Cell>
+              </>
+            )}
           />
         )}
 
         {tab === 'Songs' && (
-          <Table
+          <Rows<Song>
+            title="Songs"
+            action="+ NEW SONG"
+            empty="Nothing here yet."
             state={songs}
-            what="songs"
-            head={['Track', 'Composer', 'Registration', 'Schedule A', 'Ownership', 'Duration']}
-            widths={[undefined, 170, 130, 120, 130, 90]}
-            row={(s) => [
-              s.track_title,
-              s.composer,
-              s.registration_status,
-              s.schedule_a_status,
-              s.ownership,
-              s.duration,
-            ]}
+            variant="song"
+            row={(s) => (
+              <>
+                <Title>{s.track_title}</Title>
+                <Cell>{s.composer}</Cell>
+              </>
+            )}
           />
         )}
 
         {tab === 'Contracting' && (
-          <Table
+          <Rows<Contract>
+            title="Contracting"
+            action="+ New CONTRACT"
+            empty="Nothing here yet.  Upload a file or create a contract to get started"
             state={contracts}
-            what="contracts"
-            head={['File', 'Type', 'Supplier', 'Artist', 'Status', 'Signed']}
-            widths={[undefined, 130, 170, 140, 100, 80]}
-            row={(c) => [
-              c.file_name ?? c.description,
-              c.contract_type,
-              c.supplier,
-              c.artist,
-              c.status,
-              c.confirmed ? 'Yes' : 'No',
-            ]}
+            variant="contract"
+            row={(c) => (
+              <>
+                <Title>{c.supplier}</Title>
+                <Cell>{c.contract_type}</Cell>
+                <Cell>{fmt(longDate, c.created_at)}</Cell>
+              </>
+            )}
           />
         )}
 
         {tab === 'Notes' && (
-          <div className="max-w-3xl px-7 py-4">
-            <Field label="Notes" value={p.notes} />
-            <Field label="Notes or request" value={p.notes_or_request} />
-          </div>
+          <>
+            <PaneBar title="NOTES" />
+            <Form>
+              <Field label="Notes" value={p.notes} textarea />
+              <Field label="Notes or Request" value={p.notes_or_request} textarea />
+            </Form>
+          </>
         )}
       </div>
     </>
-  )
-}
-
-/**
- * The list tabs are all the same shape — loading, failed, empty, or a table —
- * so they share one component rather than seven near-copies that drift apart.
- */
-function Table<T>({
-  state,
-  what,
-  head,
-  widths,
-  row,
-}: {
-  state: { isPending: boolean; error: Error | null; data?: T[] }
-  what: string
-  head: string[]
-  widths: (number | undefined)[]
-  row: (item: T) => (string | null | undefined)[]
-}) {
-  if (state.isPending) {
-    return (
-      <div className="flex justify-center py-16">
-        <Loader />
-      </div>
-    )
-  }
-  if (state.error) {
-    return <p className="form-error px-7 py-4">{state.error.message}</p>
-  }
-  if (!state.data?.length) {
-    return <p className="px-7 py-6 text-sequel-mid">No {what} on this project.</p>
-  }
-
-  return (
-    <table className="track-table">
-      <colgroup>
-        {widths.map((w, i) => (
-          <col key={i} style={w ? { width: w } : undefined} />
-        ))}
-      </colgroup>
-      <thead>
-        <tr>
-          {head.map((h, i) => (
-            <th key={h} className={i === 0 ? 'pl-7' : undefined}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {state.data.map((item, n) => {
-          const cells = row(item)
-          return (
-            <tr key={n} className="track-row">
-              {cells.map((c, i) => (
-                <td
-                  key={i}
-                  className={i === 0 ? 'pl-7' : 'secondary'}
-                  title={typeof c === 'string' ? c : undefined}
-                >
-                  <span className="block truncate">{c || '—'}</span>
-                </td>
-              ))}
-            </tr>
-          )
-        })}
-      </tbody>
-    </table>
   )
 }

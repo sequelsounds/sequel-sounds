@@ -1779,4 +1779,307 @@
     color: var(--surface-bg);
     border-color: var(--surface-fg);
   }
+
+  /* ======================================================= the project page
+   * Everything below is Track's `/project`, read from Webflow's own style
+   * records and confirmed against the rendered page on the staging branch.
+   * Class names in the comments are Webflow's, so any value here can be
+   * checked rather than taken on trust.
+   */
+
+  /* --------------------------------------------------------- project stats
+   * Track's tab_bar_app holds a row of stats, and the tabs sit below it.
+   *
+   *   .stats_wrap        flex column, centred, left-aligned, margin 0 2rem
+   *     .Stats_txt       0.8rem/0.7rem weight 400   - the label
+   *     .Status_value    0.8rem/0.7rem weight 300   - the value
+   *   .vertical_divider  1px x 1.5rem between each  - .tab-band-divider here
+   *
+   * The tight 0.7rem leading is what makes the pair read as one item rather
+   * than two lines of text.
+   */
+  .stat {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    margin: 0 2rem;
+  }
+
+  .stat-label {
+    margin-bottom: 0.125rem;
+    font-size: 0.8rem;
+    line-height: 0.7rem;
+    font-weight: 400;
+    color: var(--color-sequel-brown);
+  }
+
+  .stat-value {
+    font-size: 0.8rem;
+    line-height: 0.7rem;
+    font-weight: 300;
+    color: var(--color-sequel-brown);
+  }
+
+  /* ---------------------------------------------------------- project tabs
+   * Not the .tab above: that one greys the tabs it is not on and marks the
+   * current one with a 2px rule. Track does neither. Every tab is Sequel
+   * Brown at the same weight, and the current one is marked by a 1px line
+   * that sits on the strip's own half-strength rule - .tabs-menu is 2rem
+   * tall with 1rem of padding at its left, .app-tabs 1rem either side,
+   * .tab_text_project_app 0.7rem weight 500, and .app-tabs.w--current adds
+   * `border-bottom: 1px solid` in full-strength brown.
+   */
+  .project-tabs {
+    display: flex;
+    flex: none;
+    height: 2rem;
+    padding-left: 1rem;
+    border-bottom: 1px solid var(--color-sequel-line);
+  }
+
+  .project-tab {
+    height: 100%;
+    padding: 0 1rem;
+    border: none;
+    border-bottom: 1px solid transparent;
+    background: none;
+    color: var(--color-sequel-brown);
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .project-tab[aria-selected='true'] {
+    border-bottom-color: var(--color-sequel-brown);
+  }
+
+  /* ------------------------------------------------------------ the pane bar
+   * App subtitle wraps: the strip at the top of every tab, holding the tab's
+   * own subtitle on the left and its add-new button on the right. 2rem in
+   * from the sides like every other band, 1rem of air beneath.
+   */
+  .pane-bar {
+    display: flex;
+    width: 100%;
+    min-height: 2rem;
+    margin-bottom: 1rem;
+    padding: 0 2rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* project subtitle text. Capitalised rather than uppercased, which is why
+     the source strings' own case still shows through in places. */
+  .pane-title {
+    font-size: 1rem;
+    font-weight: 400;
+    text-transform: capitalize;
+    color: var(--color-sequel-brown);
+  }
+
+  /* Nothing here text / No_assets_txt. Lines up with the rows that would
+     have been here, which is why it carries the same 2rem indent rather
+     than being centred. */
+  .empty-note {
+    height: auto;
+    padding-left: 2rem;
+    font-size: 0.8rem;
+    line-height: 0.8rem;
+    font-weight: 400;
+    color: var(--color-sequel-brown);
+  }
+
+  /* ----------------------------------------------------------- the forms
+   * Overview, Client, Terms and Creative are forms, not read-out. Form
+   * Block 8 and creative link form are both 40% wide with a 2rem left
+   * margin - so the fields line up with the 2rem indent of everything else
+   * on the page, and stop well short of the right edge.
+   */
+  .edit-form {
+    width: 40%;
+    margin-left: 2rem;
+  }
+
+  /* project edit field group wrap. The input inside also carries a 1rem
+     bottom margin, which collapses with this one - the gap between fields
+     is 1rem, not 2rem. */
+  .edit-field {
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  /* Project edit field title: a weight heavier than anything else at this
+     size, and 5px - not a rem step - above its control. */
+  .edit-field-label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.8rem;
+    line-height: 0.8rem;
+    font-weight: 500;
+    color: var(--color-sequel-brown);
+  }
+
+  /* Project edit input field: a fixed 2rem that does not grow with its
+     content, on white at 5% over the silver ground. */
+  .edit-field-input {
+    display: flex;
+    width: 100%;
+    min-height: 2rem;
+    max-height: 2rem;
+    padding: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid var(--color-sequel-line);
+    background-color: rgb(255 255 255 / 5%);
+    color: rgb(55 43 41 / 70%);
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    line-height: 0.8rem;
+  }
+
+  /* Project edit input field text: the same field, free to grow to 6rem. */
+  .edit-field-input-text {
+    max-height: 6rem;
+    padding-right: 0.125rem;
+    align-items: flex-start;
+    background-color: transparent;
+    resize: none;
+  }
+
+  /* Nothing on this page saves yet - Xano is still the only writer. A
+     control that looks editable and silently discards what you type is
+     worse than one that says it is not ready, so read-only fields show the
+     no-entry cursor rather than being made to look live. */
+  .edit-field-input[readonly],
+  .edit-field-input:disabled {
+    cursor: not-allowed;
+  }
+
+  /* ------------------------------------------------------------- the lists
+   * Every list on the project page is a CSS grid, not a table, and no two
+   * have the same columns. Straight from the style records:
+   *
+   *   project_quote_row                 0.75fr + 5 x 0.25fr,  gap 0.025rem
+   *   project_invoice_row               0.75fr + 6 x 0.25fr,  gap 0.025rem
+   *   project_asset_row.assets_cols     0.75fr 1fr + 5 x 0.25fr,  gap 16px
+   *   project_asset_row                 0.75fr 0.75fr + 4 x 0.5fr, gap 16px
+   *   project_contract_row.brief_row    0.75fr 0.75fr + 4 x 0.5fr, gap 16px
+   *   project_contract_row.has_row_link 0.75fr 0.75fr + 3 x 0.5fr, gap 16px
+   *   project_song_row                  0.75fr 0.75fr 0.25fr 0.25fr, gap 16px
+   *
+   * There is no rule between rows: 3rem of height and the hover are what
+   * separate them.
+   */
+  .project-row {
+    display: grid;
+    width: 100%;
+    min-height: 3rem;
+    padding: 0 2rem;
+    align-items: center;
+    justify-items: start;
+    color: var(--color-sequel-brown);
+    transition: background-color 160ms ease;
+  }
+
+  .project-row:hover {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  .project-row-quote {
+    grid-template-columns: 0.75fr 0.25fr 0.25fr 0.25fr 0.25fr 0.25fr;
+    gap: 0.025rem;
+  }
+
+  .project-row-invoice {
+    grid-template-columns: 0.75fr 0.25fr 0.25fr 0.25fr 0.25fr 0.25fr 0.25fr;
+    gap: 0.025rem;
+  }
+
+  .project-row-asset {
+    grid-template-columns: 0.75fr 1fr 0.25fr 0.25fr 0.25fr 0.25fr 0.25fr;
+    gap: 16px;
+  }
+
+  .project-row-link {
+    grid-template-columns: 0.75fr 0.75fr 0.5fr 0.5fr 0.5fr 0.5fr;
+    gap: 16px;
+  }
+
+  .project-row-brief {
+    grid-template-columns:
+      minmax(0, 0.75fr) minmax(0, 0.75fr) minmax(0, 0.5fr)
+      minmax(0, 0.5fr) minmax(0, 0.5fr) minmax(0, 0.5fr);
+    gap: 16px;
+  }
+
+  .project-row-contract {
+    grid-template-columns: 0.75fr 0.75fr 0.5fr 0.5fr 0.5fr;
+    gap: 16px;
+  }
+
+  .project-row-song {
+    grid-template-columns: 0.75fr 0.75fr 0.25fr 0.25fr;
+    gap: 16px;
+  }
+
+  /* Project row field title - the first cell, one weight up on the rest. */
+  .row-title {
+    width: 100%;
+    overflow: hidden;
+    font-size: 0.8rem;
+    line-height: 1rem;
+    font-weight: 400;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Project row field, and Text Block 50 for the date cells. */
+  .row-field {
+    width: 100%;
+    overflow: hidden;
+    font-size: 0.8rem;
+    line-height: 1rem;
+    font-weight: 300;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* project item row cost wrap: the currency symbol is a fixed 0.7rem
+     column, so the amounts line up down the list however wide it is. */
+  .row-cost {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .row-cost-symbol {
+    width: 0.7rem;
+    overflow: hidden;
+    font-size: 0.8rem;
+    line-height: 0.8rem;
+    font-weight: 300;
+  }
+
+  /* final_flag: the one piece of colour in a row, and it is the brown. */
+  .row-flag {
+    padding: 0.2rem 0.4rem;
+    background-color: var(--color-sequel-brown);
+    color: #fff;
+    font-size: 0.6rem;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .project-row:hover .row-flag {
+    background-color: var(--color-sequel-silver);
+    color: var(--color-sequel-brown);
+  }
 }
