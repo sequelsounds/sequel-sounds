@@ -2852,14 +2852,17 @@
   }
 
   /* Under the row, never behind it: a full-height bar swallows the figures
-     it is meant to be comparing. */
+     it is meant to be comparing. Opens from nothing on the same curve as the
+     fee mix — Track leaves these static, and Andy asked for the movement. */
   .league-bar {
     position: absolute;
     bottom: 0.35rem;
     left: 0;
     z-index: 0;
     display: flex;
+    width: 0;
     height: 0.75rem;
+    transition: width 900ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .league-unit {
@@ -2936,17 +2939,27 @@
   }
 
   .uni-seg-uni {
+    width: 0;
     height: 100%;
     background: var(--color-sequel-brown);
+    transition: width 900ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   /* An outline, not a fill — the share that is not Unilever should read as
      the space left over. */
   .uni-seg-non {
+    width: 0;
     height: 100%;
     box-sizing: border-box;
     border: 1px solid var(--color-sequel-brown);
     background: transparent;
+    transition: width 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .uni-headline,
+  .uni-legend {
+    opacity: 0;
+    transition: opacity 500ms;
   }
 
   .uni-legend {

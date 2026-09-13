@@ -32,6 +32,9 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const PAD = { top: 16, right: 19, bottom: 26 }
 const TENSION = 0.25
 
+/** How long the lines take to draw in. Chart.js's own second felt brisk. */
+const DRAW_MS = 1800
+
 /**
  * Chart.js's tick hunt, near enough: at most five lines, on a round step, and
  * the top one at or above the highest value — an axis that stopped below its
@@ -116,16 +119,16 @@ export default function LineChart({
     return () => ro.disconnect()
   }, [])
 
-  // The lines draw in from the left, once, when the pane first has a size —
-  // Chart.js's own second of easeOutQuart. The pane unmounts when you leave
-  // the tab, so coming back replays it, which is what Track does.
+  // The lines draw in from the left, once, when the pane first has a size,
+  // on easeOutQuart. The pane unmounts when you leave the tab, so coming back
+  // replays it.
   const ready = size.w > 0 && size.h > 0
   useEffect(() => {
     if (!ready) return
     let raf = 0
     const started = performance.now()
     const step = (now: number) => {
-      const t = Math.min(1, (now - started) / 1000)
+      const t = Math.min(1, (now - started) / DRAW_MS)
       setReveal(1 - (1 - t) ** 4)
       if (t < 1) raf = requestAnimationFrame(step)
     }

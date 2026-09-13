@@ -152,6 +152,30 @@ function useTip(anchorBelow?: React.RefObject<HTMLElement | null>) {
   return { root, card, tip, at, setTip, place }
 }
 
+/**
+ * False for two frames, then true — which is what a width or opacity
+ * transition needs to run at all. A value set on the same tick as the mount
+ * never transitions, and a timeout is worse than a frame: the pane is still
+ * fading in when it fires.
+ *
+ * Re-runs on `replay`, so every pane opens again when the year changes.
+ */
+function useGrown(replay: unknown) {
+  const [grown, setGrown] = useState(false)
+  useEffect(() => {
+    setGrown(false)
+    let inner = 0
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setGrown(true))
+    })
+    return () => {
+      cancelAnimationFrame(outer)
+      cancelAnimationFrame(inner)
+    }
+  }, [replay])
+  return grown
+}
+
 /* --------------------------------------------------------------- year tabs */
 
 function YearToggle({
@@ -205,21 +229,7 @@ function FeeMix({
   const bar = useRef<HTMLDivElement>(null)
   const tip = useTip(bar)
 
-  // The bar opens from nothing on arrival. Two frames, not a timeout: the
-  // pane fades in, and a width set on the same tick as the mount never
-  // transitions.
-  const [grown, setGrown] = useState(false)
-  useEffect(() => {
-    setGrown(false)
-    let inner = 0
-    const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => setGrown(true))
-    })
-    return () => {
-      cancelAnimationFrame(outer)
-      cancelAnimationFrame(inner)
-    }
-  }, [year])
+  const grown = useGrown(year)
 
   const groups = useMemo(
     () =>
@@ -373,6 +383,7 @@ function League({
   isTeam?: boolean
 }) {
   const tip = useTip()
+  const grown = useGrown(year)
 
   const list = useMemo(() => {
     const groups = new Map<
@@ -440,9 +451,17 @@ function League({
           <div>Invoices</div>
         </div>
 
-        {list.map((item) => (
+        {list.map((item, i) => (
           <div key={String(item.key)} className={`league-row${spendClass}`}>
-            <div className="league-bar" style={{ width: `${(item.profit / biggest) * 100}%` }}>
+            {/* Down the table rather than all at once, so the eye reads the
+                order the rows are already in. */}
+            <div
+              className="league-bar"
+              style={{
+                width: grown ? `${(item.profit / biggest) * 100}%` : '0%',
+                transitionDelay: `${i * 60}ms`,
+              }}
+            >
               {item.units
                 .sort((a, b) => b.value - a.value)
                 .map((unit) => (
@@ -486,6 +505,8 @@ function ClientMix({
   years: string[]
   onPick: (y: string) => void
 }) {
+  const grown = useGrown(year)
+
   let uniProfit = 0
   let nonProfit = 0
   let uniCount = 0
@@ -519,7 +540,7 @@ function ClientMix({
     <div className="uni">
       <YearToggle years={years} year={year} onPick={onPick} />
 
-      <div className="uni-headline">
+      <div className="uni-headline" style={{ opacity: grown ? 1 : 0 }}>
         <div className="uni-stat">
           <span className="uni-pct">{pct(uniProfit).toFixed(1)}%</span>
           <span className="uni-pct-label">of {year} profit from Unilever</span>
@@ -531,11 +552,14 @@ function ClientMix({
       </div>
 
       <div className="uni-bar">
-        <div className="uni-seg-uni" style={{ width: `${pct(uniProfit)}%` }} />
-        <div className="uni-seg-non" style={{ width: `${pct(nonProfit)}%` }} />
+        <div className="uni-seg-uni" style={{ width: grown ? `${pct(uniProfit)}%` : '0%' }} />
+        <div
+          className="uni-seg-non"
+          style={{ width: grown ? `${pct(nonProfit)}%` : '0%', transitionDelay: '70ms' }}
+        />
       </div>
 
-      <div className="uni-legend">
+      <div className="uni-legend" style={{ opacity: grown ? 1 : 0, transitionDelay: '350ms' }}>
         <div className="uni-item">
           Unilever
           <br />
