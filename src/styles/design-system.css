@@ -792,6 +792,63 @@
   }
 
   /* The inbox's stacked submissions. */
+  /* --------------------------------------------------------------- the film
+   * A film plays over the page, not in the 72px bar and not inside a panel.
+   * The stage stops short of the bar so the transport it is driven by stays
+   * visible and clickable underneath it.
+   */
+  .film-backdrop {
+    position: fixed;
+    inset: 0 0 4.5rem 0;
+    z-index: 60;
+    background-color: rgba(28, 27, 25, 0.82);
+  }
+
+  .film-video {
+    position: fixed;
+    z-index: 61;
+    left: 50%;
+    top: calc((100vh - 4.5rem) / 2);
+    transform: translate(-50%, -50%);
+    width: 90vw;
+    height: calc((100vh - 4.5rem) * 0.88);
+    background-color: #000;
+    /* Letterboxed rather than cropped: this is the thing being judged. */
+    object-fit: contain;
+  }
+
+  /* Off screen, not display:none — it has to go on playing. */
+  .film-video.is-away {
+    left: -9999px;
+    top: auto;
+    bottom: 0;
+    transform: none;
+    width: 1px;
+    height: 1px;
+    background: none;
+  }
+
+  .film-close {
+    position: fixed;
+    z-index: 62;
+    top: 1.5rem;
+    right: 1.5rem;
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 0;
+    background: none;
+    color: var(--color-sequel-silver);
+    font-size: 1.75rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .film-close:hover {
+    color: var(--color-sequel-white);
+  }
+
   /* ------------------------------------------------------------ the split
    * A project is a list of playlists and a reader for whichever one is
    * open, side by side — the shape DISCO uses for the same job. The left

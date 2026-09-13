@@ -1,6 +1,6 @@
 import { formatDuration } from '../../lib/format'
 import { usePeaks, usePlayer } from '../../lib/player'
-import { NextIcon, PauseIcon, PlayIcon, PrevIcon } from './icons'
+import { FilmIcon, NextIcon, PauseIcon, PlayIcon, PrevIcon } from './icons'
 import Waveform from './Waveform'
 
 /** The bottom bar. Mounted once in the layout, so it outlives every route. */
@@ -24,11 +24,32 @@ export default function Player() {
       >
         {player.playing ? <PauseIcon /> : <PlayIcon />}
       </button>
-      <div className="min-w-0">
-        <div className="truncate">{player.current?.title ?? 'Nothing playing'}</div>
-        <div className="truncate text-xs font-light text-sequel-silver">
-          {player.error ? <span className="text-sequel-error">{player.error}</span> : subtitle}
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="truncate">
+            {player.current?.title ?? 'Nothing playing'}
+          </div>
+          <div className="truncate text-xs font-light text-sequel-silver">
+            {player.error ? (
+              <span className="text-sequel-error">{player.error}</span>
+            ) : (
+              subtitle
+            )}
+          </div>
         </div>
+        {/* The way back to a film whose picture was dismissed. Only there
+            when there is a picture to return to. */}
+        {player.current?.kind === 'video' && !player.filmOpen && (
+          <button
+            type="button"
+            className="icon-btn shrink-0 text-sequel-silver"
+            aria-label="Show the film"
+            title="Show the film"
+            onClick={player.openFilm}
+          >
+            <FilmIcon />
+          </button>
+        )}
       </div>
       <Waveform
         peaks={peaks ?? null}

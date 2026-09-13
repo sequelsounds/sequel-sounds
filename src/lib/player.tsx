@@ -9,15 +9,24 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import FilmStage from '../components/staff/FilmStage'
 import { mediaUrls } from './media'
 import { supabase } from './supabase'
 import type { Track } from './queries'
 
 /**
- * One audio element for the whole staff app, living above the router so a
+ * One media element for the whole staff app, living above the router so a
  * track keeps playing while the person navigates. The queue is whatever list
  * the track was started from — an inbox submission, the library, a playlist —
  * so prev/next mean "in the list I was looking at".
+ *
+ * It is a <video>, for audio as well. A video element plays an mp3 perfectly
+ * well, and one element means one set of listeners, one source of truth for
+ * position and one thing that can be playing — where two would have to be
+ * kept in step and would eventually drift. It is rendered once and never
+ * moved in the DOM: showing a film changes where the element is on screen,
+ * not where it is in the tree, because re-parenting a media element reloads
+ * it and loses the play state.
  */
 export type PlayerTrack = {
   id: string
@@ -48,6 +57,8 @@ type PlayerState = {
   position: number
   duration: number
   error: string | null
+  /** Whether the film is showing over the page. Sound plays either way. */
+  filmOpen: boolean
 }
 
 type PlayerApi = PlayerState & {
@@ -58,18 +69,17 @@ type PlayerApi = PlayerState & {
   prev: () => void
   seek: (seconds: number) => void
   isCurrent: (id: string) => boolean
+  openFilm: () => void
+  closeFilm: () => void
 }
 
 const PlayerContext = createContext<PlayerApi | null>(null)
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
-  // Created on first use, and only ever touched from effects and handlers —
+  // Rendered below, once, and only ever touched from effects and handlers —
   // it is an external system, not a render input.
-  const audio = useRef<HTMLAudioElement | null>(null)
-  const media = useCallback(() => {
-    if (!audio.current) audio.current = new Audio()
-    return audio.current
-  }, [])
+  const video = useRef<HTMLVideoElement | null>(null)
+  const media = useCallback(() => video.current, [])
 
   const [state, setState] = useState<PlayerState>({
     queue: [],
@@ -78,6 +88,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     position: 0,
     duration: 0,
     error: null,
+    filmOpen: false,
   })
   const current = state.index >= 0 ? (state.queue[state.index] ?? null) : null
 
@@ -85,6 +96,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // only thing that goes through setState on a timer.
   useEffect(() => {
     const el = media()
+    if (!el) return
     const onTime = () => setState((s) => ({ ...s, position: el.currentTime }))
     const onMeta = () => setState((s) => ({ ...s, duration: el.duration || 0 }))
     const onPlay = () => setState((s) => ({ ...s, playing: true }))
@@ -119,6 +131,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const currentKey = current?.preview_key ?? null
   useEffect(() => {
     const el = media()
+    if (!el) return
     if (!currentId) {
       el.pause()
       el.removeAttribute('src')
@@ -152,11 +165,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setState((s) => {
       const target = queue[index]
       if (target && s.queue[s.index]?.id === target.id) {
-        // Same track: treat as toggle rather than restart.
+        // Same track: treat as toggle rather than restart — and if it is a
+        // film whose picture was dismissed, bring the picture back.
         const el = media()
-        if (el.paused) void el.play()
-        else el.pause()
-        return { ...s, queue, index }
+        if (el?.paused) void el.play()
+        else el?.pause()
+        return {
+          ...s,
+          queue,
+          index,
+          filmOpen: target.kind === 'video' ? true : s.filmOpen,
+        }
       }
       return { ...s, queue, index, position: 0, error: null }
     })
@@ -164,7 +183,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const toggle = useCallback(() => {
     const el = media()
-    if (!el.src) return
+    if (!el?.src) return
     if (el.paused) void el.play()
     else el.pause()
   }, [media])
@@ -178,7 +197,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const prev = useCallback(() => {
     const el = media()
     // Convention: more than three seconds in, "previous" restarts the track.
-    if (el.currentTime > 3) {
+    if (el && el.currentTime > 3) {
       el.currentTime = 0
       return
     }
@@ -188,20 +207,57 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const seek = useCallback(
     (seconds: number) => {
       const el = media()
-      if (!Number.isFinite(seconds)) return
+      if (!el || !Number.isFinite(seconds)) return
       el.currentTime = Math.max(0, Math.min(seconds, el.duration || seconds))
     },
     [media],
   )
 
+  // What is playing decides whether there is a picture: starting a film
+  // opens it, and stepping to an audio track closes it, so video is never a
+  // mode you have to leave.
+  const currentKind = current?.kind ?? null
+  useEffect(() => {
+    if (!currentId) return
+    setState((s) =>
+      s.filmOpen === (currentKind === 'video')
+        ? s
+        : { ...s, filmOpen: currentKind === 'video' },
+    )
+  }, [currentId, currentKind])
+
+  const openFilm = useCallback(() => setState((s) => ({ ...s, filmOpen: true })), [])
+  const closeFilm = useCallback(() => setState((s) => ({ ...s, filmOpen: false })), [])
+
   const isCurrent = useCallback((id: string) => currentId === id, [currentId])
 
   const api = useMemo<PlayerApi>(
-    () => ({ ...state, current, play, toggle, next, prev, seek, isCurrent }),
-    [state, current, play, toggle, next, prev, seek, isCurrent],
+    () => ({
+      ...state,
+      current,
+      play,
+      toggle,
+      next,
+      prev,
+      seek,
+      isCurrent,
+      openFilm,
+      closeFilm,
+    }),
+    [state, current, play, toggle, next, prev, seek, isCurrent, openFilm, closeFilm],
   )
 
-  return <PlayerContext value={api}>{children}</PlayerContext>
+  return (
+    <PlayerContext value={api}>
+      {children}
+      <FilmStage
+        ref={video}
+        open={state.filmOpen && current?.kind === 'video'}
+        title={current?.title ?? ''}
+        onClose={closeFilm}
+      />
+    </PlayerContext>
+  )
 }
 
 export function usePlayer(): PlayerApi {

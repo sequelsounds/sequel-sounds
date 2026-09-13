@@ -5,6 +5,32 @@ rediscovering an argument later.
 
 ---
 
+## One media element, and it is a video
+
+**2026-09-13.** Films did not play. Nothing was broken exactly — every video
+track had its `preview.mp4` and it was signed like any other key — but the
+player was a `new Audio()`, so the soundtrack came through and there was
+nowhere for a picture to go.
+
+**One element, and it is a `<video>`.** A video element plays an mp3 perfectly
+well, so audio goes through the same one: one set of listeners, one source of
+truth for position, one thing that can be playing. Two elements would have to
+be kept in step and would eventually drift — on the day someone hits next
+from a film into a track and both are playing, the bug is unfindable.
+
+**It never moves in the DOM.** Showing a film changes where the element sits
+on screen, not where it sits in the tree. Re-parenting a media element
+reloads its source and loses the position; on a panel opened and dismissed
+all day that would be the whole feature. Closed, it is parked off-screen
+rather than `display: none`, because a hidden media element is the browser's
+business to pause and an off-screen one is not.
+
+**The stage stops short of the player.** `inset: 0 0 4.5rem 0`, so the
+transport driving the film stays visible and clickable underneath it, and
+video never becomes a mode with its own controls. Starting a film opens it;
+stepping to an audio track closes it; Escape dismisses it and the sound keeps
+playing, because a film's soundtrack is still a take somebody is listening to.
+
 ## A placeholder square says what the file is
 
 **2026-09-13.** Most of what partners send carries no embedded cover, so the
