@@ -75,8 +75,20 @@ export type Project = {
   client_user_company: string | null
 }
 
-/** The signed-in person, as Xano knows them. */
-export type Me = { id: number; name: string | null; email: string | null }
+/**
+ * The signed-in person, as Xano knows them.
+ *
+ * `birthday` is here for one thing: /dashboard's greeting, which beats every
+ * other line on the day. It is the caller's own row and nobody else's —
+ * track_me is keyed on the caller — and a date of birth should not travel
+ * any further than that.
+ */
+export type Me = {
+  id: number
+  name: string | null
+  email: string | null
+  birthday: string | null
+}
 
 export function useMe() {
   return useQuery({
@@ -85,9 +97,7 @@ export function useMe() {
       // database.types.ts only knows the public schema's own functions (see
       // the note on `mirror` below — `npm run types` needs the Supabase CLI),
       // so the call is cast rather than typed. The row is typed on the way out.
-      const { data, error } = await (
-        supabase as unknown as SupabaseClient
-      ).rpc('track_me')
+      const { data, error } = await (supabase as unknown as SupabaseClient).rpc('track_me')
       if (error) throw error
       return (data as Me[] | null)?.[0] ?? null
     },
@@ -108,9 +118,9 @@ export function useIsManagement() {
   return useQuery({
     queryKey: ['mirror', 'is-management'],
     queryFn: async (): Promise<boolean> => {
-      const { data, error } = await (
-        supabase as unknown as SupabaseClient
-      ).rpc('track_is_management')
+      const { data, error } = await (supabase as unknown as SupabaseClient).rpc(
+        'track_is_management',
+      )
       if (error) throw error
       return data === true
     },
@@ -1004,6 +1014,78 @@ export function useManagement() {
         invoices: (invoices.data ?? []) as ManagementInvoice[],
         projects: (projects.data ?? []) as ManagementProject[],
         staff: (staff.data ?? []) as ManagementStaff[],
+      }
+    },
+  })
+}
+
+/* --------------------------------------------------------------- dashboard
+ * `/dashboard`: the caller's own billing, the personal counterpart to
+ * `/management`.
+ *
+ * ⚠️ STAFF ONLY, AND ONLY YOUR OWN. Track guards its endpoint with
+ * assert_sequel_staff and filters on `music_supervisor_id == $auth.id` in
+ * Xano rather than the browser — company totals would otherwise have reached
+ * that machine even if nothing drew them. The two views below do the same in
+ * the database, so the rows for anyone else never leave it.
+ *
+ * ⚠️ music_supervisor_id IS WHOEVER RAISED THE INVOICE, not whoever owns the
+ * project today. Jobs change hands. This reports billing, not ownership.
+ */
+
+/** One of the caller's live invoices, in GBP. Every year — the charts need last year. */
+export type DashboardInvoice = {
+  id: number
+  uuid: string | null
+  invoice_number: string | null
+  project_title: string
+  invoice_date: string | null
+  status: string | null
+  supervisor_id: number | null
+  client_id: number | null
+  client_name: string
+  invoiced: number
+  profit: number
+  spend: number
+  third_party: number
+  studios: number
+  demo: number
+  search: number
+  licence: number
+  other: number
+  /** In no total. The Avoidance stat is the only thing that reads it. */
+  cost_avoidance: number
+}
+
+/** One of the caller's live projects, for the Projects series only. */
+export type DashboardProject = { id: number; created_at: string }
+
+export type DashboardOverview = {
+  invoices: DashboardInvoice[]
+  projects: DashboardProject[]
+}
+
+/**
+ * Everything `/dashboard` draws, in two reads.
+ *
+ * Track's endpoint scopes its totals to the current year in Xano and returns
+ * the rows unscoped, because the charts plot this year against last. Here the
+ * rows arrive unscoped either way and the page does the year filtering, which
+ * is what `/management` already does with the same figures.
+ */
+export function useDashboard() {
+  return useQuery({
+    queryKey: ['mirror', 'dashboard'],
+    queryFn: async (): Promise<DashboardOverview> => {
+      const [invoices, projects] = await Promise.all([
+        mirror.from('dashboard_invoices').select('*'),
+        mirror.from('dashboard_projects').select('*'),
+      ])
+      if (invoices.error) throw invoices.error
+      if (projects.error) throw projects.error
+      return {
+        invoices: (invoices.data ?? []) as DashboardInvoice[],
+        projects: (projects.data ?? []) as DashboardProject[],
       }
     },
   })

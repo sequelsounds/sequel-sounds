@@ -23,7 +23,7 @@ import SequelLogo from '../SequelLogo'
 // rebuilt yet: those are shown and not clickable, because a nav that quietly
 // omitted four of its items would misrepresent how far along this is.
 const LINKS: { label: string; to: string | null }[] = [
-  { label: 'Dashboard', to: null },
+  { label: 'Dashboard', to: '/dashboard' },
   { label: 'Management', to: '/management' },
   { label: 'Notifications', to: null },
   { label: 'Projects', to: '/projects' },

@@ -15,6 +15,25 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
  * which is what stops an empty October reading as a slow decline.
  */
 
+/**
+ * The ink a chart is drawn in. /management is Sequel Brown, /dashboard
+ * Asphalt — Track's own choice on each page, and the grid and axis figures are
+ * that colour at 8% and 50%.
+ */
+export type ChartInk = { axis: string; grid: string; muted: string }
+
+export const BROWN_INK: ChartInk = {
+  axis: 'var(--color-sequel-brown)',
+  grid: 'rgba(55, 43, 41, 0.08)',
+  muted: 'rgba(55, 43, 41, 0.5)',
+}
+
+export const ASPHALT_INK: ChartInk = {
+  axis: 'var(--color-sequel-asphalt)',
+  grid: 'rgba(48, 47, 44, 0.08)',
+  muted: 'rgba(48, 47, 44, 0.5)',
+}
+
 export type ChartSeries = {
   label: string
   /** Twelve values. Null where the month has nothing, never zero. */
@@ -92,10 +111,12 @@ function control(p0: Point, p1: Point, p2: Point, next: boolean): Point {
 export default function LineChart({
   series,
   format,
+  ink = BROWN_INK,
 }: {
   series: ChartSeries[]
   /** How a value reads in the axis and the tooltip — money, or a whole count. */
   format: (value: number) => string
+  ink?: ChartInk
 }) {
   // Two charts can be on the page at once, so the clip needs its own id.
   // ⚠️ useId returns ":r0:" — the colons are not valid in a url(#...) reference,
@@ -186,19 +207,13 @@ export default function LineChart({
         <svg width={w} height={h} role="img" aria-label="Monthly totals">
           {scale.lines.map((v) => (
             <g key={v}>
-              <line
-                x1={scale.padLeft}
-                x2={w - PAD.right}
-                y1={y(v)}
-                y2={y(v)}
-                stroke="rgba(55, 43, 41, 0.08)"
-              />
+              <line x1={scale.padLeft} x2={w - PAD.right} y1={y(v)} y2={y(v)} stroke={ink.grid} />
               <text
                 x={scale.padLeft - 10}
                 y={y(v)}
                 textAnchor="end"
                 dominantBaseline="middle"
-                fill="rgba(55, 43, 41, 0.5)"
+                fill={ink.muted}
                 fontSize="11"
               >
                 {format(v)}
@@ -207,14 +222,7 @@ export default function LineChart({
           ))}
 
           {MONTHS.map((m, i) => (
-            <text
-              key={m}
-              x={x(i)}
-              y={h - 6}
-              textAnchor="middle"
-              fill="var(--color-sequel-brown)"
-              fontSize="11"
-            >
+            <text key={m} x={x(i)} y={h - 6} textAnchor="middle" fill={ink.axis} fontSize="11">
               {m}
             </text>
           ))}
@@ -261,6 +269,8 @@ export default function LineChart({
           <div
             className={`chart-tip ${flip ? 'is-left' : ''}`}
             style={{
+              // The card and its caret take the page's ink, not the default.
+              ['--tip-bg' as string]: ink.axis,
               left: flip ? undefined : x(hover) + 7,
               right: flip ? w - x(hover) + 7 : undefined,
               top: active.reduce((acc, s) => acc + y(s.data[hover] as number), 0) / active.length,

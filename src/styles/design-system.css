@@ -2772,6 +2772,16 @@
     padding-top: 1rem;
   }
 
+  /* /dashboard has no year toggle, so the pane starts lower and the overflow
+     list needs a rule to sit on. */
+  .fee-mix.is-plain {
+    padding-top: 2rem;
+  }
+
+  .fee-mix.is-plain .fee-mix-rest {
+    border-top: 1px solid rgba(55, 43, 41, 0.15);
+  }
+
   .fee-mix-rest-item {
     display: flex;
     align-items: center;
@@ -3024,7 +3034,7 @@
     z-index: 20;
     padding: 10px;
     border-radius: 2px;
-    background: var(--color-sequel-brown);
+    background: var(--tip-bg, var(--color-sequel-brown));
     color: #fff;
     font-size: 12px;
     line-height: 1.2;
@@ -3050,7 +3060,7 @@
     width: 0;
     height: 0;
     border-top: 5px solid transparent;
-    border-right: 5px solid var(--color-sequel-brown);
+    border-right: 5px solid var(--tip-bg, var(--color-sequel-brown));
     border-bottom: 5px solid transparent;
     transform: translateY(-50%);
   }
@@ -3059,6 +3069,6 @@
     right: -5px;
     left: auto;
     border-right: none;
-    border-left: 5px solid var(--color-sequel-brown);
+    border-left: 5px solid var(--tip-bg, var(--color-sequel-brown));
   }
 }
