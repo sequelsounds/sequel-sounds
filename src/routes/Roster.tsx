@@ -96,10 +96,9 @@ export default function Roster() {
       </div>
 
       {/* Two tiles, not six. Signed is CA Status "Complete" — the composer
-          agreement is back. Both follow the filters, unlike the counts on
-          /clients and /partners, which are the whole dataset always: this page
-          has no per-region counts to hold still, so a count that ignored the
-          tab you are on would be answering a question nobody asked. */}
+          agreement is back. Both are the whole roster whatever is filtered,
+          which is Track's behaviour here and on /clients and /partners: the
+          counts are the dataset, the list is the question you asked of it. */}
       <div className="tab-band">
         <div className="tab-band-search is-narrow">
           <input
@@ -114,13 +113,13 @@ export default function Roster() {
         <div className="tab-band-divider" />
         <div className="stat">
           <span className="stat-label">Logged</span>
-          <span className="stat-value">{rows.length}</span>
+          <span className="stat-value">{all.length}</span>
         </div>
         <div className="tab-band-divider" />
         <div className="stat">
           <span className="stat-label">Signed</span>
           <span className="stat-value">
-            {rows.filter((m) => m.ca_status === 'Complete').length}
+            {all.filter((m) => m.ca_status === 'Complete').length}
           </span>
         </div>
       </div>
