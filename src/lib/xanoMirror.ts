@@ -524,6 +524,16 @@ export function useClientProfit(clientId: number | undefined, year: number) {
 }
 
 /**
+ * Xano's ordering, not Postgres'. Both supplier endpoints now sort by Title,
+ * and Xano compares by byte: digits, then capitals, then lowercase, so
+ * "BMG Australia" comes before "Believe". A JavaScript `<` compares UTF-16
+ * code units and reproduces exactly that, where PostgREST's `.order()` would
+ * use the column's collation and swap the pair. Same comparison as useClients.
+ */
+const byTitle = (a: { title: string | null }, b: { title: string | null }) =>
+  (a.title ?? '') < (b.title ?? '') ? -1 : (a.title ?? '') > (b.title ?? '') ? 1 : 0
+
+/**
  * A supplier, as `/partners` lists them.
  *
  * One table, `Supplier List`, split by type: `/partners` is everything that is
@@ -560,12 +570,9 @@ export function usePartners() {
   return useQuery({
     queryKey: ['mirror', 'partners'],
     queryFn: async (): Promise<Partner[]> => {
-      const { data, error } = await mirror
-        .from('partner_list')
-        .select('*')
-        .order('title', { ascending: true })
+      const { data, error } = await mirror.from('partner_list').select('*')
       if (error) throw error
-      return (data ?? []) as Partner[]
+      return ((data ?? []) as Partner[]).sort(byTitle)
     },
   })
 }
@@ -655,12 +662,9 @@ export function useRoster() {
   return useQuery({
     queryKey: ['mirror', 'roster'],
     queryFn: async (): Promise<RosterMember[]> => {
-      const { data, error } = await mirror
-        .from('roster_list')
-        .select('*')
-        .order('title', { ascending: true })
+      const { data, error } = await mirror.from('roster_list').select('*')
       if (error) throw error
-      return (data ?? []) as RosterMember[]
+      return ((data ?? []) as RosterMember[]).sort(byTitle)
     },
   })
 }
