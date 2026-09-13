@@ -88,6 +88,18 @@ Related: the engines differ in kind, not just in prefix.
 - Firefox also draws `::-moz-focus-inner` on buttons and rings a half-typed
   `type="email"` via `:-moz-ui-invalid`. Both are reset.
 
+## Chrome pauses a muted film in a background tab
+
+The sync session's picture is a muted `<video>` — the sound comes from the
+music element. Chrome treats a muted video as "video-only background media"
+and pauses it the moment its tab is not in front, rejecting `play()` with
+`AbortError: … paused to save power`. The session's own pause handler then
+stops the music with it, which is the right outcome for a viewer who
+switched tabs — but it means the page cannot be driven from a browser tab
+that is not fronted. When testing from the in-app browser, `tabs_select`
+the tab first; the first automated run of the sync page failed this way and
+looked like a broken cue.
+
 ## `:focus-visible` ignores programmatic focus
 
 Calling `.focus()` from a script does not match `:focus-visible` — the browser
