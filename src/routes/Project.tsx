@@ -19,6 +19,17 @@ import {
 } from '../lib/queries'
 import { trackProjectUrl } from '../lib/track'
 
+/**
+ * The tracks in a drop that a delete may touch: the ones nothing is using
+ * yet. Once a track is in a playlist it has been chosen, and a link may
+ * already be out with a client — binning the drop it arrived in is no
+ * reason to pull it out from under them. Those stay, and the drop's row
+ * goes on listing them.
+ */
+function unusedIn(drop: Submission): TrackWithUse[] {
+  return drop.tracks.filter((t) => t.playlist_tracks.length === 0)
+}
+
 /** What the right-hand pane is showing. */
 type Open = { kind: 'playlist' | 'submission'; key: string }
 
@@ -358,7 +369,12 @@ export default function Project() {
                   type="button"
                   className="icon-btn"
                   aria-label="Delete this drop"
-                  title="Delete this drop"
+                  disabled={unusedIn(s).length === 0}
+                  title={
+                    unusedIn(s).length === 0
+                      ? 'Every track in this drop is in a playlist'
+                      : 'Delete this drop'
+                  }
                   onClick={() => setDropping(s)}
                 >
                   <TrashIcon />
@@ -459,11 +475,18 @@ export default function Project() {
       )}
       {dropping && (
         <Confirm
-          title={`Delete everything ${dropping.company} sent?`}
-          body={`${plural(dropping.tracks.length, 'track')} will go from the library and from storage, and out of any playlist already using them. This cannot be undone.`}
-          confirmLabel={`Delete ${plural(dropping.tracks.length, 'track')}`}
+          title={`Delete what ${dropping.company} sent?`}
+          body={[
+            `${plural(unusedIn(dropping).length, 'track')} will go from the library and from storage. This cannot be undone.`,
+            dropping.tracks.length - unusedIn(dropping).length > 0 &&
+              `The other ${dropping.tracks.length - unusedIn(dropping).length} are in a playlist and stay where they are.`,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          confirmLabel={`Delete ${plural(unusedIn(dropping).length, 'track')}`}
           onConfirm={() => {
-            const { key, tracks: going } = dropping
+            const key = dropping.key
+            const going = unusedIn(dropping)
             setDropping(null)
             deleteSubmission.mutate(going.map((t) => t.id))
             if (open?.key === key) setPicked(null)
