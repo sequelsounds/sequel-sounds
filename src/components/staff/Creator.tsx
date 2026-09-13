@@ -39,7 +39,13 @@ import { runQueue } from '../../lib/uploadQueue'
 import { useSession } from '../../lib/auth'
 import Artwork from './Artwork'
 import Confirm from './Confirm'
-import { MenuIcon, TrashIcon, UploadFileIcon } from './icons'
+import {
+  MenuIcon,
+  PauseIcon,
+  PlayIcon,
+  TrashIcon,
+  UploadFileIcon,
+} from './icons'
 import Menu from './Menu'
 import Switch from './Switch'
 import ThemePanel from './ThemePanel'
@@ -1220,14 +1226,28 @@ function CreatorTrack({
       {...listeners}
       onClick={onPlay}
       className={`creator-track group/row ${isOver ? 'is-over' : ''} ${isDragging ? 'opacity-40' : ''} ${
-        playing ? 'bg-sequel-playing' : ''
+        playing ? 'is-playing bg-sequel-playing' : ''
       }`}
     >
       <span className="secondary w-4 text-xs">{number}</span>
-      <Artwork
-        artworkKey={track?.artwork_s3_key ?? null}
-        kind={track?.kind ?? 'audio'}
-      />
+      {/* Pointerdown must not start a drag here, or the click never lands. */}
+      <div className="art-wrap" onPointerDown={(e) => e.stopPropagation()}>
+        <Artwork
+          artworkKey={track?.artwork_s3_key ?? null}
+          kind={track?.kind ?? 'audio'}
+        />
+        <button
+          type="button"
+          className="play-btn"
+          aria-label={playing ? 'Pause' : 'Play'}
+          onClick={(e) => {
+            e.stopPropagation()
+            onPlay()
+          }}
+        >
+          {playing ? <PauseIcon /> : <PlayIcon />}
+        </button>
+      </div>
       {/* No "video" tag: the artwork block already renders brown for a film,
           so the label said the same thing a second time, on the rows with
           the least width to spare. */}

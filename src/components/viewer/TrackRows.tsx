@@ -71,6 +71,9 @@ type Props = {
   onPick?: (row: ViewerRow) => void
   /** Which row reads as current when `onPick` is in charge. */
   activeId?: string | null
+  /** Whether that row is playing, and what its square does when pressed again. */
+  activePlaying?: boolean
+  onToggle?: () => void
   /** Whether a row can open its notes. */
   notes?: boolean
 }
@@ -87,6 +90,8 @@ export default function TrackRows({
   groups: given,
   onPick,
   activeId,
+  activePlaying = false,
+  onToggle,
   notes = true,
 }: Props) {
   const { token } = useViewer()
@@ -137,7 +142,13 @@ export default function TrackRows({
                 ? activeId === track.id
                 : player.isCurrent(track.id)
             const playing =
-              current && (activeId == null ? player.playing : true)
+              current && (activeId == null ? player.playing : activePlaying)
+            // The square: pause what it started, start what it has not.
+            const press = () => {
+              if (!onPick) player.play(queue, index)
+              else if (current && onToggle) onToggle()
+              else onPick(row)
+            }
             const own = comments.filter((c) => c.target_id === track.id)
             const downloads: { label: string; key: string; ext: string }[] = []
             if (playlist.allow_download && track.preview_key) {
@@ -179,21 +190,25 @@ export default function TrackRows({
                   }}
                 >
                   <span className="num">{number}</span>
-                  <span className="relative block h-10 w-10">
+                  <button
+                    type="button"
+                    className="art-wrap"
+                    aria-label={playing ? 'Pause' : 'Play'}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      press()
+                    }}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
                     <Artwork
                       artworkKey={track.artwork_s3_key}
                       kind={track.kind}
                       token={token}
                     />
-                    <span
-                      className={`absolute inset-0 grid place-items-center bg-black/45 text-white ${
-                        current ? '' : 'opacity-0'
-                      }`}
-                      aria-hidden="true"
-                    >
+                    <span className="play-btn" aria-hidden="true">
                       {playing ? <PauseIcon /> : <PlayIcon />}
                     </span>
-                  </span>
+                  </button>
                   <span className="min-w-0">
                     <span className="title block">{track.title}</span>
                     {(sub || row.note) && (

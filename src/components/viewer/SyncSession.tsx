@@ -227,7 +227,7 @@ export default function SyncSession({
     setSaved(false)
     const f = filmEl.current
     if (f) {
-      f.currentTime = Math.max(0, offset - 2)
+      f.currentTime = 0
       playFilm()
     }
   }
@@ -244,11 +244,15 @@ export default function SyncSession({
     if (f && filmDuration > 0) f.currentTime = fraction * filmDuration
   }
 
-  /** This moment of the music, at this moment of the picture. */
-  const cueHere = (fraction: number) => {
+  /** The handle moving: the music follows under the pointer, so the drag is audible. */
+  const slide = (inPoint: number) => setCue({ ...cueRef.current, inPoint })
+
+  /** The handle let go: that section, from the top of the picture. */
+  const settle = (inPoint: number) => {
+    setCue({ ...cueRef.current, inPoint })
     const f = filmEl.current
-    if (!f || !musicDuration) return
-    setCue({ inPoint: fraction * musicDuration, offset: f.currentTime })
+    if (!f) return
+    f.currentTime = 0
     playFilm()
   }
 
@@ -429,19 +433,18 @@ export default function SyncSession({
                   />
                 </div>
               </div>
-              <div className="mt-2">
-                <Waveform
-                  peaks={peaks.data ?? null}
-                  progress={
-                    musicDuration > 0
-                      ? Math.min(1, musicTime / musicDuration)
-                      : 0
-                  }
-                  onSeek={cueHere}
-                  played={fg}
-                  unplayed={withAlpha(fg, 0.35)}
-                />
-              </div>
+              <SectionSlider
+                peaks={peaks.data ?? null}
+                duration={musicDuration}
+                inPoint={cue.inPoint}
+                span={Math.max(0, filmDuration - Math.max(0, cue.offset))}
+                progress={
+                  musicDuration > 0 ? Math.min(1, musicTime / musicDuration) : 0
+                }
+                fg={fg}
+                onSlide={slide}
+                onSettle={settle}
+              />
               <div className="viewer-sync-cue">
                 <span>
                   Music from <strong>{formatDuration(cue.inPoint)}</strong>,
@@ -510,9 +513,9 @@ export default function SyncSession({
             </>
           ) : (
             <p className="viewer-meta">
-              Pick a track below to hear it against the picture. Then click in
-              its waveform to start the music from that moment, wherever the
-              picture is.
+              Pick a track below to hear it against the picture. Then drag the
+              handle to where the music should start — the picture plays from
+              the top each time you let go.
             </p>
           )}
           {error && <p className="form-error mt-2">{error}</p>}
@@ -526,8 +529,94 @@ export default function SyncSession({
           groups={groups}
           onPick={pick}
           activeId={music?.id ?? null}
+          activePlaying={playing}
+          onToggle={toggle}
         />
       </div>
     </Shell>
+  )
+}
+
+/**
+ * The track's waveform with a handle on it. Where the handle sits is where
+ * the music starts; the band from it shows how much of the track the
+ * picture will cover from there. Dragging is live — the music follows the
+ * pointer, so you hear what you are choosing — and letting go restarts
+ * the picture from the top with that section under it.
+ */
+function SectionSlider({
+  peaks,
+  duration,
+  inPoint,
+  span,
+  progress,
+  fg,
+  onSlide,
+  onSettle,
+}: {
+  peaks: number[] | null
+  duration: number
+  inPoint: number
+  span: number
+  progress: number
+  fg: string
+  onSlide: (inPoint: number) => void
+  onSettle: (inPoint: number) => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const at = (clientX: number) => {
+    const box = ref.current?.getBoundingClientRect()
+    if (!box || box.width === 0 || !duration) return 0
+    return Math.max(0, Math.min(1, (clientX - box.left) / box.width)) * duration
+  }
+  const pct = duration > 0 ? (inPoint / duration) * 100 : 0
+  const bandPct =
+    duration > 0 ? (Math.min(span, duration - inPoint) / duration) * 100 : 0
+
+  return (
+    <div
+      ref={ref}
+      className="viewer-section-slider"
+      role="slider"
+      tabIndex={0}
+      aria-label="Where the music starts"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(duration)}
+      aria-valuenow={Math.round(inPoint)}
+      aria-valuetext={formatDuration(inPoint)}
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId)
+        onSlide(at(e.clientX))
+      }}
+      onPointerMove={(e) => {
+        if (e.buttons !== 0) onSlide(at(e.clientX))
+      }}
+      onPointerUp={(e) => onSettle(at(e.clientX))}
+      onKeyDown={(e) => {
+        const step = e.shiftKey ? 5 : 1
+        if (e.key === 'ArrowRight') onSettle(Math.min(duration, inPoint + step))
+        else if (e.key === 'ArrowLeft') onSettle(Math.max(0, inPoint - step))
+        else if (e.key === 'Home') onSettle(0)
+        else return
+        e.preventDefault()
+      }}
+    >
+      <Waveform
+        peaks={peaks}
+        progress={progress}
+        onSeek={() => undefined}
+        played={fg}
+        unplayed={withAlpha(fg, 0.35)}
+      />
+      {duration > 0 && (
+        <>
+          <div
+            className="band"
+            style={{ left: `${pct}%`, width: `${bandPct}%` }}
+          />
+          <div className="knob" style={{ left: `${pct}%` }} />
+        </>
+      )}
+    </div>
   )
 }

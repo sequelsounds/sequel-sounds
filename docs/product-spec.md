@@ -41,7 +41,7 @@ every other control on the panel means.
 | kind | in the Creator | what the page is |
 | --- | --- | --- |
 | `standard` | **Playlist** | Listen through, download what the switches allow, leave a note on a track. A film in the list plays in a picture above the rows. |
-| `sync` | **Sync session** | The playlist's film (Add film) at the top, the tracks under it. Pick a track and it plays against the picture; click in its waveform to start the music from that moment, wherever the picture is; nudge by tenths; **Save this sync** records the cue as a note on the track and a `sync_save` event. |
+| `sync` | **Sync session** | The playlist's film (Add film) at the top, the tracks under it. Pick a track and it plays against the picture from the top. Drag the handle on its waveform to where the music should start — the drag is audible, and letting go restarts the picture with that section under it; nudge the start point by tenths; **Save this sync** records the cue as a note on the track and a `sync_save` event. |
 | `composition` | **Composition** | The films in the list are the work — a composer's cuts. One plays large, notes are left at a moment in it, and every note's timestamp takes the picture back there. **Sign-in is required and cannot be switched off** (a database constraint, not just the UI). |
 
 "Sync session" is a working name for what the brief called the super

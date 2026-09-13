@@ -528,13 +528,26 @@
   /* Play sits on the artwork, not in the grip column. It used to take the
      grip's place on hover, which meant the handle vanished at exactly the
      moment you reached for it. */
+  /* The artwork square is the transport for its row — on every list in
+     the tool and on the viewer page alike. The mark arrives on hover and
+     stays while the track is playing, so a square you can press looks
+     pressable, and pressing it pauses what it started. */
   .art-wrap {
     position: relative;
     width: 40px;
     height: 40px;
+    flex: none;
   }
 
-  .track-row .play-btn {
+  button.art-wrap {
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    display: block;
+  }
+
+  .art-wrap .play-btn {
     position: absolute;
     inset: 0;
     display: none;
@@ -550,7 +563,12 @@
   }
 
   .track-row:hover .play-btn,
-  .track-row.is-playing .play-btn {
+  .track-row.is-playing .play-btn,
+  .creator-track:hover .play-btn,
+  .creator-track.is-playing .play-btn,
+  .viewer-row:hover .play-btn,
+  .viewer-row.is-playing .play-btn,
+  .art-wrap:focus-visible .play-btn {
     display: grid;
   }
 
@@ -1659,6 +1677,45 @@
     height: 16px;
     margin-left: -1px;
     background: var(--v-accent);
+  }
+
+  /* The sync session's section slider: the track's waveform with a handle
+     you drag to where the music should start, and a band showing how much
+     of the track the picture will cover from there. */
+  .viewer-section-slider {
+    position: relative;
+    padding: 8px 0 4px;
+    cursor: ew-resize;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .viewer-section-slider canvas {
+    cursor: inherit;
+  }
+
+  .viewer-section-slider .band {
+    position: absolute;
+    top: 8px;
+    bottom: 4px;
+    background: color-mix(in srgb, var(--v-accent) 14%, transparent);
+    border-left: 2px solid var(--v-accent);
+    pointer-events: none;
+  }
+
+  .viewer-section-slider .knob {
+    position: absolute;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
+    background: var(--v-accent);
+    pointer-events: none;
+  }
+
+  .viewer-section-slider:focus-visible {
+    outline: 1px solid var(--v-fg);
+    outline-offset: 4px;
   }
 
   /* The sign-in gate, on the dark ground the staff login stands on. */

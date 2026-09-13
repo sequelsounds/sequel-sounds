@@ -22,6 +22,28 @@ and their notes are attributed, which an anonymous visitor cannot be. That
 is a check constraint, not a switch the UI greys out — the UI greys it out
 too, but the database is where it is true.
 
+## The artwork square is the transport
+
+**2026-09-13.** A track's square played the track only in the Library, and
+only once hovered; in the Creator it was decoration, on the viewer page it
+showed nothing until the track was current, and on a sync session pressing
+it re-picked the track rather than pausing it. Now it is one control
+everywhere: a mark on hover that stays while playing, pause when pressed
+on the current track, play otherwise. The row still plays on click where
+it did — the square is the part that also *stops*.
+
+## The section slider, not click-to-cue
+
+**2026-09-13.** The first sync session cued by clicking in the track's
+waveform: that moment of the music, at whatever moment the picture was at.
+Precise, and wrong — what a director does is try *sections* of a track
+against the opening, one after another. So the waveform carries a handle
+instead. Dragging is live (the music follows the pointer, so the choice is
+heard), and letting go restarts the picture from the top with the section
+under it. The band from the handle shows how much of the track the
+picture will cover. The staff preset still says where in the picture the
+music comes in; the handle only says where in the music.
+
 ## The picture is the clock
 
 **2026-09-13.** The staff player is one `<video>` for everything, for good
