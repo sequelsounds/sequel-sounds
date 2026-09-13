@@ -256,7 +256,10 @@ export function useRecentProjects() {
       }[]
       if (visits.length === 0) return []
 
-      // Anything that arrived after the last look earns the dot.
+      // What a partner sent after the last look earns the dot — the same
+      // test the Inbox uses, because the dot says "new submissions" and your
+      // own uploads are not submissions. Without this, dropping files on the
+      // Creator marked the project you were sitting in as having news.
       const oldest = visits.reduce((m, v) => (v.seen_at < m ? v.seen_at : m), visits[0].seen_at)
       const { data: fresh } = await supabase
         .from('tracks')
@@ -265,6 +268,7 @@ export function useRecentProjects() {
           'project_id',
           visits.map((v) => v.project_id),
         )
+        .not('inbox_id', 'is', null)
         .gt('created_at', oldest)
       const latest = new Map<string, string>()
       for (const t of fresh ?? []) {
