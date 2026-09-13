@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { useIsManagement } from '../../lib/xanoMirror'
 import SequelLogo from '../SequelLogo'
 
 /**
@@ -23,7 +24,7 @@ import SequelLogo from '../SequelLogo'
 // omitted four of its items would misrepresent how far along this is.
 const LINKS: { label: string; to: string | null }[] = [
   { label: 'Dashboard', to: null },
-  { label: 'Management', to: null },
+  { label: 'Management', to: '/management' },
   { label: 'Notifications', to: null },
   { label: 'Projects', to: '/projects' },
   { label: 'Roster', to: '/roster' },
@@ -36,6 +37,11 @@ const LINKS: { label: string; to: string | null }[] = [
 ]
 
 export default function Rail() {
+  // Track hides this link from anyone who is not management, so this does
+  // too. The database is what actually refuses — see useIsManagement.
+  const management = useIsManagement()
+  const links = LINKS.filter((l) => l.label !== 'Management' || management.data === true)
+
   return (
     // Placed explicitly rather than by source order: the rail spans two rows,
     // which auto flow would otherwise drop into the 2rem strip at the top.
@@ -44,7 +50,7 @@ export default function Rail() {
         <SequelLogo className="h-16! w-16!" />
       </NavLink>
 
-      {LINKS.map(({ label, to }) =>
+      {links.map(({ label, to }) =>
         to ? (
           <NavLink key={label} to={to} className="nav-link-app">
             {label}

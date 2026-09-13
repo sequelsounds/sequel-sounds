@@ -223,6 +223,9 @@
      edge (nav_sidebar's border-right-color). Every rule in the tool that
      draws a line uses this, so there is one border colour, not two. */
   --color-sequel-line: rgba(55, 43, 41, 0.5);
+  /* Library pink. The second colour on /management: last year's lines, and
+     every bar segment under the pointer. Used for nothing else. */
+  --color-sequel-library: #ad7186;
   --color-sequel-grey: #d3d8da;
   --color-sequel-accent: #c9a13b;
   --color-sequel-white: #ffffff;

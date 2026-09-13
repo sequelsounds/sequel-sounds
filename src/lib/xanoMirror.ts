@@ -94,6 +94,29 @@ export function useMe() {
   })
 }
 
+/**
+ * Whether the signed-in person is management — Andy and Phil, not every
+ * Sequel account.
+ *
+ * ⚠️ This is for HIDING THE NAV LINK, nothing more. The gate that matters is
+ * in the database: the three `management_*` views ask the same function, so
+ * typing the URL gets an empty page rather than the company's figures. Track
+ * makes the same split, and its own note is worth repeating — hiding a link
+ * is not access control.
+ */
+export function useIsManagement() {
+  return useQuery({
+    queryKey: ['mirror', 'is-management'],
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await (
+        supabase as unknown as SupabaseClient
+      ).rpc('track_is_management')
+      if (error) throw error
+      return data === true
+    },
+  })
+}
+
 export type Song = {
   id: number
   track_title: string | null
@@ -882,6 +905,106 @@ export function useUserProjects(userId: number | undefined) {
         .order('id', { ascending: false })
       if (error) throw error
       return (data ?? []) as ClientProject[]
+    },
+  })
+}
+
+/* -------------------------------------------------------------- management
+ * The company-wide figures behind `/management`.
+ *
+ * ⚠️ MANAGEMENT ONLY, NOT STAFF. Track guards its endpoint with
+ * assert_management rather than assert_sequel_staff, because this page shows
+ * every supervisor's billing, profit and margin. Camila is Sequel staff and
+ * must not see it. The mirror's own RLS grants staff everything, so the gate
+ * lives inside the three views (`public.track_is_management()`): a staff
+ * member who is not management gets empty lists, not a partial page.
+ *
+ * ⚠️ Hiding the nav link is not access control, and neither is this hook.
+ * The database is what refuses.
+ *
+ * Every money field is already GBP — the view converts with
+ * `exchange_rate_lock`, never `gbp_total_amount` (zero on almost every row)
+ * and never `eur_rate` (Unilever's fixed rate).
+ */
+
+/** One live invoice, as `/management` counts it. */
+export type ManagementInvoice = {
+  id: number
+  uuid: string | null
+  invoice_number: string | null
+  project_title: string
+  brand: string
+  category_id: number
+  /** "Unclassified" where the project has no category — a reported value, not a blank. */
+  category: string
+  /** The PROJECT's agency, not the invoiced party. Both are Clients rows. */
+  agency: string
+  /** The INVOICED client's region. "Unassigned" where there is none. */
+  region: string
+  /** project.client === 1. Not Brand_Group, which is free text and wrong. */
+  is_unilever: boolean
+  invoice_date: string | null
+  status: string | null
+  supervisor_id: number | null
+  client_id: number | null
+  client_name: string
+  invoiced: number
+  profit: number
+  spend: number
+  third_party: number
+  studios: number
+  demo: number
+  search: number
+  licence: number
+  other: number
+  /** In no total. It records money that did not move. */
+  cost_avoidance: number
+}
+
+/** A live project, for the Projects series only. */
+export type ManagementProject = {
+  id: number
+  created_at: string
+  supervisor_id: number | null
+  brand: string | null
+  client: number | null
+  category_id: number
+}
+
+/** A supervisor's name, for the Team table. */
+export type ManagementStaff = { id: number; name: string | null }
+
+export type ManagementOverview = {
+  invoices: ManagementInvoice[]
+  projects: ManagementProject[]
+  staff: ManagementStaff[]
+}
+
+/**
+ * Everything `/management` draws, in three reads.
+ *
+ * Track fetches the equivalent in one endpoint that takes four seconds and
+ * change; these are plain selects against views, and the grouping happens
+ * here in the browser exactly as it does on Track — which is what lets the
+ * year toggle re-render eight panes without going back to the server.
+ */
+export function useManagement() {
+  return useQuery({
+    queryKey: ['mirror', 'management'],
+    queryFn: async (): Promise<ManagementOverview> => {
+      const [invoices, projects, staff] = await Promise.all([
+        mirror.from('management_invoices').select('*'),
+        mirror.from('management_projects').select('*'),
+        mirror.from('management_staff').select('*'),
+      ])
+      if (invoices.error) throw invoices.error
+      if (projects.error) throw projects.error
+      if (staff.error) throw staff.error
+      return {
+        invoices: (invoices.data ?? []) as ManagementInvoice[],
+        projects: (projects.data ?? []) as ManagementProject[],
+        staff: (staff.data ?? []) as ManagementStaff[],
+      }
     },
   })
 }

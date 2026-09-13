@@ -2501,3 +2501,501 @@
   }
 
 }
+
+@layer components {
+  /* ------------------------------------------------------------- management
+   * `/management`. Every rule here was read off the running page's own
+   * stylesheet rather than eyeballed, and the names follow this repo's
+   * kebab-case rather than Webflow's mixed snake/camel.
+   *
+   * Two families do the work: the fee-mix bar, and the league table that
+   * every other pane is built from.
+   */
+
+  /* The inner chart tabs. `chart_tab_button` is a SITE-WIDE class that
+     /dashboard also uses, so it is left exactly as Track has it — anything
+     specific to this page belongs on a modifier, never on this. */
+  .chart-tabs {
+    display: flex;
+    flex: none;
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+    margin-left: 2rem;
+  }
+
+  .chart-tab {
+    display: flex;
+    width: 11rem;
+    min-height: 2rem;
+    max-height: 2rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem 1.2rem;
+    border: 1px solid var(--color-sequel-line);
+    background-color: transparent;
+    color: var(--color-sequel-brown);
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  /* One rule between neighbours, not two. */
+  .chart-tab + .chart-tab {
+    border-left: none;
+  }
+
+  .chart-tab:hover,
+  .chart-tab[aria-selected='true'] {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  .chart-tab-label {
+    color: inherit;
+    font-size: 0.64rem;
+    font-weight: 300;
+    line-height: 1;
+  }
+
+  /* The year toggle. Seven panes draw their own and they all set the same
+     year, so two tabs can never show different periods. */
+  .year-toggle {
+    display: flex;
+    flex: none;
+    margin-bottom: 1rem;
+  }
+
+  .year-btn {
+    padding: 0.3rem 0.9rem;
+    border: 1px solid var(--color-sequel-brown);
+    background: transparent;
+    color: var(--color-sequel-brown);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+
+  .year-btn + .year-btn {
+    border-left: none;
+  }
+
+  .year-btn.is-on {
+    background: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  /* ------------------------------------------------------------- fee mix */
+  .fee-mix {
+    position: relative;
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    padding-top: 1.5rem;
+    color: var(--color-sequel-brown);
+  }
+
+  .fee-mix-total {
+    display: flex;
+    width: 95%;
+    flex: none;
+    align-items: baseline;
+    justify-content: flex-end;
+    column-gap: 0.6rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .fee-mix-total-label {
+    font-size: 0.75rem;
+    font-weight: 300;
+    letter-spacing: 0.02em;
+  }
+
+  .fee-mix-total-value {
+    font-family: var(--font-title);
+    font-size: 1.6rem;
+    font-weight: 300;
+    line-height: 1.1;
+  }
+
+  .fee-mix-bar {
+    display: flex;
+    width: 95%;
+    height: 3.5rem;
+    flex: none;
+    overflow: hidden;
+  }
+
+  .fee-mix-seg {
+    display: flex;
+    height: 100%;
+    width: 0;
+    transition: width 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .fee-mix-seg + .fee-mix-seg {
+    border-left: 3px solid var(--color-sequel-silver);
+  }
+
+  /* One division per invoice. A brand built on one big licence looks
+     different from one built on twenty searches — that is the point. */
+  .fee-mix-unit {
+    height: 100%;
+    background: var(--color-sequel-brown);
+    transition: background-color 120ms;
+  }
+
+  .fee-mix-unit + .fee-mix-unit {
+    border-left: 1px solid var(--color-sequel-silver);
+  }
+
+  .fee-mix-unit:hover {
+    background: var(--color-sequel-library);
+  }
+
+  .fee-mix-tip,
+  .league-tip {
+    position: absolute;
+    z-index: 20;
+    padding: 0.7rem 0.85rem;
+    background: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+    transition: opacity 120ms;
+  }
+
+  .fee-mix-tip.is-on,
+  .league-tip.is-on {
+    opacity: 1;
+  }
+
+  .fee-mix-tip-project {
+    font-size: 0.85rem;
+    line-height: 1.35;
+  }
+
+  .fee-mix-tip-client,
+  .fee-mix-tip-meta {
+    font-size: 0.7rem;
+    line-height: 1.4;
+    color: rgba(241, 240, 238, 0.65);
+  }
+
+  .fee-mix-tip-value {
+    font-family: var(--font-title);
+    font-size: 1.2rem;
+    font-weight: 300;
+    line-height: 1.4;
+  }
+
+  .fee-mix-labels {
+    position: relative;
+    width: 95%;
+    min-height: 0;
+    flex: 1;
+  }
+
+  /* Stems, so a label can sit clear of its neighbour and still point at the
+     segment it belongs to. */
+  .fee-mix-label {
+    position: absolute;
+    top: 0;
+    padding-left: 1.25rem;
+    white-space: nowrap;
+  }
+
+  .fee-mix-stem {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    background: rgba(55, 43, 41, 0.3);
+  }
+
+  .fee-mix-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    flex: none;
+    background: var(--color-sequel-brown);
+  }
+
+  .fee-mix-swatch-pin {
+    position: absolute;
+    left: 0;
+  }
+
+  .fee-mix-name {
+    font-size: 0.75rem;
+    font-weight: 300;
+    letter-spacing: 0.02em;
+  }
+
+  .fee-mix-pct {
+    font-family: var(--font-title);
+    font-size: 1.4rem;
+    font-weight: 300;
+    line-height: 1.15;
+  }
+
+  .fee-mix-stat {
+    font-size: 0.7rem;
+    font-weight: 300;
+    line-height: 1.5;
+  }
+
+  /* Anything under 2% of the bar has no room for a stem, so it is listed
+     along the bottom instead of being dropped. */
+  .fee-mix-rest {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 1.25rem;
+    display: flex;
+    column-gap: 3rem;
+    padding-top: 1rem;
+  }
+
+  .fee-mix-rest-item {
+    display: flex;
+    align-items: center;
+    column-gap: 0.6rem;
+  }
+
+  .fee-mix-rest-name {
+    font-size: 0.75rem;
+    font-weight: 300;
+    letter-spacing: 0.02em;
+  }
+
+  .fee-mix-rest-pct {
+    font-family: var(--font-title);
+    font-size: 1rem;
+    font-weight: 300;
+  }
+
+  .fee-mix-rest-stat {
+    font-size: 0.7rem;
+    font-weight: 300;
+  }
+
+  /* -------------------------------------------------------------- leagues */
+  .league {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    flex-direction: column;
+    padding: 1.5rem 2rem 2rem 0;
+    color: var(--color-sequel-brown);
+    font-weight: 300;
+  }
+
+  /* The Team table is the one league that sits in an outer tab pane rather
+     than inside the chart strip, so it has no 2rem margin to inherit. */
+  .league.is-team {
+    padding-left: 2rem;
+  }
+
+  .league-scroll {
+    width: 100%;
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .league-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    column-gap: 1.5rem;
+    padding: 0 0 0.75rem;
+    border-bottom: 1px solid rgba(55, 43, 41, 0.15);
+    background: var(--color-sequel-silver);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .league-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    column-gap: 1.5rem;
+    align-items: center;
+    padding: 0.7rem 0 1.4rem;
+  }
+
+  .league-head.has-spend,
+  .league-row.has-spend {
+    grid-template-columns: 2fr 1fr 1fr 1fr 0.7fr 0.6fr;
+  }
+
+  /* Under the row, never behind it: a full-height bar swallows the figures
+     it is meant to be comparing. */
+  .league-bar {
+    position: absolute;
+    bottom: 0.35rem;
+    left: 0;
+    z-index: 0;
+    display: flex;
+    height: 0.75rem;
+  }
+
+  .league-unit {
+    height: 100%;
+    background: var(--color-sequel-brown);
+    transition: background-color 120ms;
+  }
+
+  .league-unit + .league-unit {
+    border-left: 1px solid var(--color-sequel-silver);
+  }
+
+  .league-unit:hover {
+    background: var(--color-sequel-library);
+  }
+
+  .league-cell {
+    position: relative;
+    z-index: 1;
+    font-size: 0.8rem;
+    font-weight: 300;
+    white-space: nowrap;
+  }
+
+  .league-cell.is-num {
+    /* Figures line up under their heading, which is left-aligned like the
+       rest of the table. Track leaves them left too. */
+    text-align: left;
+  }
+
+  /* ------------------------------------------------------------ client mix */
+  .uni {
+    padding: 1.5rem 2rem 1.5rem 0;
+    color: var(--color-sequel-brown);
+    font-weight: 300;
+  }
+
+  .uni-headline {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    column-gap: 2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .uni-stat {
+    display: flex;
+    align-items: baseline;
+    column-gap: 0.75rem;
+  }
+
+  .uni-stat.is-right {
+    flex-direction: row-reverse;
+  }
+
+  .uni-pct {
+    font-family: var(--font-title);
+    font-size: 2rem;
+    font-weight: 300;
+    line-height: 1;
+  }
+
+  .uni-pct-label {
+    font-size: 0.8rem;
+  }
+
+  .uni-bar {
+    display: flex;
+    width: 100%;
+    height: 2.5rem;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+
+  .uni-seg-uni {
+    height: 100%;
+    background: var(--color-sequel-brown);
+  }
+
+  /* An outline, not a fill — the share that is not Unilever should read as
+     the space left over. */
+  .uni-seg-non {
+    height: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--color-sequel-brown);
+    background: transparent;
+  }
+
+  .uni-legend {
+    display: flex;
+    column-gap: 3rem;
+  }
+
+  .uni-item {
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  .uni-item-value {
+    font-family: var(--font-title);
+    font-size: 1.1rem;
+  }
+
+  /* ---------------------------------------------------------- line charts */
+  .chart-wrap {
+    position: relative;
+    min-height: 0;
+    flex: 1;
+  }
+
+  .chart-legend {
+    display: flex;
+    flex: none;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 20px;
+    row-gap: 8px;
+    padding: 20px 10px 0;
+    font-size: 12px;
+  }
+
+  .chart-legend-item {
+    display: flex;
+    align-items: center;
+    column-gap: 8px;
+  }
+
+  .chart-legend-key {
+    width: 18px;
+    height: 0;
+    flex: none;
+    border-top-width: 1.5px;
+    border-top-style: solid;
+  }
+
+  .chart-tip {
+    position: absolute;
+    z-index: 20;
+    padding: 10px;
+    background: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+    font-size: 12px;
+    line-height: 1.5;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+}
