@@ -253,13 +253,19 @@ export default function Project() {
         <div className="title-row">
           <h1 className="page-title">{p.title ?? `Untitled (#${p.id})`}</h1>
         </div>
+        {/* user_subtitle_project_edit returns the address and mailto-links
+            it, so the address is what shows here — not the name. */}
         <div className="page-subtitle">
           {p.client_user_email ? (
-            <a href={`mailto:${p.client_user_email}`} className="text-inherit no-underline">
-              {p.client_user ?? p.client_user_email}
+            <a
+              href={`mailto:${p.client_user_email}`}
+              className="text-inherit no-underline"
+              title={p.client_user ?? undefined}
+            >
+              {p.client_user_email}
             </a>
           ) : (
-            (p.client_user ?? ' ')
+            ' '
           )}
         </div>
       </div>
@@ -387,7 +393,10 @@ export default function Project() {
                 {/* project item row cost wrap: symbol and amount together,
                     the symbol in a fixed column so the amounts line up. */}
                 <span className="row-cost">
-                  <span className="row-cost-symbol">{q.currency}</span>
+                  {/* The symbol, resolved through the currency FK — not the
+                      quote's own Currency text, which reads "SGD $" on one
+                      row and "SGD" on the next. */}
+                  <span className="row-cost-symbol">{q.currency_symbol}</span>
                   <span className="row-field">{formatMoney(q.grand_total_amount)}</span>
                 </span>
                 <Cell>{fmt(shortDate, q.created_at)}</Cell>
@@ -440,7 +449,7 @@ export default function Project() {
             row={(i) => (
               <>
                 <Title>{i.description || 'Untitled invoice'}</Title>
-                <span className="row-cost-symbol">{i.currency}</span>
+                <span className="row-cost-symbol">{i.currency_symbol}</span>
                 <Cell>{formatMoney(i.total_amount)}</Cell>
                 <Cell>{i.invoice_number}</Cell>
                 <Cell>{fmt(shortDate, i.invoice_date)}</Cell>

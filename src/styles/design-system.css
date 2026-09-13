@@ -2210,17 +2210,23 @@
     text-decoration: none;
   }
 
+  /* Measured against Track rather than assumed: its links are 17px tall on a
+     33px step, not the 29 on 45 that 0.5rem of padding and a normal line
+     gives. Webflow gets there by way of `line-height: 0.8px` — 0.8 with the
+     wrong unit — which leaves a 1px line box inside 16px of padding and the
+     text overflowing it, centred. Same box here, built out of a line-height
+     that means what it says. */
   .nav-link-app {
     flex: none;
     margin-bottom: 1rem;
-    padding: 0.5rem 0;
+    padding: 0;
     border: none;
     background: none;
     color: var(--color-sequel-brown);
     font-family: var(--font-sans);
     font-size: 0.8rem;
     font-weight: 400;
-    line-height: 1;
+    line-height: 1.0625rem;
     text-decoration: none;
   }
 

@@ -117,7 +117,10 @@ export type Quote = {
   description: string | null
   status: string | null
   music_type: string | null
+  // The quote's own free text ("SGD $", or "SGD" on the next row) and the one
+  // character resolved through its currency FK, which is what the row shows.
   currency: string | null
+  currency_symbol: string | null
   service: string | null
   client: string | null
   artist_name: string | null
@@ -138,6 +141,7 @@ export type Invoice = {
   invoice_date: string | null
   due_date: string | null
   currency: string | null
+  currency_symbol: string | null
   client: string | null
   music_supervisor: string | null
   song_name: string | null

@@ -8,28 +8,28 @@ import {
   useSensors,
   type CollisionDetection,
   type DragStartEvent,
-} from "@dnd-kit/core";
-import { useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
-import Creator from "../components/staff/Creator";
-import { ChevronIcon } from "../components/staff/icons";
-import Player from "../components/staff/Player";
-import Rail from "../components/staff/Rail";
-import { CreatorProvider, useCreator } from "../lib/creator";
-import { PlayerProvider } from "../lib/player";
+} from '@dnd-kit/core'
+import { useState } from 'react'
+import { Outlet, useLocation } from 'react-router-dom'
+import Creator from '../components/staff/Creator'
+import { ChevronIcon } from '../components/staff/icons'
+import Player from '../components/staff/Player'
+import Rail from '../components/staff/Rail'
+import { CreatorProvider, useCreator } from '../lib/creator'
+import { PlayerProvider } from '../lib/player'
 
 /**
  * The staff shell: Track's nav, the workspace, and — on the pages that are
- * about audio — the Creator and the player across the bottom.
+ * about audio — the Creator and a player across the bottom.
  *
- * The player and the Creator are mounted for the music pages only. They used
- * to be here for every route, which put a transport bar and a playlist panel
- * across the bottom of a page of invoices. Their providers stay above the
- * routes either way, so a playlist survives a trip to a project and back.
+ * The player and the Creator mount for the music pages only. They used to be
+ * here for every route, which put a transport bar and a playlist panel across
+ * the bottom of a page of invoices. Their providers stay above the routes
+ * either way, so a playlist survives a trip to a project and back.
  */
 
 /** The pages the player and the Creator belong to. */
-const MUSIC = /^\/(playlists|library)(\/|$)/;
+const MUSIC = /^\/(playlists|library)(\/|$)/
 export default function StaffLayout() {
   return (
     <PlayerProvider>
@@ -37,33 +37,31 @@ export default function StaffLayout() {
         <Shell />
       </CreatorProvider>
     </PlayerProvider>
-  );
+  )
 }
 
 // Drops land where the pointer is, not where the dragged rectangle happens to
 // overlap most — a track dragged from a wide table row would otherwise "hit"
 // the wrong line in the narrow Creator.
 const collision: CollisionDetection = (args) => {
-  const within = pointerWithin(args);
-  return within.length > 0 ? within : rectIntersection(args);
-};
+  const within = pointerWithin(args)
+  return within.length > 0 ? within : rectIntersection(args)
+}
 
 function Shell() {
-  const creator = useCreator();
-  const music = MUSIC.test(useLocation().pathname);
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-  );
-  const [dragLabel, setDragLabel] = useState<string | null>(null);
+  const creator = useCreator()
+  const music = MUSIC.test(useLocation().pathname)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  const [dragLabel, setDragLabel] = useState<string | null>(null)
 
   const onDragStart = (e: DragStartEvent) => {
     const d = e.active.data.current as
-      | { type: "track"; track: { title: string } }
-      | { type: "pt"; pt: { track: { title: string } | null } }
-      | undefined;
-    if (d?.type === "track") setDragLabel(d.track.title);
-    else if (d?.type === "pt") setDragLabel(d.pt.track?.title ?? "Track");
-  };
+      | { type: 'track'; track: { title: string } }
+      | { type: 'pt'; pt: { track: { title: string } | null } }
+      | undefined
+    if (d?.type === 'track') setDragLabel(d.track.title)
+    else if (d?.type === 'pt') setDragLabel(d.pt.track?.title ?? 'Track')
+  }
 
   return (
     <DndContext
@@ -71,8 +69,8 @@ function Shell() {
       collisionDetection={collision}
       onDragStart={onDragStart}
       onDragEnd={(e) => {
-        setDragLabel(null);
-        creator.handleDrop(e);
+        setDragLabel(null)
+        creator.handleDrop(e)
       }}
       onDragCancel={() => setDragLabel(null)}
     >
@@ -83,13 +81,12 @@ function Shell() {
           // 24rem the whole way and is clipped by the wrapper, so nothing
           // inside reflows while it slides away.
           gridTemplateColumns: `16rem minmax(0, 1fr) ${
-            music && !creator.collapsed ? "24rem" : "0rem"
+            music && !creator.collapsed ? '24rem' : '0rem'
           }`,
-          // top_spacer_app, the workspace, and the player — which takes no
+          // top_spacer_app, the workspace, then the player — which takes no
           // room at all on a page that has no player.
-          gridTemplateRows: music ? "2rem 1fr 72px" : "2rem 1fr 0px",
-          transition:
-            "grid-template-columns 280ms cubic-bezier(.25,.46,.45,.94)",
+          gridTemplateRows: music ? '2rem 1fr 72px' : '2rem 1fr 0px',
+          transition: 'grid-template-columns 280ms cubic-bezier(.25,.46,.45,.94)',
         }}
       >
         {/* The strip starts after the nav, so the rail's edge runs unbroken
@@ -102,42 +99,42 @@ function Shell() {
           <Outlet />
         </main>
         {music && (
-          <div
-            className={`col-start-3 row-start-2 z-[2] overflow-hidden ${
-              creator.collapsed
-                ? ""
-                : "shadow-[-6px_0_24px_rgba(48,47,44,0.18)]"
-            }`}
-          >
-            <Creator />
-          </div>
+          <>
+            <div
+              className={`col-start-3 row-start-2 z-[2] overflow-hidden ${
+                creator.collapsed
+                  ? ''
+                  : 'shadow-[-6px_0_24px_rgba(48,47,44,0.18)]'
+              }`}
+            >
+              <Creator />
+            </div>
+            {/* Rides the panel's own edge, open or shut, so the control never
+                moves anywhere but with the thing it moves. */}
+            <button
+              type="button"
+              className={`creator-tab ${creator.collapsed ? 'is-collapsed' : ''}`}
+              title={
+                creator.collapsed
+                  ? 'Show the Playlist Creator'
+                  : 'Hide the Playlist Creator'
+              }
+              aria-label={
+                creator.collapsed
+                  ? 'Show the Playlist Creator'
+                  : 'Hide the Playlist Creator'
+              }
+              aria-expanded={!creator.collapsed}
+              onClick={() => creator.setCollapsed(!creator.collapsed)}
+            >
+              <ChevronIcon
+                size="0.75rem"
+                className={creator.collapsed ? 'rotate-90' : '-rotate-90'}
+              />
+            </button>
+            <Player />
+          </>
         )}
-        {/* Rides the panel's own edge, open or shut, so the control never
-            moves anywhere but with the thing it moves. */}
-        {music && (
-          <button
-            type="button"
-            className={`creator-tab ${creator.collapsed ? "is-collapsed" : ""}`}
-            title={
-              creator.collapsed
-                ? "Show the Playlist Creator"
-                : "Hide the Playlist Creator"
-            }
-            aria-label={
-              creator.collapsed
-                ? "Show the Playlist Creator"
-                : "Hide the Playlist Creator"
-            }
-            aria-expanded={!creator.collapsed}
-            onClick={() => creator.setCollapsed(!creator.collapsed)}
-          >
-            <ChevronIcon
-              size="0.75rem"
-              className={creator.collapsed ? "rotate-90" : "-rotate-90"}
-            />
-          </button>
-        )}
-        {music && <Player />}
       </div>
       <DragOverlay dropAnimation={null}>
         {dragLabel && (
@@ -147,5 +144,5 @@ function Shell() {
         )}
       </DragOverlay>
     </DndContext>
-  );
+  )
 }
