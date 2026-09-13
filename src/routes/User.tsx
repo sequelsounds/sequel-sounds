@@ -15,6 +15,11 @@ import { useTrackUser, useUserProjects, type ClientProject } from '../lib/xanoMi
  * **status**, where the client page has status before service. Checked on both
  * pages rather than assumed.
  *
+ * Its status column diverges from Track on purpose. Track reads the legacy
+ * `project_status` text here — the only page left that does — and that column
+ * is dead: its values include Invoicing and Closed, which the status dropdown
+ * has no equivalent for. This shows the FK, like every other page.
+ *
  * Read-only. Track edits the name, type, status, company and notes here.
  */
 
@@ -183,11 +188,13 @@ export default function User() {
                 {/* Service before status here, the other way round on the
                     client page. Same class, same grid, different order. */}
                 <span className="project-list-cell">{p.service_name}</span>
-                {/* ⚠️ And a different status. This tab reads the legacy text
-                    column, not the FK the client page and /projects read, so
-                    the same project can say Complete there and Invoicing
-                    here. Track's binding is .Project_Status; reproduced. */}
-                <span className="project-list-cell">{p.legacy_status_text}</span>
+                {/* The FK status, not the legacy text column Track reads
+                    here. Track's binding is .Project_Status, which is the old
+                    `project_status` text — Andy confirmed 13 Sep that it is
+                    dead, so this tab was the last thing showing values like
+                    "Invoicing" that no longer mean anything. Deliberate
+                    divergence, and the same status every other page shows. */}
+                <span className="project-list-cell">{p.stage_text}</span>
               </div>
             ))}
             {projects.data && rows.length === 0 && (
