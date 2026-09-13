@@ -132,6 +132,11 @@ export default function LineChart({
   const x = (i: number) => scale.padLeft + (innerW * i) / 11
   const y = (v: number) => PAD.top + innerH - (innerH * v) / scale.top
 
+  // The series that have a value at the hovered month. Chart.js reports only
+  // these, and centres its card on the mean of their points.
+  const active = hover == null ? [] : series.filter((s) => s.data[hover] != null)
+  const flip = hover != null && x(hover) > w * 0.7
+
   if (w === 0 || h === 0)
     return (
       <div className="flex h-full min-h-0 flex-col">
@@ -189,16 +194,6 @@ export default function LineChart({
             </text>
           ))}
 
-          {hover != null && (
-            <line
-              x1={x(hover)}
-              x2={x(hover)}
-              y1={PAD.top}
-              y2={PAD.top + innerH}
-              stroke="rgba(55, 43, 41, 0.25)"
-            />
-          )}
-
           {series.map((s) => (
             <path
               key={s.label}
@@ -225,27 +220,28 @@ export default function LineChart({
             )}
         </svg>
 
-        {hover != null && series.some((s) => s.data[hover] != null) && (
+        {/* Chart.js's own tooltip, reproduced: it sits BESIDE the month with a
+            caret pointing at it, centred on the average of the points it is
+            reporting — not pinned to the top of the plot. Caret 5px, 2px of
+            padding beyond it, and it flips sides near the right-hand edge. */}
+        {hover != null && active.length > 0 && (
           <div
-            className="chart-tip"
+            className={`chart-tip ${flip ? 'is-left' : ''}`}
             style={{
-              // Flips to the left of the pointer near the right edge, so the
-              // card never runs off the pane.
-              left: x(hover) > w * 0.7 ? undefined : x(hover) + 14,
-              right: x(hover) > w * 0.7 ? w - x(hover) + 14 : undefined,
-              top: PAD.top,
+              left: flip ? undefined : x(hover) + 7,
+              right: flip ? w - x(hover) + 7 : undefined,
+              top: active.reduce((acc, s) => acc + y(s.data[hover] as number), 0) / active.length,
             }}
           >
-            <div>{MONTHS[hover]}</div>
-            {series.map((s) =>
-              s.data[hover] == null ? null : (
-                <div key={s.label}>
-                  {s.label}
-                  {'  '}
-                  {format(s.data[hover] as number)}
-                </div>
-              ),
-            )}
+            <span className="chart-tip-caret" />
+            <div className="chart-tip-title">{MONTHS[hover]}</div>
+            {active.map((s) => (
+              <div key={s.label} className="chart-tip-row">
+                {s.label}
+                {'  '}
+                {format(s.data[hover] as number)}
+              </div>
+            ))}
           </div>
         )}
       </div>
