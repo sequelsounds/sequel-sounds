@@ -2,9 +2,8 @@ import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Search from '../components/staff/Search'
 import Confirm from '../components/staff/Confirm'
-import RowMenu from '../components/staff/RowMenu'
 import TrackTable from '../components/staff/TrackTable'
-import { MailIcon, PencilIcon, ShareIcon } from '../components/staff/icons'
+import { PencilIcon, ShareIcon, TrashIcon } from '../components/staff/icons'
 import { useCreator } from '../lib/creator'
 import { formatDate, plural } from '../lib/format'
 import {
@@ -16,6 +15,7 @@ import {
   useProject,
   useProjectTracks,
   useRecordVisit,
+  useDeleteSubmission,
 } from '../lib/queries'
 import { trackProjectUrl } from '../lib/track'
 
@@ -82,6 +82,8 @@ export default function Project() {
   const [copied, setCopied] = useState(false)
   const [picked, setPicked] = useState<Open | null>(null)
   const [deleting, setDeleting] = useState<PlaylistSummary | null>(null)
+  const [dropping, setDropping] = useState<Submission | null>(null)
+  const deleteSubmission = useDeleteSubmission()
 
   const submissions = useMemo(
     () => groupSubmissions(tracks.data ?? []),
@@ -137,6 +139,30 @@ export default function Project() {
   const title = project.data?.name ?? ''
   const sequelNo = project.data?.sequel_no ?? ''
   const trackUrl = trackProjectUrl(project.data?.xano_uuid ?? null)
+
+  /**
+   * A drop has no playlist of its own to edit, so the pencil makes one —
+   * these tracks, in the order they arrived, open in the Playlister ready to
+   * be cut down. The originals stay in the inbox; a playlist row only points
+   * at a track.
+   */
+  const openDrop = async (drop: Submission) => {
+    const newId = await actions.createPlaylist.mutateAsync({
+      projectId: id ?? null,
+      name: drop.company || 'New playlist',
+    })
+    await actions.persistOrder.mutateAsync({
+      playlistId: newId,
+      rows: drop.tracks.map((t, i) => ({
+        id: crypto.randomUUID(),
+        track_id: t.id,
+        section_id: null,
+        position: i,
+      })),
+    })
+    creator.open(newId)
+    setPicked({ kind: 'playlist', key: newId })
+  }
 
   const copyInbox = async () => {
     const token = project.data?.inboxes?.token
@@ -265,14 +291,15 @@ export default function Project() {
                 >
                   <ShareIcon />
                 </button>
-                <RowMenu
-                  items={[
-                    {
-                      label: 'Delete playlist',
-                      onSelect: () => setDeleting(p),
-                    },
-                  ]}
-                />
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Delete playlist"
+                  title="Delete playlist"
+                  onClick={() => setDeleting(p)}
+                >
+                  <TrashIcon />
+                </button>
               </div>
             </div>
           ))}
@@ -308,29 +335,15 @@ export default function Project() {
                 </span>
               </button>
               <div className="split-row-actions">
-                {/* Held open when there is no address, so every row in the
-                    list ends with the same three controls in the same
-                    places rather than shuffling left by one. */}
-                {s.email ? (
-                  <a
-                    href={`mailto:${s.email}`}
-                    aria-label={`Email ${s.company}`}
-                    title={`Email ${s.company}`}
-                    className="icon-btn"
-                  >
-                    <MailIcon />
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    disabled
-                    aria-label="No email address"
-                    title="No email address"
-                  >
-                    <MailIcon />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Open this drop in the Playlister"
+                  title="Open this drop in the Playlister"
+                  onClick={() => void openDrop(s)}
+                >
+                  <PencilIcon />
+                </button>
                 <button
                   type="button"
                   className="icon-btn"
@@ -341,16 +354,15 @@ export default function Project() {
                 >
                   <ShareIcon />
                 </button>
-                <RowMenu
-                  items={[
-                    {
-                      label: 'Copy email address',
-                      disabled: !s.email,
-                      onSelect: () =>
-                        void navigator.clipboard.writeText(s.email),
-                    },
-                  ]}
-                />
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Delete this drop"
+                  title="Delete this drop"
+                  onClick={() => setDropping(s)}
+                >
+                  <TrashIcon />
+                </button>
               </div>
             </div>
           ))}
@@ -443,6 +455,20 @@ export default function Project() {
             if (open?.key === id) setPicked(null)
           }}
           onCancel={() => setDeleting(null)}
+        />
+      )}
+      {dropping && (
+        <Confirm
+          title={`Delete everything ${dropping.company} sent?`}
+          body={`${plural(dropping.tracks.length, 'track')} will go from the library and from storage, and out of any playlist already using them. This cannot be undone.`}
+          confirmLabel={`Delete ${plural(dropping.tracks.length, 'track')}`}
+          onConfirm={() => {
+            const { key, tracks: going } = dropping
+            setDropping(null)
+            deleteSubmission.mutate(going.map((t) => t.id))
+            if (open?.key === key) setPicked(null)
+          }}
+          onCancel={() => setDropping(null)}
         />
       )}
     </>

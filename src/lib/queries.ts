@@ -60,7 +60,13 @@ export function playlistCount(track: TrackWithUse): number {
 
 export type ProjectSummary = Pick<
   Tables<'projects_mirror'>,
-  'id' | 'xano_id' | 'name' | 'client_name' | 'sequel_no' | 'status' | 'created_at'
+  | 'id'
+  | 'xano_id'
+  | 'name'
+  | 'client_name'
+  | 'sequel_no'
+  | 'status'
+  | 'created_at'
 > & { tracks: { count: number }[]; playlists: { count: number }[] }
 
 export function useProjects() {
@@ -69,7 +75,9 @@ export function useProjects() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects_mirror')
-        .select('id, xano_id, name, client_name, sequel_no, status, created_at, tracks(count), playlists(count)')
+        .select(
+          'id, xano_id, name, client_name, sequel_no, status, created_at, tracks(count), playlists(count)',
+        )
         .order('name')
       if (error) throw error
       return data as unknown as ProjectSummary[]
@@ -79,7 +87,14 @@ export function useProjects() {
 
 export type ProjectDetail = Pick<
   Tables<'projects_mirror'>,
-  'id' | 'xano_id' | 'xano_uuid' | 'name' | 'client_name' | 'sequel_no' | 'status' | 'brief'
+  | 'id'
+  | 'xano_id'
+  | 'xano_uuid'
+  | 'name'
+  | 'client_name'
+  | 'sequel_no'
+  | 'status'
+  | 'brief'
 > & { inboxes: { token: string; is_active: boolean } | null }
 
 export function useProject(id: string | undefined) {
@@ -89,7 +104,9 @@ export function useProject(id: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects_mirror')
-        .select('id, xano_id, xano_uuid, name, client_name, sequel_no, status, brief, inboxes(token, is_active)')
+        .select(
+          'id, xano_id, xano_uuid, name, client_name, sequel_no, status, brief, inboxes(token, is_active)',
+        )
         .eq('id', id!)
         .single()
       if (error) throw error
@@ -204,7 +221,9 @@ export function usePlaylists(projectId?: string | null) {
   })
 }
 
-export type PlaylistTrackRow = Tables<'playlist_tracks'> & { tracks: Track | null }
+export type PlaylistTrackRow = Tables<'playlist_tracks'> & {
+  tracks: Track | null
+}
 
 export type PlaylistDetail = Tables<'playlists'> & {
   playlist_sections: Tables<'playlist_sections'>[]
@@ -260,7 +279,10 @@ export function useRecentProjects() {
       // test the Inbox uses, because the dot says "new submissions" and your
       // own uploads are not submissions. Without this, dropping files on the
       // Creator marked the project you were sitting in as having news.
-      const oldest = visits.reduce((m, v) => (v.seen_at < m ? v.seen_at : m), visits[0].seen_at)
+      const oldest = visits.reduce(
+        (m, v) => (v.seen_at < m ? v.seen_at : m),
+        visits[0].seen_at,
+      )
       const { data: fresh } = await supabase
         .from('tracks')
         .select('project_id, created_at')
@@ -297,7 +319,11 @@ export function useRecordVisit(projectId: string | undefined) {
     void supabase
       .from('staff_project_visits')
       .upsert(
-        { user_id: uid, project_id: projectId, seen_at: new Date().toISOString() },
+        {
+          user_id: uid,
+          project_id: projectId,
+          seen_at: new Date().toISOString(),
+        },
         { onConflict: 'user_id,project_id' },
       )
       .then(() => qc.invalidateQueries({ queryKey: ['recent', uid] }))
@@ -309,7 +335,12 @@ export function useRecordVisit(projectId: string | undefined) {
 export type SearchResults = {
   projects: { id: string; name: string; client_name: string | null }[]
   playlists: { id: string; name: string; project_id: string | null }[]
-  tracks: { id: string; title: string; artist: string | null; project_id: string | null }[]
+  tracks: {
+    id: string
+    title: string
+    artist: string | null
+    project_id: string | null
+  }[]
 }
 
 export function useSearch(q: string) {
@@ -321,8 +352,16 @@ export function useSearch(q: string) {
     queryFn: async (): Promise<SearchResults> => {
       const like = `%${term}%`
       const [projects, playlists, tracks] = await Promise.all([
-        supabase.from('projects_mirror').select('id, name, client_name').ilike('name', like).limit(6),
-        supabase.from('playlists').select('id, name, project_id').ilike('name', like).limit(6),
+        supabase
+          .from('projects_mirror')
+          .select('id, name, client_name')
+          .ilike('name', like)
+          .limit(6),
+        supabase
+          .from('playlists')
+          .select('id, name, project_id')
+          .ilike('name', like)
+          .limit(6),
         supabase
           .from('tracks')
           .select('id, title, artist, project_id')
@@ -395,7 +434,9 @@ export function useTrackDetail(id: string) {
 export function useTrackActions() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (input: { id: string } & Partial<Omit<Tables<'tracks'>, 'project_id'>>) => {
+    mutationFn: async (
+      input: { id: string } & Partial<Omit<Tables<'tracks'>, 'project_id'>>,
+    ) => {
       const { id, ...patch } = input
       const { error } = await supabase.from('tracks').update(patch).eq('id', id)
       if (error) throw error
@@ -414,44 +455,92 @@ export function useTrackActions() {
  * peaks and the artwork all live in S3, which the browser has no rights over.
  * The delete-track function does both halves behind a staff session.
  */
+async function deleteTrackRequest(id: string) {
+  const { data } = await supabase.auth.getSession()
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-track`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${data.session?.access_token ?? ''}`,
+      },
+      body: JSON.stringify({ id }),
+    },
+  )
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as {
+      error?: string
+      detail?: string
+      key?: string
+      status?: number
+    } | null
+    // The detail carries the status AWS or Postgres actually returned.
+    // Without it every failure reads the same, which is no use at all.
+    const extra = [body?.detail, body?.key, body?.status]
+      .filter(Boolean)
+      .join(' ')
+    throw new Error(
+      [body?.error ?? `could not delete the track (${res.status})`, extra]
+        .filter(Boolean)
+        .join(' — '),
+    )
+  }
+  return (await res.json()) as { objects_deleted: number }
+}
+
 export function useDeleteTrack() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { data } = await supabase.auth.getSession()
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-track`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${data.session?.access_token ?? ''}`,
-          },
-          body: JSON.stringify({ id }),
-        },
-      )
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as
-          | { error?: string; detail?: string; key?: string; status?: number }
-          | null
-        // The detail carries the status AWS or Postgres actually returned.
-        // Without it every failure reads the same, which is no use at all.
-        const extra = [body?.detail, body?.key, body?.status].filter(Boolean).join(' ')
-        throw new Error(
-          [body?.error ?? `could not delete the track (${res.status})`, extra]
-            .filter(Boolean)
-            .join(' — '),
-        )
-      }
-      return (await res.json()) as { objects_deleted: number }
-    },
+    mutationFn: deleteTrackRequest,
     // A delete that fails has to say so. Without this the row simply stays
     // where it is and nothing explains why.
     onError: (e: Error) => {
       alert(`The track was not deleted: ${e.message}`)
     },
     onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['tracks'] })
+      void qc.invalidateQueries({ queryKey: ['playlists'] })
+      void qc.invalidateQueries({ queryKey: ['playlist'] })
+    },
+  })
+}
+
+/**
+ * A whole partner drop, gone — every track in it, from Postgres and from S3.
+ *
+ * One at a time rather than in parallel: each call lists and deletes a prefix
+ * in S3 behind a signed request, and a dozen at once is a dozen times the
+ * chance of a throttle for no gain in a job nobody is watching the clock on.
+ * A failure part way through does not roll back what already went, so this
+ * counts the failures and reports once at the end — the alternative was the
+ * single-track hook's alert firing once per track.
+ */
+export function useDeleteSubmission() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const failed: string[] = []
+      for (const id of ids) {
+        try {
+          await deleteTrackRequest(id)
+        } catch (e) {
+          failed.push((e as Error).message)
+        }
+      }
+      if (failed.length)
+        throw new Error(
+          `${failed.length} of ${ids.length} could not be deleted — ${failed[0]}`,
+        )
+      return ids.length
+    },
+    onError: (e: Error) => {
+      alert(`The drop was not fully deleted: ${e.message}`)
+    },
+    // Settled, not success: a run that failed half way still deleted the
+    // other half, and the lists on screen have to catch up either way.
+    onSettled: () => {
       void qc.invalidateQueries({ queryKey: ['tracks'] })
       void qc.invalidateQueries({ queryKey: ['playlists'] })
       void qc.invalidateQueries({ queryKey: ['playlist'] })
@@ -473,7 +562,8 @@ export function usePlaylistActions() {
   const touched = (playlistId?: string | null) => {
     void qc.invalidateQueries({ queryKey: ['playlists'] })
     void qc.invalidateQueries({ queryKey: ['tracks'] })
-    if (playlistId) void qc.invalidateQueries({ queryKey: ['playlist', playlistId] })
+    if (playlistId)
+      void qc.invalidateQueries({ queryKey: ['playlist', playlistId] })
   }
 
   const createPlaylist = useMutation({
@@ -494,9 +584,14 @@ export function usePlaylistActions() {
   })
 
   const updatePlaylist = useMutation({
-    mutationFn: async (input: { id: string } & Partial<Tables<'playlists'>>) => {
+    mutationFn: async (
+      input: { id: string } & Partial<Tables<'playlists'>>,
+    ) => {
       const { id, ...patch } = input
-      const { error } = await supabase.from('playlists').update(patch).eq('id', id)
+      const { error } = await supabase
+        .from('playlists')
+        .update(patch)
+        .eq('id', id)
       if (error) throw error
     },
     onSuccess: (_d, v) => touched(v.id),
@@ -532,16 +627,25 @@ export function usePlaylistActions() {
         const rows = source.playlist_sections.map((s) => {
           const id = crypto.randomUUID()
           sectionMap.set(s.id, id)
-          return { id, playlist_id: copy.id, name: s.name, position: s.position }
+          return {
+            id,
+            playlist_id: copy.id,
+            name: s.name,
+            position: s.position,
+          }
         })
-        const { error: e } = await supabase.from('playlist_sections').insert(rows)
+        const { error: e } = await supabase
+          .from('playlist_sections')
+          .insert(rows)
         if (e) throw e
       }
       if (source.playlist_tracks.length) {
         const rows = source.playlist_tracks.map((pt) => ({
           playlist_id: copy.id,
           track_id: pt.track_id,
-          section_id: pt.section_id ? (sectionMap.get(pt.section_id) ?? null) : null,
+          section_id: pt.section_id
+            ? (sectionMap.get(pt.section_id) ?? null)
+            : null,
           position: pt.position,
           note: pt.note,
           sync_offset_seconds: pt.sync_offset_seconds,
@@ -574,17 +678,28 @@ export function usePlaylistActions() {
 
   const removeTrack = useMutation({
     mutationFn: async (input: { playlistId: string; id: string }) => {
-      const { error } = await supabase.from('playlist_tracks').delete().eq('id', input.id)
+      const { error } = await supabase
+        .from('playlist_tracks')
+        .delete()
+        .eq('id', input.id)
       if (error) throw error
     },
     onSuccess: (_d, v) => touched(v.playlistId),
   })
 
   const addSection = useMutation({
-    mutationFn: async (input: { playlistId: string; name: string; position: number }) => {
+    mutationFn: async (input: {
+      playlistId: string
+      name: string
+      position: number
+    }) => {
       const { data, error } = await supabase
         .from('playlist_sections')
-        .insert({ playlist_id: input.playlistId, name: input.name, position: input.position })
+        .insert({
+          playlist_id: input.playlistId,
+          name: input.name,
+          position: input.position,
+        })
         .select('id')
         .single()
       if (error) throw error
@@ -594,16 +709,27 @@ export function usePlaylistActions() {
   })
 
   const updateSection = useMutation({
-    mutationFn: async (input: { playlistId: string; id: string; name?: string; position?: number }) => {
+    mutationFn: async (input: {
+      playlistId: string
+      id: string
+      name?: string
+      position?: number
+    }) => {
       const { playlistId: _p, id, ...patch } = input
-      const { error } = await supabase.from('playlist_sections').update(patch).eq('id', id)
+      const { error } = await supabase
+        .from('playlist_sections')
+        .update(patch)
+        .eq('id', id)
       if (error) throw error
     },
     onSuccess: (_d, v) => touched(v.playlistId),
   })
 
   const reorderSections = useMutation({
-    mutationFn: async (input: { playlistId: string; rows: { id: string; name: string; position: number }[] }) => {
+    mutationFn: async (input: {
+      playlistId: string
+      rows: { id: string; name: string; position: number }[]
+    }) => {
       const { error } = await supabase.from('playlist_sections').upsert(
         input.rows.map((r) => ({ ...r, playlist_id: input.playlistId })),
         { onConflict: 'id' },
@@ -615,7 +741,10 @@ export function usePlaylistActions() {
 
   const deleteSection = useMutation({
     mutationFn: async (input: { playlistId: string; id: string }) => {
-      const { error } = await supabase.from('playlist_sections').delete().eq('id', input.id)
+      const { error } = await supabase
+        .from('playlist_sections')
+        .delete()
+        .eq('id', input.id)
       if (error) throw error
     },
     onSuccess: (_d, v) => touched(v.playlistId),
