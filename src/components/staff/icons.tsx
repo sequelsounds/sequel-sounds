@@ -173,3 +173,49 @@ export function UploadFileIcon(props: IconProps) {
     </Svg>
   )
 }
+
+/* ---------------------------------------------------------------- art marks
+ * What a placeholder square says when a file has no cover of its own. Drawn
+ * rather than lettered, so they read at 28px as well as at 40.
+ */
+
+export function WaveformIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 12h2" />
+      <path d="M7.5 8.5v7" />
+      <path d="M12 5v14" />
+      <path d="M16.5 8.5v7" />
+      <path d="M21 12h-2" />
+    </Svg>
+  )
+}
+
+export function FilmIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="5" width="18" height="14" />
+      <path d="M7 5v14M17 5v14" />
+      <path d="M3 12h4M17 12h4" />
+    </Svg>
+  )
+}
+
+export function PageIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7l-4-4Z" />
+      <path d="M14 3v4h4" />
+    </Svg>
+  )
+}
+
+export function ImageIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="5" width="18" height="14" />
+      <circle cx="8.5" cy="10" r="1.5" />
+      <path d="m5 17 4.5-4.5L13 16l2.5-2.5L19 17" />
+    </Svg>
+  )
+}

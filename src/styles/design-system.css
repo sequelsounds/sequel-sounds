@@ -621,6 +621,26 @@
     background-color: var(--color-sequel-brown);
   }
 
+  /* A square with no cover of its own carries a mark saying what the file
+     is. Sized as a fraction rather than in pixels, because the same square
+     is drawn at 40px in a row and smaller elsewhere. */
+  .art.is-empty {
+    display: grid;
+    place-items: center;
+  }
+
+  .art-mark {
+    width: 45%;
+    height: 45%;
+    color: var(--color-sequel-brown);
+    opacity: 0.45;
+  }
+
+  .art.is-video .art-mark {
+    color: var(--color-sequel-silver);
+    opacity: 0.55;
+  }
+
   /* Creator list rows. Same inversion on hover as the table. */
   /* Same rhythm as a track row in the list beside it: 15px above and below
      a 40px cover, so a track is the same height whichever side of the page

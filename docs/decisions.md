@@ -5,6 +5,25 @@ rediscovering an argument later.
 
 ---
 
+## A placeholder square says what the file is
+
+**2026-09-13.** Most of what partners send carries no embedded cover, so the
+placeholder is what is actually on screen nearly all the time. It was a
+blank block — grey, or brown for a film — which said only "nothing here".
+
+It now carries a drawn mark: a waveform for audio, a film for video. Sized
+as a fraction of the square rather than in pixels, because the same square
+is drawn at 40px in a row and at 48 in the track dialog, which had been
+setting a `♪` character instead — the same bet on a glyph existing that
+`icons.tsx` exists to avoid.
+
+`tracks.kind` is only audio or video, but the mapping already covers image,
+pdf and document, because `project_assets` holds briefs and contracts and
+will want the same squares the day that list gets a page. `artKindFromMime`
+turns a mime type into one of the five, and anything unrecognised is a
+document rather than nothing: an unknown file still has to draw as
+something.
+
 ## A playlist is a draft until it is saved
 
 **2026-09-13.** Pressing + wrote a `playlists` row immediately, because a

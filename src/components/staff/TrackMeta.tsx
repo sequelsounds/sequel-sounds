@@ -4,6 +4,7 @@ import { useMediaUrl } from '../../lib/media'
 import { useTrackActions, useTrackDetail, type Track, type TrackDetail } from '../../lib/queries'
 import { supabase } from '../../lib/supabase'
 import { putToS3, signArtworkUpload } from '../../lib/upload'
+import Artwork from './Artwork'
 import { ChevronIcon } from './icons'
 
 type Props = {
@@ -205,11 +206,18 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
       >
         {/* ---- header: the track, and a way through the list ---- */}
         <div className="flex items-center gap-4 px-7 pt-6">
+          {/* The same square a row draws, at 48px: a cover if there is one,
+              otherwise the mark for what the file is. It was a ♪ character,
+              which is a glyph the face may or may not have. */}
           <span className="grid h-12 w-12 shrink-0 place-items-center bg-sequel-well">
             {shownArt ? (
               <img src={shownArt} alt="" className="h-full w-full object-cover" />
             ) : (
-              <span className="font-mono text-xs">♪</span>
+              <Artwork
+                artworkKey={null}
+                kind={track.kind}
+                className="h-full! w-full!"
+              />
             )}
           </span>
           <h2 className="min-w-0 flex-1 truncate text-[1.35rem] font-normal">
