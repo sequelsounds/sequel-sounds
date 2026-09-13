@@ -2243,21 +2243,4 @@
     cursor: default;
   }
 
-  /* Studio's two pages, which are not in Track's nav and are here only until
-     the project page's Music tab absorbs them. */
-  .nav-aside {
-    display: flex;
-    flex-direction: column;
-    margin-top: auto;
-    padding-top: 2rem;
-  }
-
-  .nav-aside-title {
-    margin-bottom: 0.5rem;
-    color: var(--color-sequel-mid);
-    font-size: 0.7rem;
-    font-weight: 400;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
 }

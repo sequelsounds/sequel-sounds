@@ -66,19 +66,9 @@ export default function Rail() {
         Logout
       </button>
 
-      {/* Not part of Track's nav, and not really part of this one. Studio's
-          two music pages are still used, and the agreed shape puts them on
-          the project as a Music tab — until that exists, leaving them out
-          would strand them. */}
-      <div className="nav-aside">
-        <div className="nav-aside-title">Studio</div>
-        <NavLink to="/playlists" className="nav-link-app">
-          Playlists
-        </NavLink>
-        <NavLink to="/library" className="nav-link-app">
-          Library
-        </NavLink>
-      </div>
+      {/* Studio's own pages (/playlists, /library) are deliberately not here.
+          Track's nav does not have them, and this is Track's nav. They are
+          reachable by URL until the project page's Music tab absorbs them. */}
     </aside>
   )
 }

@@ -68,6 +68,7 @@ export type Project = {
   // rather than the label so renaming an option cannot zero a counter.
   status_id: number | null
   supervisor_id: number | null
+  client_user_id: number | null
   // The list's Agency column, which is NOT `agency`: Track joins it through
   // the client user's own company. Both are here because Track shows both,
   // under the same word, on two different pages.
@@ -227,10 +228,14 @@ async function rows<T>(view: string, projectId: number, order: string) {
  * RLS is a separate question and stays where it is: it decides what a person
  * is allowed to read. This decides what the page chooses to show them.
  *
- * One deliberate difference. Xano reaches the client user with an inner join,
- * so a project with no client user is dropped from the list silently — three
- * of Andy's live projects are invisible on Track because of it. Nothing here
- * joins, so they appear.
+ * Including the inner join. Xano reaches the client user with a join that
+ * drops the row when there is no match, so a project whose Client_user_id is
+ * unset never reaches the page. Three of Andy's live projects are invisible on
+ * Track because of it — 224-SUN-26-II, 216-CLE-26-II and 112-CAL-26-II — and
+ * they are invisible here too, on purpose: the brief for this pass is to
+ * reproduce what Track does, not to improve on it while the two run side by
+ * side. Deleting the client_user_id line below is the whole of the fix when
+ * that is the decision.
  */
 export function useMyProjects(supervisorId: number | null | undefined) {
   return useQuery({
@@ -242,7 +247,7 @@ export function useMyProjects(supervisorId: number | null | undefined) {
       const { data, error } = await q.order('id', { ascending: false })
       if (error) throw error
       return ((data ?? []) as Project[]).filter(
-        (p) => p.record_status !== 'Archived',
+        (p) => p.record_status !== 'Archived' && p.client_user_id != null,
       )
     },
   })
