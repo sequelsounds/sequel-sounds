@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid meet" class="cassette-loader" role="img" aria-label="Loading">
+  <title>Loading</title>
+  <style>
+    svg.cassette-loader {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-width: 100%;
+
+      --shell: #f4f4f4;
+      --line: #2f2f2f;
+      --tape: #3a3a3a;
+      --housing: #121212;
+      --spin-left: 2.4s;
+      --spin-right: 1.4s;
+    }
+    .body    { fill: var(--shell); stroke: var(--line); stroke-width: 2.4; }
+    .panel   { fill: none;         stroke: var(--line); stroke-width: 1.6; }
+    .tape    { fill: var(--tape); }
+    .housing { fill: none;         stroke: var(--housing); }
+    .hub     { fill: var(--shell); stroke: var(--line); stroke-width: 1.8; }
+
+    .reel-l, .reel-r {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: spin var(--spin-left) linear infinite;
+    }
+    .reel-r { animation-duration: var(--spin-right); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .reel-l, .reel-r { animation-duration: 8s; }
+    }
+  </style>
+
+  <!-- top notches -->
+  <rect class="body" x="61" y="15" width="18" height="8" rx="1"></rect>
+  <rect class="body" x="318" y="15" width="18" height="8" rx="1"></rect>
+
+  <!-- side tabs -->
+  <rect class="body" x="6" y="182" width="8" height="34" rx="3"></rect>
+  <rect class="body" x="386" y="182" width="8" height="34" rx="3"></rect>
+
+  <!-- shell -->
+  <rect class="body" x="8" y="14" width="384" height="232" rx="16"></rect>
+
+  <!-- recessed panel -->
+  <rect class="panel" x="40" y="39" width="325" height="145" rx="12"></rect>
+
+  <!-- tape spools -->
+  <circle class="tape" cx="119" cy="113" r="68"></circle>
+  <circle class="tape" cx="272" cy="113" r="49"></circle>
+
+  <!-- tape: lines joining the top and bottom edges of the spools -->
+  <path fill="none" stroke="var(--tape)" stroke-width="3" stroke-linecap="butt" d="M125.3 46.8 L279.9 66.1 M125.3 179.2 L279.9 159.9"></path>
+
+  <!-- housing: three rectangles, darker than the spools, corners tucked inside them -->
+  <rect class="housing" x="92" y="84" width="216" height="58" rx="6" stroke-width="1.8"></rect>
+  <rect class="housing" x="99" y="90" width="202" height="46" rx="4" stroke-width="1.3"></rect>
+  <rect class="housing" x="172" y="92" width="56" height="42" rx="1.5" stroke-width="1.3"></rect>
+
+  <!-- left hub: double outer ring -->
+  <g class="reel-l">
+    <circle class="hub" cx="119" cy="113" r="27"></circle>
+    <circle class="hub" cx="119" cy="113" r="22"></circle>
+    <g transform="translate(119 113)">
+      <g><rect class="hub" x="-2.6" y="-22" width="5.2" height="13"></rect></g>
+      <g transform="rotate(60)"><rect class="hub" x="-2.6" y="-22" width="5.2" height="13"></rect></g>
+      <g transform="rotate(120)"><rect class="hub" x="-2.6" y="-22" width="5.2" height="13"></rect></g>
+      <g transform="rotate(180)"><rect class="hub" x="-2.6" y="-22" width="5.2" height="13"></rect></g>
+      <g transform="rotate(240)"><rect class="hub" x="-2.6" y="-22" width="5.2" height="13"></rect></g>
+      <g transform="rotate(300)"><rect class="hub" x="-2.6" y="-22" width="5.2" height="13"></rect></g>
+    </g>
+    <circle class="hub" cx="119" cy="113" r="9"></circle>
+  </g>
+
+  <!-- right hub: single outer ring -->
+  <g class="reel-r">
+    <circle class="hub" cx="272" cy="113" r="23"></circle>
+    <g transform="translate(272 113)">
+      <g><rect class="hub" x="-2.4" y="-23" width="4.8" height="15"></rect></g>
+      <g transform="rotate(60)"><rect class="hub" x="-2.4" y="-23" width="4.8" height="15"></rect></g>
+      <g transform="rotate(120)"><rect class="hub" x="-2.4" y="-23" width="4.8" height="15"></rect></g>
+      <g transform="rotate(180)"><rect class="hub" x="-2.4" y="-23" width="4.8" height="15"></rect></g>
+      <g transform="rotate(240)"><rect class="hub" x="-2.4" y="-23" width="4.8" height="15"></rect></g>
+      <g transform="rotate(300)"><rect class="hub" x="-2.4" y="-23" width="4.8" height="15"></rect></g>
+    </g>
+    <circle class="hub" cx="272" cy="113" r="8"></circle>
+  </g>
+
+  <!-- bottom trapezoid -->
+  <path d="M85 246 L113 204 L291 204 L312 246 Z" fill="var(--shell)" stroke="var(--line)" stroke-width="1.4"></path>
+  <g fill="var(--shell)" stroke="var(--line)" stroke-width="1.4">
+    <circle cx="121" cy="232" r="6"></circle>
+    <circle cx="148" cy="220" r="7"></circle>
+    <circle cx="250" cy="219" r="7"></circle>
+    <circle cx="276" cy="232" r="6"></circle>
+  </g>
+
+  <!-- screws -->
+  <g fill="none" stroke="var(--line)" stroke-width="1.3">
+    <g transform="translate(28 29)">
+      <circle r="5" fill="var(--shell)"></circle><path d="M-3.2-3.2 3.2 3.2M3.2-3.2-3.2 3.2"></path>
+    </g>
+    <g transform="translate(369 29)">
+      <circle r="5" fill="var(--shell)"></circle><path d="M-3.2-3.2 3.2 3.2M3.2-3.2-3.2 3.2"></path>
+    </g>
+    <g transform="translate(28 230)">
+      <circle r="5" fill="var(--shell)"></circle><path d="M-3.2-3.2 3.2 3.2M3.2-3.2-3.2 3.2"></path>
+    </g>
+    <g transform="translate(369 230)">
+      <circle r="5" fill="var(--shell)"></circle><path d="M-3.2-3.2 3.2 3.2M3.2-3.2-3.2 3.2"></path>
+    </g>
+    <g transform="translate(200 215)">
+      <circle r="5" fill="var(--shell)"></circle><path d="M-3.2-3.2 3.2 3.2M3.2-3.2-3.2 3.2"></path>
+    </g>
+  </g>
+</svg>
