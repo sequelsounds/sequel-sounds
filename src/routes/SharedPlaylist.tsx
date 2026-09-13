@@ -106,7 +106,7 @@ function Loaded({ profile }: { profile: Profile }) {
   const { token } = useViewer()
   const playlist = useViewerPlaylist()
   const theme = useTheme()
-  const comments = useComments()
+  const comments = useComments(playlist.data?.id ?? null)
   const log = useLogEvent()
   const register = useRegister()
   const registerRef = useRef(register)

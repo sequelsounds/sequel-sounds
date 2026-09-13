@@ -146,6 +146,12 @@ export function useGate(token: string) {
   })
 }
 
+/**
+ * The playlist itself. Filtered by token on purpose, not left to RLS: a
+ * viewer's policies already narrow the table to this one row, but a member
+ * of staff previewing the link sees every playlist, and an unfiltered
+ * `.single()` came back with four rows and read as a dead link.
+ */
 export function useViewerPlaylist() {
   const { client, token, as } = useViewer()
   return useQuery({
@@ -156,6 +162,7 @@ export function useViewerPlaylist() {
         .select(
           `id, name, description, kind, require_sign_in, allow_download, allow_originals, video_track_id, project_id, updated_at, projects_mirror(name, client_name), playlist_sections(*), playlist_tracks(id, track_id, section_id, position, note, sync_offset_seconds, tracks(${VIEWER_TRACK_COLS})), video:tracks!playlists_video_track_id_fkey(${VIEWER_TRACK_COLS})`,
         )
+        .eq('token', token)
         .single()
       if (error) throw error
       return data as unknown as ViewerPlaylist
@@ -175,16 +182,19 @@ export function useTheme() {
   })
 }
 
-export function useComments() {
+/** The notes on this playlist — by id, for the same reason as above. */
+export function useComments(playlistId: string | null) {
   const { client, token, as } = useViewer()
   return useQuery({
     queryKey: ['viewer-comments', token, as],
+    enabled: !!playlistId,
     queryFn: async () => {
       const { data, error } = await client
         .from('comments')
         .select(
           'id, target_type, target_id, author_name, body, timestamp_seconds, created_at',
         )
+        .eq('playlist_id', playlistId!)
         .order('created_at', { ascending: true })
       if (error) throw error
       return data as ViewerComment[]
