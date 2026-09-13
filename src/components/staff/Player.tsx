@@ -9,6 +9,7 @@ import {
   VolumeIcon,
   VolumeMuteIcon,
 } from './icons'
+import VolumeSlider from './VolumeSlider'
 import Waveform from './Waveform'
 
 /** The bottom bar. Mounted once in the layout, so it outlives every route. */
@@ -84,15 +85,9 @@ export default function Player() {
             <VolumeIcon size="1.1rem" />
           )}
         </button>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
+        <VolumeSlider
           value={player.muted ? 0 : player.volume}
-          onChange={(e) => player.setVolume(Number(e.target.value))}
-          aria-label="Volume"
-          className="volume-slider"
+          onChange={player.setVolume}
         />
         <button
           type="button"

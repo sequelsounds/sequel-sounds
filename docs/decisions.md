@@ -5,6 +5,27 @@ rediscovering an argument later.
 
 ---
 
+## The volume slider is not an input
+
+**2026-09-13.** It rendered square in Chromium and round in Firefox. A range
+input is three parts with a different name in each engine, and each part has
+defaults that must be turned *off* rather than overridden — setting the
+thumb's width, height, border and colour still leaves the engine's own
+corner radius, which is where this one came from.
+
+Completing the reset would have fixed the reported difference. It was
+rebuilt from two divs and a span instead, because the appearance of a
+vendor pseudo-element can only be confirmed by opening that vendor's
+browser, and Firefox could not be driven from here — headless hangs on the
+dev server. A control with no engine-specific parts is one that checking
+once checks everywhere, which is worth more on something looked at all day
+than the accessibility an input gives free.
+
+That part is written out: `role="slider"`, `aria-valuenow` and
+`aria-valuetext`, arrow keys, Home and End, and pointer capture so a drag
+that leaves the 80px track goes on setting the level rather than stopping at
+the edge.
+
 ## One media element, and it is a video
 
 **2026-09-13.** Films did not play. Nothing was broken exactly — every video

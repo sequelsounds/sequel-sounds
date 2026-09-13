@@ -856,28 +856,48 @@
     opacity: 1;
   }
 
-  /* The slider. Drawn rather than left to the user agent, which renders a
-     different control on every platform and none of them in this palette. */
-  .volume-slider {
+  /* The slider. Plain elements, so there is nothing for an engine to render
+     its own way — see VolumeSlider.tsx for why it is not an input. */
+  .volume {
+    position: relative;
     width: 5rem;
-    height: 2px;
-    appearance: none;
-    background-color: color-mix(in srgb, var(--color-sequel-silver) 35%, transparent);
+    height: 12px;
+    flex: none;
     cursor: pointer;
+    touch-action: none;
   }
 
-  .volume-slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 10px;
-    height: 10px;
+  .volume-line,
+  .volume-fill {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    height: 2px;
+    margin-top: -1px;
+  }
+
+  .volume-line {
+    width: 100%;
+    background-color: color-mix(in srgb, var(--color-sequel-silver) 35%, transparent);
+  }
+
+  .volume-fill {
     background-color: var(--color-sequel-silver);
   }
 
-  .volume-slider::-moz-range-thumb {
+  .volume-thumb {
+    position: absolute;
+    top: 50%;
     width: 10px;
     height: 10px;
-    border: 0;
+    margin-left: -5px;
+    margin-top: -5px;
     background-color: var(--color-sequel-silver);
+  }
+
+  .volume:focus-visible {
+    outline: 1px solid var(--color-sequel-silver);
+    outline-offset: 4px;
   }
 
   .film-close {
