@@ -131,13 +131,13 @@ export default function LineChart({
 
   if (w === 0 || h === 0)
     return (
-      <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-full min-h-0 flex-col pb-8">
         <div ref={wrap} className="chart-wrap" />
       </div>
     )
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col pb-8">
       <div
         ref={wrap}
         className="chart-wrap"
