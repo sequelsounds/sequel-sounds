@@ -43,6 +43,12 @@ type Submission = {
 function groupSubmissions(tracks: TrackWithUse[]): Submission[] {
   const groups = new Map<string, Submission>()
   for (const t of tracks) {
+    // The inbox is what partners sent, and nothing else. A staff upload gets
+    // a submission_id of its own so a drop of forty files stays one drop, and
+    // that made it look exactly like a submission here — three of our own
+    // uploads were being listed as though a partner had sent them. The inbox
+    // link is the thing that makes a submission, so inbox_id is the test.
+    if (!t.inbox_id) continue
     const key =
       t.submission_id ??
       `${t.submitter_email ?? ''}|${t.created_at.slice(0, 13)}`

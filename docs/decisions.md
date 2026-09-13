@@ -71,6 +71,28 @@ turns a mime type into one of the five, and anything unrecognised is a
 document rather than nothing: an unknown file still has to draw as
 something.
 
+## The inbox lists what came through the inbox
+
+**2026-09-13.** A project with no partner submissions was showing three,
+all of them uploads the office had made from the Creator.
+
+`groupSubmissions` grouped every track in the project by `submission_id`,
+and a staff upload mints one of those per drop — deliberately, so a drop of
+forty files stays one drop rather than forty. Which made a staff upload
+indistinguishable from a partner's, in the one place whose whole meaning is
+"what a partner sent". Checked against the live database: all twelve tracks
+under the Bisma project's Inbox had `inbox_id` null.
+
+`inbox_id` is the test, because the inbox link is the thing that makes a
+submission. It is set only by the anon insert policy, which requires it to
+match the token's own inbox — so it cannot be faked from the staff side, and
+a staff upload passes null.
+
+Staff uploads are not hidden, they are simply not submissions: they are in
+the playlist they were dropped into, and in the Library. The preview now
+carries one of each, since a fixture where every drop is a partner's is a
+fixture that cannot fail this way.
+
 ## A playlist is a draft until it is saved
 
 **2026-09-13.** Pressing + wrote a `playlists` row immediately, because a

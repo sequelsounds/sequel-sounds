@@ -25,7 +25,16 @@ function track(
   artist: string,
   album: string,
   seconds: number,
-  sub: { id: string; company: string; email: string; name: string; at: string; note: string | null },
+  sub: {
+    id: string
+    company: string
+    email: string
+    name: string
+    at: string
+    note: string | null
+    /** null for a drop somebody in the office made. */
+    inboxId?: string | null
+  },
   inPlaylists: string[] = [],
   kind: 'audio' | 'video' = 'audio',
 ): TrackWithUse {
@@ -33,6 +42,7 @@ function track(
   return {
     id: `t${n}`,
     project_id: P1,
+    inbox_id: sub.inboxId === undefined ? 'inbox-1' : sub.inboxId,
     kind,
     title,
     artist,
@@ -69,7 +79,17 @@ const cavendish = {
   note: 'Two routes as discussed, B is the braver one',
 }
 const pink = { id: 's2', company: 'Pink Noise Studio', email: 'tom@pinknoise.co', name: 'Tom', at: '2026-09-10T15:40:00Z', note: null }
-const bmg = { id: 's3', company: 'BMG Creative Synch', email: 'sam.h@bmg.com', name: 'Sam H', at: '2026-09-09T09:05:00Z', note: null }
+// A staff drop, not a partner's: no inbox link, so the Inbox must not list
+// it however much it otherwise looks like a submission.
+const ours = {
+  id: 's3',
+  company: 'Sequel',
+  email: 'andy@sequelsounds.com',
+  name: 'Andrew',
+  at: '2026-09-09T09:05:00Z',
+  note: null,
+  inboxId: null,
+}
 
 const tracks: TrackWithUse[] = [
   track('WHIP STINGER A --- Killer vintage and raw Old School guitar riff', 'The Ricochets', 'Badass Rock', 62, cavendish, [PL1]),
@@ -85,9 +105,9 @@ const tracks: TrackWithUse[] = [
   track('Loud Lunch', 'Bad Habit', 'Urban Grit', 125, cavendish),
   track('Salsa Static', 'Velvet Antler', 'Singles', 190, cavendish),
   ...Array.from({ length: 14 }, (_, i) => track(`Pink Noise cue ${i + 1}`, 'Pink Noise', 'Nachips demos', 90 + i * 7, pink)),
-  ...Array.from({ length: 9 }, (_, i) => track(`BMG option ${i + 1}`, 'Various', 'BMG Production Music', 100 + i * 5, bmg)),
-  track('260911 - NACHOS - OP2 fix2', '', '', 30, bmg, [PL1], 'video'),
-  track('260910 - NACHIPS - OP1', '', '', 30, bmg, [PL1], 'video'),
+  ...Array.from({ length: 9 }, (_, i) => track(`BMG option ${i + 1}`, 'Various', 'BMG Production Music', 100 + i * 5, ours)),
+  track('260911 - NACHOS - OP2 fix2', '', '', 30, ours, [PL1], 'video'),
+  track('260910 - NACHIPS - OP1', '', '', 30, ours, [PL1], 'video'),
 ]
 
 const byTitle = (t: string) => tracks.find((x) => x.title.startsWith(t))!

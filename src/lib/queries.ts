@@ -12,12 +12,16 @@ import { supabase } from './supabase'
  */
 
 export const TRACK_COLS =
-  'id, project_id, kind, title, artist, album, composer, publisher, label, genre, bpm, musical_key, isrc, staff_notes, duration_seconds, preview_key, artwork_s3_key, processing_status, submitter_name, submitter_email, submitter_company, notes, submission_id, share_token, created_at'
+  'id, project_id, inbox_id, kind, title, artist, album, composer, publisher, label, genre, bpm, musical_key, isrc, staff_notes, duration_seconds, preview_key, artwork_s3_key, processing_status, submitter_name, submitter_email, submitter_company, notes, submission_id, share_token, created_at'
 
 export type Track = Pick<
   Tables<'tracks'>,
   | 'id'
   | 'project_id'
+  // Set only when the track came through a partner's inbox link. A staff
+  // upload has none, which is what separates a submission from a drop
+  // somebody in the office made.
+  | 'inbox_id'
   | 'kind'
   | 'title'
   | 'artist'

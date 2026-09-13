@@ -438,6 +438,9 @@ export default function Creator() {
             await addTrack({
               id: signed.track_id,
               project_id: signed.project_id,
+              // A staff upload never has one: it did not come through a
+              // partner's link, and that is what keeps it out of the inbox.
+              inbox_id: null,
               kind: contentType.startsWith('video/') ? 'video' : 'audio',
               title: t?.title ?? item.file.name,
               artist: t?.artist ?? null,
