@@ -88,6 +88,18 @@ Related: the engines differ in kind, not just in prefix.
 - Firefox also draws `::-moz-focus-inner` on buttons and rings a half-typed
   `type="email"` via `:-moz-ui-invalid`. Both are reset.
 
+## Nothing could pause the player, and the code looked right
+
+Both players toggled play/pause *inside* a `setState` updater — read the
+current track from `s`, call `el.pause()`, return the new state. React
+runs updaters twice under StrictMode in development, so every press was a
+pause followed immediately by a resume, and no square, row or button on
+the page could stop the track. It would have worked in production, which
+is the worst kind of bug to have on a dev server all day. Media calls now
+happen in the handler, with the current track read from a ref; updaters
+only compute state. Treat any side effect inside a `setState(fn)` as this
+bug waiting to happen.
+
 ## Chrome pauses a muted film in a background tab
 
 The sync session's picture is a muted `<video>` — the sound comes from the

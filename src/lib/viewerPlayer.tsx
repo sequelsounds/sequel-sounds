@@ -248,17 +248,24 @@ export function ViewerPlayerProvider({
     return () => document.removeEventListener('visibilitychange', onHide)
   }, [report])
 
+  // Same rule as the staff player: the toggle happens here, not inside the
+  // updater, because React runs updaters twice in development and a
+  // toggle run twice is a pause that immediately resumes.
+  const currentRef = useRef<ViewerPlayable | null>(null)
+  useEffect(() => {
+    currentRef.current = current
+  }, [current])
+
   const play = useCallback((queue: ViewerPlayable[], index: number) => {
-    setState((s) => {
-      const target = queue[index]
-      if (target && s.queue[s.index]?.id === target.id) {
-        const v = el.current
-        if (v?.paused) void v.play()
-        else v?.pause()
-        return { ...s, queue, index }
-      }
-      return { ...s, queue, index, position: 0, error: null }
-    })
+    const target = queue[index]
+    if (target && currentRef.current?.id === target.id) {
+      const v = el.current
+      if (v?.paused) void v.play()
+      else v?.pause()
+      setState((s) => ({ ...s, queue, index }))
+      return
+    }
+    setState((s) => ({ ...s, queue, index, position: 0, error: null }))
   }, [])
 
   const toggle = useCallback(() => {

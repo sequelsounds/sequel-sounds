@@ -135,7 +135,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           : { ...s, playing: false, position: 0 },
       )
     const onError = () =>
-      setState((s) => ({ ...s, playing: false, error: 'This preview could not be played.' }))
+      setState((s) => ({
+        ...s,
+        playing: false,
+        error: 'This preview could not be played.',
+      }))
     el.addEventListener('timeupdate', onTime)
     el.addEventListener('loadedmetadata', onMeta)
     el.addEventListener('play', onPlay)
@@ -175,7 +179,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return
     }
     if (!currentKey) {
-      setState((s) => ({ ...s, playing: false, error: 'Still processing — no preview yet.' }))
+      setState((s) => ({
+        ...s,
+        playing: false,
+        error: 'Still processing — no preview yet.',
+      }))
       return
     }
     let cancelled = false
@@ -190,7 +198,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (!cancelled) {
-          setState((s) => ({ ...s, playing: false, error: 'This preview could not be played.' }))
+          setState((s) => ({
+            ...s,
+            playing: false,
+            error: 'This preview could not be played.',
+          }))
         }
       })
     return () => {
@@ -198,25 +210,37 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [currentId, currentKey, media])
 
-  const play = useCallback((queue: PlayerTrack[], index: number) => {
-    setState((s) => {
+  // What is current, readable from a handler without going through state.
+  // The play/pause below must not live inside a setState updater: React
+  // runs updaters twice in development to flush out exactly this kind of
+  // side effect, and a toggle run twice is a pause followed by a resume —
+  // which is what made every square and row on the page unable to pause.
+  const currentRef = useRef<PlayerTrack | null>(null)
+  useEffect(() => {
+    currentRef.current = current
+  }, [current])
+
+  const play = useCallback(
+    (queue: PlayerTrack[], index: number) => {
       const target = queue[index]
-      if (target && s.queue[s.index]?.id === target.id) {
+      if (target && currentRef.current?.id === target.id) {
         // Same track: treat as toggle rather than restart — and if it is a
         // film whose picture was dismissed, bring the picture back.
         const el = media()
         if (el?.paused) void el.play()
         else el?.pause()
-        return {
+        setState((s) => ({
           ...s,
           queue,
           index,
           filmOpen: target.kind === 'video' ? true : s.filmOpen,
-        }
+        }))
+        return
       }
-      return { ...s, queue, index, position: 0, error: null }
-    })
-  }, [media])
+      setState((s) => ({ ...s, queue, index, position: 0, error: null }))
+    },
+    [media],
+  )
 
   const toggle = useCallback(() => {
     const el = media()
@@ -227,7 +251,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const next = useCallback(() => {
     setState((s) =>
-      s.index + 1 < s.queue.length ? { ...s, index: s.index + 1, position: 0 } : s,
+      s.index + 1 < s.queue.length
+        ? { ...s, index: s.index + 1, position: 0 }
+        : s,
     )
   }, [])
 
@@ -238,7 +264,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       el.currentTime = 0
       return
     }
-    setState((s) => (s.index > 0 ? { ...s, index: s.index - 1, position: 0 } : s))
+    setState((s) =>
+      s.index > 0 ? { ...s, index: s.index - 1, position: 0 } : s,
+    )
   }, [media])
 
   const seek = useCallback(
@@ -272,15 +300,25 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
     // Moving the slider at all is a way of unmuting: the alternative is a
     // silent player and a slider that looks like it should have fixed it.
-    setState((s) => ({ ...s, volume: next, muted: next === 0 ? s.muted : false }))
+    setState((s) => ({
+      ...s,
+      volume: next,
+      muted: next === 0 ? s.muted : false,
+    }))
   }, [])
 
   const toggleMute = useCallback(() => {
     setState((s) => ({ ...s, muted: !s.muted }))
   }, [])
 
-  const openFilm = useCallback(() => setState((s) => ({ ...s, filmOpen: true })), [])
-  const closeFilm = useCallback(() => setState((s) => ({ ...s, filmOpen: false })), [])
+  const openFilm = useCallback(
+    () => setState((s) => ({ ...s, filmOpen: true })),
+    [],
+  )
+  const closeFilm = useCallback(
+    () => setState((s) => ({ ...s, filmOpen: false })),
+    [],
+  )
 
   const isCurrent = useCallback((id: string) => currentId === id, [currentId])
 
