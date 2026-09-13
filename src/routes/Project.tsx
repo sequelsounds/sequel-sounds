@@ -88,8 +88,19 @@ export default function Project() {
   )
   // The left column: staff playlists first, then the inbox's own drops.
   // Whichever comes first is what opens when you land on the project.
+  // A pick only counts while the thing it names still exists. Deleting the
+  // open playlist — from the row here, or from the Creator's own menu —
+  // refreshes the column on the left but left this side reading a playlist
+  // that had gone, from the query cache.
+  const stillThere =
+    picked?.kind === 'playlist'
+      ? !!playlists.data?.some((p) => p.id === picked.key)
+      : picked?.kind === 'submission'
+        ? submissions.some((s) => s.key === picked.key)
+        : false
+
   const open: Open | null =
-    picked ??
+    (stillThere ? picked : null) ??
     (playlists.data?.[0]
       ? { kind: 'playlist', key: playlists.data[0].id }
       : submissions[0]
