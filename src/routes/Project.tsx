@@ -1,511 +1,317 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import Search from '../components/staff/Search'
-import Confirm from '../components/staff/Confirm'
-import TrackTable from '../components/staff/TrackTable'
-import { PencilIcon, ShareIcon, TrashIcon } from '../components/staff/icons'
-import { useCreator } from '../lib/creator'
-import { formatDate, plural } from '../lib/format'
+import { Loader } from '../components/Loader'
+import { formatBytes, formatDate, formatMoney } from '../lib/format'
 import {
-  type PlaylistSummary,
-  type TrackWithUse,
-  usePlaylist,
-  usePlaylistActions,
-  usePlaylists,
   useProject,
-  useProjectTracks,
-  useRecordVisit,
-  useDeleteSubmission,
-} from '../lib/queries'
-import { trackProjectUrl } from '../lib/track'
+  useProjectBriefs,
+  useProjectContracts,
+  useProjectFiles,
+  useProjectInvoices,
+  useProjectQuotes,
+} from '../lib/xanoMirror'
 
 /**
- * The tracks in a drop that a delete may touch: the ones nothing is using
- * yet. Once a track is in a playlist it has been chosen, and a link may
- * already be out with a client — binning the drop it arrived in is no
- * reason to pull it out from under them. Those stay, and the drop's row
- * goes on listing them.
+ * One project, read from the Xano mirror.
+ *
+ * This is where the two halves of Sequel meet. The commercial side — quotes,
+ * invoices, contracts, briefs, files — comes from Sequel Track. The Music tab
+ * is Studio's inbox and playlists, and is not wired up yet: its tables still
+ * hang off the old projects_mirror, which is on its way out.
+ *
+ * Read-only throughout. Track still runs on Xano and is the only thing that
+ * writes.
  */
-function unusedIn(drop: Submission): TrackWithUse[] {
-  return drop.tracks.filter((t) => t.playlist_tracks.length === 0)
+
+const TABS = [
+  'Overview',
+  'Music',
+  'Quotes',
+  'Invoices',
+  'Contracts',
+  'Briefs',
+  'Files',
+] as const
+type Tab = (typeof TABS)[number]
+
+function Empty({ what }: { what: string }) {
+  return <p className="px-7 py-6 text-sequel-mid">No {what} on this project.</p>
 }
 
-/**
- * How many playlists are holding on to this drop. A count of the tracks
- * alone reads as though they went somewhere together, and six tracks can be
- * six people's picks across six playlists.
- */
-function playlistsHolding(drop: Submission): number {
-  const ids = new Set<string>()
-  for (const t of drop.tracks)
-    for (const pt of t.playlist_tracks) ids.add(pt.playlist_id)
-  return ids.size
-}
-
-/** What the right-hand pane is showing. */
-type Open = { kind: 'playlist' | 'submission'; key: string }
-
-/**
- * One partner drop. Grouped on the id the inbox page mints per send; rows
- * from before that column existed fall back to sender-and-hour.
- */
-type Submission = {
-  key: string
-  company: string
-  email: string
-  note: string | null
-  latest: string
-  tracks: TrackWithUse[]
-}
-
-function groupSubmissions(tracks: TrackWithUse[]): Submission[] {
-  const groups = new Map<string, Submission>()
-  for (const t of tracks) {
-    // The inbox is what partners sent, and nothing else. A staff upload gets
-    // a submission_id of its own so a drop of forty files stays one drop, and
-    // that made it look exactly like a submission here — three of our own
-    // uploads were being listed as though a partner had sent them. The inbox
-    // link is the thing that makes a submission, so inbox_id is the test.
-    if (!t.inbox_id) continue
-    const key =
-      t.submission_id ??
-      `${t.submitter_email ?? ''}|${t.created_at.slice(0, 13)}`
-    let g = groups.get(key)
-    if (!g) {
-      g = {
-        key,
-        company:
-          t.submitter_company ||
-          t.submitter_name ||
-          t.submitter_email ||
-          'Unknown partner',
-        email: t.submitter_email ?? '',
-        note: t.notes,
-        latest: t.created_at,
-        tracks: [],
-      }
-      groups.set(key, g)
-    }
-    g.tracks.push(t)
-    if (t.created_at > g.latest) g.latest = t.created_at
-    if (!g.note && t.notes) g.note = t.notes
-  }
-  return [...groups.values()].sort((a, b) => (a.latest < b.latest ? 1 : -1))
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="border-b border-sequel-line py-3">
+      <div className="field-label">{label}</div>
+      <div className="mt-1">{value || '—'}</div>
+    </div>
+  )
 }
 
 export default function Project() {
   const { id } = useParams()
-  const project = useProject(id)
-  const tracks = useProjectTracks(id)
-  const playlists = usePlaylists(id)
-  const creator = useCreator()
-  const actions = usePlaylistActions()
-  useRecordVisit(id)
+  const projectId = Number(id)
+  const project = useProject(projectId)
+  const [tab, setTab] = useState<Tab>('Overview')
 
-  const [copied, setCopied] = useState(false)
-  const [picked, setPicked] = useState<Open | null>(null)
-  const [deleting, setDeleting] = useState<PlaylistSummary | null>(null)
-  const [dropping, setDropping] = useState<Submission | null>(null)
-  const deleteSubmission = useDeleteSubmission()
+  const quotes = useProjectQuotes(projectId)
+  const invoices = useProjectInvoices(projectId)
+  const contracts = useProjectContracts(projectId)
+  const briefs = useProjectBriefs(projectId)
+  const files = useProjectFiles(projectId)
 
-  const submissions = useMemo(
-    () => groupSubmissions(tracks.data ?? []),
-    [tracks.data],
-  )
-  // The left column: staff playlists first, then the inbox's own drops.
-  // Whichever comes first is what opens when you land on the project.
-  // A pick only counts while the thing it names still exists. Deleting the
-  // open playlist — from the row here, or from the Creator's own menu —
-  // refreshes the column on the left but left this side reading a playlist
-  // that had gone, from the query cache.
-  const stillThere =
-    picked?.kind === 'playlist'
-      ? !!playlists.data?.some((p) => p.id === picked.key)
-      : picked?.kind === 'submission'
-        ? submissions.some((s) => s.key === picked.key)
-        : false
-
-  const open: Open | null =
-    (stillThere ? picked : null) ??
-    (playlists.data?.[0]
-      ? { kind: 'playlist', key: playlists.data[0].id }
-      : submissions[0]
-        ? { kind: 'submission', key: submissions[0].key }
-        : null)
-  const openPlaylist = usePlaylist(open?.kind === 'playlist' ? open.key : null)
-  const openSubmission =
-    open?.kind === 'submission'
-      ? (submissions.find((s) => s.key === open.key) ?? null)
-      : null
-
-  // A playlist's rows come back as plain tracks. The project's own list
-  // already knows which playlists each one is in, so reuse that where it
-  // can and fall back to this playlist alone.
-  const playlistTracks = useMemo<TrackWithUse[]>(() => {
-    const rows = openPlaylist.data?.playlist_tracks
-    if (!rows) return []
-    const known = new Map(tracks.data?.map((t) => [t.id, t]) ?? [])
-    return [...rows]
-      .sort((a, b) => a.position - b.position)
-      .flatMap((r) =>
-        r.tracks
-          ? [
-              known.get(r.tracks.id) ?? {
-                ...r.tracks,
-                playlist_tracks: [{ playlist_id: r.playlist_id }],
-              },
-            ]
-          : [],
-      )
-  }, [openPlaylist.data, tracks.data])
-
-  const title = project.data?.name ?? ''
-  const sequelNo = project.data?.sequel_no ?? ''
-  const trackUrl = trackProjectUrl(project.data?.xano_uuid ?? null)
-
-  /**
-   * A drop has no playlist of its own to edit, so the pencil makes one —
-   * these tracks, in the order they arrived, open in the Playlister ready to
-   * be cut down. The originals stay in the inbox; a playlist row only points
-   * at a track.
-   */
-  const openDrop = async (drop: Submission) => {
-    const newId = await actions.createPlaylist.mutateAsync({
-      projectId: id ?? null,
-      name: drop.company || 'New playlist',
-    })
-    await actions.persistOrder.mutateAsync({
-      playlistId: newId,
-      rows: drop.tracks.map((t, i) => ({
-        id: crypto.randomUUID(),
-        track_id: t.id,
-        section_id: null,
-        position: i,
-      })),
-    })
-    creator.open(newId)
-    setPicked({ kind: 'playlist', key: newId })
+  // Counts sit on the tabs so the shape of a project is legible before you
+  // click anything — nine contracts and no quotes is a different project from
+  // the reverse.
+  const counts: Partial<Record<Tab, number | undefined>> = {
+    Quotes: quotes.data?.length,
+    Invoices: invoices.data?.length,
+    Contracts: contracts.data?.length,
+    Briefs: briefs.data?.length,
+    Files: files.data?.length,
   }
 
-  const copyInbox = async () => {
-    const token = project.data?.inboxes?.token
-    if (!token) return
-    await navigator.clipboard.writeText(`${location.origin}/inbox/${token}`)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+  if (project.isPending) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader />
+      </div>
+    )
   }
-
-  if (project.error)
+  if (project.error) {
     return <p className="form-error px-7 py-4">{project.error.message}</p>
+  }
+  if (!project.data) {
+    return (
+      <p className="px-7 py-6 text-sequel-mid">
+        No project with that id, or you do not have access to it.
+      </p>
+    )
+  }
+
+  const p = project.data
 
   return (
     <>
       <div className="header-band">
-        <div className="page-eyebrow">{project.data?.client_name ?? ' '}</div>
-        <div className="title-row gap-4">
-          {/* The title is the way through to the project in Track, so the
-              separate button for it is gone. A project with no uuid has
-              nowhere to point, and stays plain text rather than a dead link. */}
-          <h1 className="page-title min-w-0 flex-1 truncate">
-            {trackUrl ? (
-              <a
-                href={trackUrl}
-                target="_blank"
-                rel="noreferrer"
-                title="Open this project in Sequel Track"
-              >
-                {title}
-              </a>
-            ) : (
-              title
-            )}
-          </h1>
-          <div className="flex shrink-0 gap-2">
-            <button
-              type="button"
-              className="btn btn-mono btn-outline"
-              disabled={!project.data?.inboxes?.token}
-              onClick={() => void copyInbox()}
-            >
-              {copied ? 'Copied' : 'Copy inbox link'}
-            </button>
-          </div>
+        <div className="page-eyebrow">{p.sequel_no ?? 'Project'}</div>
+        <div className="title-row">
+          <h1 className="page-title">{p.title ?? `Untitled (#${p.id})`}</h1>
         </div>
-        <div className="page-subtitle">{sequelNo || ' '}</div>
+        <div className="page-subtitle">
+          {[p.brand, p.agency, p.stage].filter(Boolean).join(' · ') || ' '}
+        </div>
       </div>
 
-      {/* tab_bar_app: the search and nothing else. The split below labels
-          its own two halves, so a tab strip was naming them twice. */}
       <div className="tab-band">
-        <div className="tab-band-search">
-          <Search />
-        </div>
+        <nav className="flex gap-6">
+          {TABS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={`cursor-pointer border-b-2 pb-2 text-[13px] ${
+                tab === t
+                  ? 'border-sequel-brown text-sequel-ink'
+                  : 'border-transparent text-sequel-mid hover:text-sequel-ink'
+              }`}
+            >
+              {t}
+              {counts[t] !== undefined && counts[t]! > 0 && (
+                <span className="ml-1.5 text-sequel-mid">{counts[t]}</span>
+              )}
+            </button>
+          ))}
+        </nav>
       </div>
 
-      <div className="split">
-        <div className="split-list">
-          <div className="pane-head">
-            <div className="min-w-0">
-              <h2 className="submission-title truncate">{title}</h2>
-              <div className="detail-meta">
-                {plural(playlists.data?.length ?? 0, 'playlist')} ·{' '}
-                {plural(submissions.length, 'submission')}
-              </div>
-            </div>
-            <button
-              type="button"
-              className="shrink-0 font-mono text-[0.7rem] uppercase underline"
-              onClick={async () => {
-                const newId = await actions.createPlaylist.mutateAsync({
-                  projectId: id ?? null,
-                })
-                creator.open(newId)
-                setPicked({ kind: 'playlist', key: newId })
-              }}
-            >
-              New
-            </button>
-          </div>
-          <div className="split-group">
-            <span>Playlists</span>
-          </div>
-          {playlists.data?.length === 0 && (
-            <p className="px-5 pb-2 text-[0.8rem] text-sequel-mid">None yet.</p>
-          )}
-          {playlists.data?.map((p) => (
-            <div
-              key={p.id}
-              className="split-row"
-              aria-current={open?.kind === 'playlist' && open.key === p.id}
-            >
-              <button
-                type="button"
-                className="split-row-main"
-                onClick={() => setPicked({ kind: 'playlist', key: p.id })}
-              >
-                <span className="split-row-title">{p.name}</span>
-                <span className="split-row-meta">
-                  <span className="pill">
-                    {plural(p.playlist_tracks[0]?.count ?? 0, 'track')}
-                  </span>
-                  {formatDate(p.updated_at)}
-                </span>
-              </button>
-              <div className="split-row-actions">
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Edit in creator"
-                  title="Edit in creator"
-                  onClick={() => creator.open(p.id)}
-                >
-                  <PencilIcon />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Copy share link"
-                  title="Copy share link"
-                  onClick={() =>
-                    void navigator.clipboard.writeText(
-                      `${location.origin}/p/${p.token}`,
-                    )
-                  }
-                >
-                  <ShareIcon />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Delete playlist"
-                  title="Delete playlist"
-                  onClick={() => setDeleting(p)}
-                >
-                  <TrashIcon />
-                </button>
-              </div>
-            </div>
-          ))}
-
-          <div className="split-group">
-            <span>Inbox</span>
-          </div>
-          {tracks.data && submissions.length === 0 && (
-            <p className="px-5 pb-4 text-[0.8rem] text-sequel-mid">
-              Nothing sent yet. Copy the link above and pass it to partners.
-            </p>
-          )}
-          {submissions.map((s) => (
-            <div
-              key={s.key}
-              className="split-row"
-              aria-current={open?.kind === 'submission' && open.key === s.key}
-            >
-              <button
-                type="button"
-                className="split-row-main"
-                onClick={() => setPicked({ kind: 'submission', key: s.key })}
-              >
-                <span className="split-row-title">{s.company}</span>
-                <span className="split-row-meta">
-                  <span className="pill">
-                    {plural(s.tracks.length, 'track')}
-                  </span>
-                  {s.email && (
-                    <span className="min-w-0 truncate">{s.email}</span>
-                  )}
-                  <span className="shrink-0">{formatDate(s.latest)}</span>
-                </span>
-              </button>
-              <div className="split-row-actions">
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Open this drop in the Playlister"
-                  title="Open this drop in the Playlister"
-                  onClick={() => void openDrop(s)}
-                >
-                  <PencilIcon />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Copy the inbox link"
-                  title="Copy the inbox link"
-                  disabled={!project.data?.inboxes?.token}
-                  onClick={() => void copyInbox()}
-                >
-                  <ShareIcon />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Delete this drop"
-                  disabled={unusedIn(s).length === 0}
-                  title={
-                    unusedIn(s).length === 0
-                      ? 'Every track in this drop is already in a playlist'
-                      : 'Delete this drop'
-                  }
-                  onClick={() => setDropping(s)}
-                >
-                  <TrashIcon />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* No second pane until there is something to read in it — an empty
-            box explaining its own emptiness is worse than no box. The left
-            one takes the width on its own. */}
-        {(open || tracks.error) && (
-          <div className="split-detail">
-            {tracks.error && (
-              <p className="form-error px-5 py-4">{tracks.error.message}</p>
-            )}
-            {openSubmission && (
-              <>
-                <div className="pane-head">
-                  <div className="min-w-0">
-                    <h2 className="submission-title truncate">
-                      {openSubmission.company}
-                    </h2>
-                    <div className="detail-meta">
-                      {plural(openSubmission.tracks.length, 'track')} ·{' '}
-                      {formatDate(openSubmission.latest)}
-                    </div>
-                  </div>
-                </div>
-                {(openSubmission.email || openSubmission.note) && (
-                  <div className="detail-from">
-                    {openSubmission.email && (
-                      <div>
-                        From <strong>{openSubmission.company}</strong>
-                        <span className="ml-2 text-sequel-mid">
-                          {openSubmission.email}
-                        </span>
-                      </div>
-                    )}
-                    {openSubmission.note && (
-                      <p className="mt-2">“{openSubmission.note}”</p>
-                    )}
-                  </div>
-                )}
-                <TrackTable tracks={openSubmission.tracks} lean />
-              </>
-            )}
-
-            {open?.kind === 'playlist' && openPlaylist.data && (
-              <>
-                <div className="pane-head">
-                  <div className="min-w-0">
-                    <h2 className="submission-title truncate">
-                      {openPlaylist.data.name}
-                    </h2>
-                    <div className="detail-meta">
-                      {plural(playlistTracks.length, 'track')} ·{' '}
-                      {formatDate(openPlaylist.data.updated_at)}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="icon-btn shrink-0 text-sequel-brown"
-                    title="Edit in creator"
-                    aria-label="Edit in creator"
-                    onClick={() => creator.open(openPlaylist.data!.id)}
-                  >
-                    <PencilIcon size="1.25rem" />
-                  </button>
-                </div>
-                {playlistTracks.length === 0 ? (
-                  <p className="px-7 py-6 text-sequel-mid">
-                    Nothing in this playlist yet. Drag tracks in from a
-                    submission, or drop files on the creator.
-                  </p>
-                ) : (
-                  <TrackTable tracks={playlistTracks} lean />
-                )}
-              </>
-            )}
+      <div className="min-h-0 flex-1 overflow-auto">
+        {tab === 'Overview' && (
+          <div className="grid max-w-3xl grid-cols-2 gap-x-10 px-7 py-4">
+            <Field label="Brand" value={p.brand} />
+            <Field label="Client" value={p.client_group} />
+            <Field label="Agency" value={p.agency} />
+            <Field label="Service" value={p.service} />
+            <Field label="Stage" value={p.stage} />
+            <Field label="Supervisor" value={p.supervisor} />
+            <Field
+              label="Proposed air date"
+              value={p.proposed_air_date ? formatDate(p.proposed_air_date) : null}
+            />
+            <Field
+              label="Confirmed first air date"
+              value={
+                p.confirmed_first_air_date
+                  ? formatDate(p.confirmed_first_air_date)
+                  : null
+              }
+            />
+            <Field
+              label="Pipeline"
+              value={p.pipeline_gbp ? formatMoney(p.pipeline_gbp, 'GBP £') : null}
+            />
+            <Field label="Record status" value={p.record_status} />
           </div>
         )}
+
+        {tab === 'Music' && (
+          <p className="px-7 py-6 text-sequel-mid">
+            Studio's inbox and playlists will live here. Not wired up yet — those
+            tables still hang off the old projects_mirror.
+          </p>
+        )}
+
+        {tab === 'Quotes' && (
+          <Table
+            state={quotes}
+            what="quotes"
+            head={['Quote', 'Status', 'Type', 'Service', 'Total', 'Raised']}
+            widths={[90, 110, 110, 130, 160, 110]}
+            row={(q) => [
+              `#${q.id}`,
+              q.status,
+              q.music_type,
+              q.service,
+              formatMoney(q.grand_total_amount, q.currency),
+              q.created_at ? formatDate(q.created_at) : null,
+            ]}
+          />
+        )}
+
+        {tab === 'Invoices' && (
+          <Table
+            state={invoices}
+            what="invoices"
+            head={['Invoice', 'Status', 'Client', 'Total', 'Invoiced', 'Due']}
+            widths={[100, 130, undefined, 150, 110, 110]}
+            row={(i) => [
+              i.invoice_number ?? `#${i.id}`,
+              i.status,
+              i.client,
+              formatMoney(i.total_amount, i.currency),
+              i.invoice_date ? formatDate(i.invoice_date) : null,
+              i.due_date ? formatDate(i.due_date) : null,
+            ]}
+          />
+        )}
+
+        {tab === 'Contracts' && (
+          <Table
+            state={contracts}
+            what="contracts"
+            head={['File', 'Type', 'Supplier', 'Artist', 'Status', 'Signed']}
+            widths={[undefined, 130, 160, 140, 100, 90]}
+            row={(c) => [
+              c.file_name ?? c.description,
+              c.contract_type,
+              c.supplier,
+              c.artist,
+              c.status,
+              c.confirmed ? 'Yes' : 'No',
+            ]}
+          />
+        )}
+
+        {tab === 'Briefs' && (
+          <Table
+            state={briefs}
+            what="briefs"
+            head={['Brief', 'Type', 'Status', 'Source', 'Client deadline', 'Submitted']}
+            widths={[undefined, 120, 120, 110, 130, 110]}
+            row={(b) => [
+              b.name ?? b.one_sentence_brief,
+              b.brief_type,
+              b.status,
+              b.source,
+              b.client_deadline ? formatDate(b.client_deadline) : null,
+              b.submitted_at ? formatDate(b.submitted_at) : null,
+            ]}
+          />
+        )}
+
+        {tab === 'Files' && (
+          <Table
+            state={files}
+            what="files"
+            head={['File', 'Tag', 'Size', 'Uploaded by', 'Added']}
+            widths={[undefined, 120, 90, 160, 110]}
+            row={(f) => [
+              f.file_name ?? f.description,
+              f.asset_tag,
+              formatBytes(f.file_size),
+              f.uploaded_by,
+              f.created_at ? formatDate(f.created_at) : null,
+            ]}
+          />
+        )}
       </div>
-      {deleting && (
-        <Confirm
-          title={`Delete “${deleting.name}”?`}
-          body="The tracks stay in the project — only the playlist goes, along with any link already shared for it."
-          confirmLabel="Delete playlist"
-          onConfirm={() => {
-            const id = deleting.id
-            setDeleting(null)
-            void actions.deletePlaylist.mutateAsync(id)
-            if (open?.key === id) setPicked(null)
-          }}
-          onCancel={() => setDeleting(null)}
-        />
-      )}
-      {dropping && (
-        <Confirm
-          title={`Delete the ${dropping.company} submission?`}
-          body={[
-            `${plural(unusedIn(dropping).length, 'track')} will be removed from the library and from storage. This cannot be undone.`,
-            dropping.tracks.length - unusedIn(dropping).length > 0 &&
-              `The other ${dropping.tracks.length - unusedIn(dropping).length} are already in ${plural(playlistsHolding(dropping), 'playlist')} and stay where they are.`,
-          ]
-            .filter(Boolean)
-            .join(' ')}
-          confirmLabel={`Delete ${plural(unusedIn(dropping).length, 'track')}`}
-          onConfirm={() => {
-            const key = dropping.key
-            const going = unusedIn(dropping)
-            setDropping(null)
-            deleteSubmission.mutate(going.map((t) => t.id))
-            if (open?.key === key) setPicked(null)
-          }}
-          onCancel={() => setDropping(null)}
-        />
-      )}
     </>
+  )
+}
+
+/**
+ * The five child tabs are all the same shape — a list that is loading, failed,
+ * empty, or a table — so they share one component rather than five near-copies
+ * that drift apart.
+ */
+function Table<T>({
+  state,
+  what,
+  head,
+  widths,
+  row,
+}: {
+  state: { isPending: boolean; error: Error | null; data?: T[] }
+  what: string
+  head: string[]
+  widths: (number | undefined)[]
+  row: (item: T) => (string | null | undefined)[]
+}) {
+  if (state.isPending) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader />
+      </div>
+    )
+  }
+  if (state.error) {
+    return <p className="form-error px-7 py-4">{state.error.message}</p>
+  }
+  if (!state.data?.length) return <Empty what={what} />
+
+  return (
+    <table className="track-table">
+      <colgroup>
+        {widths.map((w, i) => (
+          <col key={i} style={w ? { width: w } : undefined} />
+        ))}
+      </colgroup>
+      <thead>
+        <tr>
+          {head.map((h, i) => (
+            <th key={h} className={i === 0 ? 'pl-7' : undefined}>
+              {h}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {state.data.map((item, n) => {
+          const cells = row(item)
+          return (
+            <tr key={n} className="track-row">
+              {cells.map((c, i) => (
+                <td
+                  key={i}
+                  className={i === 0 ? 'pl-7' : 'secondary'}
+                  title={typeof c === 'string' ? c : undefined}
+                >
+                  <span className="block truncate">{c || '—'}</span>
+                </td>
+              ))}
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
   )
 }

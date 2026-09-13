@@ -11,8 +11,8 @@ import type {
 } from '../lib/queries'
 import Library from '../routes/Library'
 import Playlists from '../routes/Playlists'
-import Project from '../routes/Project'
-import Projects from '../routes/Projects'
+import Project from '../routes/StudioProject'
+import Projects from '../routes/StudioProjects'
 import StaffLayout from '../routes/StaffLayout'
 
 /**

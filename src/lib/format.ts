@@ -28,3 +28,40 @@ export function formatDate(iso: string): string {
 export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`
 }
+
+const money = new Intl.NumberFormat('en-GB', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+/**
+ * Amounts arrive from the mirror already in major units — the views divide
+ * where Xano stored minor ones, so nothing here has to know which table it
+ * came from. The currency is Xano's own label ("GBP £", "SGD $"), printed as
+ * given rather than mapped, because mapping it wrong is worse than showing it
+ * verbatim.
+ */
+export function formatMoney(
+  amount: number | string | null | undefined,
+  currency?: string | null,
+): string {
+  if (amount === null || amount === undefined || amount === '') return '—'
+  const n = typeof amount === 'string' ? Number(amount) : amount
+  if (!Number.isFinite(n)) return '—'
+  const value = money.format(n)
+  const label = currency?.trim()
+  return label ? `${label} ${value}` : value
+}
+
+/** 1048576 → "1 MB". Sizes are for recognition, not accounting. */
+export function formatBytes(bytes: number | null | undefined): string {
+  if (!bytes || !Number.isFinite(bytes)) return '—'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let n = bytes
+  let i = 0
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024
+    i++
+  }
+  return `${n < 10 && i > 0 ? n.toFixed(1) : Math.round(n)} ${units[i]}`
+}
