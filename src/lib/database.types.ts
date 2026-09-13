@@ -314,12 +314,15 @@ export type Database = {
       }
       playlists: {
         Row: {
+          allow_download: boolean
+          allow_originals: boolean
           created_at: string
           created_by: string | null
           description: string | null
           expires_at: string | null
           id: string
           is_active: boolean
+          kind: Database["public"]["Enums"]["playlist_kind"]
           name: string
           project_id: string | null
           require_sign_in: boolean
@@ -329,12 +332,15 @@ export type Database = {
           visible_to_client: boolean
         }
         Insert: {
+          allow_download?: boolean
+          allow_originals?: boolean
           created_at?: string
           created_by?: string | null
           description?: string | null
           expires_at?: string | null
           id?: string
           is_active?: boolean
+          kind?: Database["public"]["Enums"]["playlist_kind"]
           name: string
           project_id?: string | null
           require_sign_in?: boolean
@@ -344,12 +350,15 @@ export type Database = {
           visible_to_client?: boolean
         }
         Update: {
+          allow_download?: boolean
+          allow_originals?: boolean
           created_at?: string
           created_by?: string | null
           description?: string | null
           expires_at?: string | null
           id?: string
           is_active?: boolean
+          kind?: Database["public"]["Enums"]["playlist_kind"]
           name?: string
           project_id?: string | null
           require_sign_in?: boolean
@@ -565,6 +574,7 @@ export type Database = {
           accent_color: string | null
           background_color: string | null
           background_url: string | null
+          brand: string | null
           created_at: string
           font_family: string | null
           id: string
@@ -577,6 +587,7 @@ export type Database = {
           accent_color?: string | null
           background_color?: string | null
           background_url?: string | null
+          brand?: string | null
           created_at?: string
           font_family?: string | null
           id?: string
@@ -589,6 +600,7 @@ export type Database = {
           accent_color?: string | null
           background_color?: string | null
           background_url?: string | null
+          brand?: string | null
           created_at?: string
           font_family?: string | null
           id?: string
@@ -860,6 +872,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      effective_theme: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          accent_color: string | null
+          background_color: string | null
+          background_url: string | null
+          heading: string | null
+          logo_url: string | null
+          source: string
+          text_color: string | null
+        }[]
+      }
+      playlist_gate: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          kind: Database["public"]["Enums"]["playlist_kind"]
+          name: string
+          project_name: string | null
+          require_sign_in: boolean
+        }[]
+      }
       register_viewer: {
         Args: { p_email: string; p_name: string }
         Returns: string
@@ -868,6 +901,7 @@ export type Database = {
     Enums: {
       comment_target: "track" | "video"
       event_kind: "view" | "play" | "comment" | "sync_save"
+      playlist_kind: "standard" | "sync" | "composition"
       processing_status: "pending" | "processing" | "ready" | "failed"
       track_kind: "audio" | "video"
       viewer_type: "brand" | "agency" | "production_company" | "director" | "sound_post" | "composer" | "other"
@@ -1000,6 +1034,7 @@ export const Constants = {
     Enums: {
       comment_target: ["track", "video"],
       event_kind: ["view", "play", "comment", "sync_save"],
+      playlist_kind: ["standard", "sync", "composition"],
       processing_status: ["pending", "processing", "ready", "failed"],
       track_kind: ["audio", "video"],
       viewer_type: ["brand", "agency", "production_company", "director", "sound_post", "composer", "other"],

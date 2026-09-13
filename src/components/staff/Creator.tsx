@@ -42,6 +42,7 @@ import Confirm from './Confirm'
 import { MenuIcon, TrashIcon, UploadFileIcon } from './icons'
 import Menu from './Menu'
 import Switch from './Switch'
+import ThemePanel from './ThemePanel'
 
 type Section = Tables<'playlist_sections'>
 
@@ -64,6 +65,31 @@ type Upload = {
 }
 
 const PARALLEL_UPLOADS = 4
+
+/** The three pages a link can open. */
+const KINDS: {
+  value: Tables<'playlists'>['kind']
+  label: string
+  title: string
+}[] = [
+  {
+    value: 'standard',
+    label: 'Playlist',
+    title: 'Listen through, download what the switches allow, leave notes',
+  },
+  {
+    value: 'sync',
+    label: 'Sync session',
+    title:
+      'Try the tracks against the film — cue any moment of a track to any moment of the picture',
+  },
+  {
+    value: 'composition',
+    label: 'Composition',
+    title:
+      'The films are the work: timestamped notes on each cut, behind a sign-in',
+  },
+]
 
 type DragData =
   | { type: 'track'; track: TrackWithUse }
@@ -124,6 +150,7 @@ export default function Creator() {
   const [title, setTitle] = useState('')
   const [editing, setEditing] = useState(false)
   const [picking, setPicking] = useState(false)
+  const [theming, setTheming] = useState(false)
   const [addingTracks, setAddingTracks] = useState(false)
   const [uploads, setUploads] = useState<Upload[]>([])
   const [fileOver, setFileOver] = useState(false)
@@ -153,6 +180,7 @@ export default function Creator() {
     setTitle(data?.name ?? '')
     setEditing(false)
     setPicking(false)
+    setTheming(false)
     setAttaching(false)
     setAddingTracks(false)
   }, [data])
@@ -916,7 +944,42 @@ export default function Creator() {
             />
           )}
 
+          {theming && (
+            <ThemePanel playlist={data} onClose={() => setTheming(false)} />
+          )}
+
           <div className="grid grid-cols-2 gap-2 border-t border-sequel-line px-[18px] py-[14px]">
+            {/* What the link opens. Always on show rather than in a menu,
+                because it changes what every other control here means. */}
+            <div
+              className="kind-picker col-span-2"
+              role="radiogroup"
+              aria-label="What the link opens"
+            >
+              {KINDS.map((k) => (
+                <button
+                  key={k.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={data.kind === k.value}
+                  title={k.title}
+                  onClick={() =>
+                    data.kind !== k.value &&
+                    actions.updatePlaylist.mutate({
+                      id: data.id,
+                      kind: k.value,
+                      // A review is never an open link; the database
+                      // refuses the pair, so both change together.
+                      ...(k.value === 'composition'
+                        ? { require_sign_in: true }
+                        : {}),
+                    })
+                  }
+                >
+                  {k.label}
+                </button>
+              ))}
+            </div>
             <button
               type="button"
               className="btn btn-tool btn-dark"
@@ -926,9 +989,8 @@ export default function Creator() {
             </button>
             <button
               type="button"
-              className="btn btn-tool btn-outline"
-              disabled
-              title="Themes arrive with the viewer page"
+              className={`btn btn-tool ${theming ? 'btn-dark' : 'btn-outline'}`}
+              onClick={() => setTheming((v) => !v)}
             >
               Theme
             </button>
@@ -961,14 +1023,49 @@ export default function Creator() {
               />
             </div>
             <div className="col-span-2 flex items-center justify-between text-[13px] text-sequel-mid">
-              <span>Sign-in required</span>
+              <span>
+                Sign-in required
+                {data.kind === 'composition' && (
+                  <span className="ml-1 text-[11px]">
+                    (always, for a review)
+                  </span>
+                )}
+              </span>
               <Switch
                 label="Sign-in required"
                 checked={data.require_sign_in}
+                disabled={data.kind === 'composition'}
                 onChange={(v) =>
                   actions.updatePlaylist.mutate({
                     id: data.id,
                     require_sign_in: v,
+                  })
+                }
+              />
+            </div>
+            <div className="col-span-2 flex items-center justify-between text-[13px] text-sequel-mid">
+              <span>Downloads</span>
+              <Switch
+                label="Viewers can download"
+                checked={data.allow_download}
+                onChange={(v) =>
+                  actions.updatePlaylist.mutate({
+                    id: data.id,
+                    allow_download: v,
+                  })
+                }
+              />
+            </div>
+            <div className="col-span-2 flex items-center justify-between text-[13px] text-sequel-mid">
+              <span>Original files too</span>
+              <Switch
+                label="Viewers can download the originals"
+                checked={data.allow_download && data.allow_originals}
+                disabled={!data.allow_download}
+                onChange={(v) =>
+                  actions.updatePlaylist.mutate({
+                    id: data.id,
+                    allow_originals: v,
                   })
                 }
               />

@@ -27,7 +27,16 @@ playlist present the same header, signed in or not; a playlist with
 `require_sign_in` only resolves for a signed-in request.
 
 Two token-scoped surfaces exist: an inbox (`/inbox/:token`, insert tracks) and a
-playlist (`/p/:token`, read tracks, write comments).
+playlist (`/p/:token`, read tracks, write comments and events).
+
+**A viewer who signs in presents both.** `src/lib/viewer.ts` builds the
+page's client with supabase-js's `accessToken` option reading the app's own
+session, plus the `x-share-token` header — so an anonymous visitor, a
+signed-in viewer and a staff member previewing all run the same code and
+differ only in what RLS lets through. `playlist_gate()` is what the page
+asks before the token resolves: it answers whether the link exists and
+whether it wants a sign-in, which the resolver itself deliberately will not
+say for an anonymous request on a sign-in link.
 
 A partner holding an inbox token can:
 
@@ -88,6 +97,17 @@ caller may see those tracks: staff see everything, a token holder sees the
 tracks on that playlist (resolved by the same RLS the viewer page uses). The
 browser folds all requests made within one tick into one call
 (`src/lib/media.ts`), so a page of forty tracks costs one round trip.
+
+## The viewer page
+
+`src/routes/SharedPlaylist.tsx` gates (dead link / sign-in / profile), then
+mounts one of three pages by `playlists.kind`: `StandardPlaylist`,
+`SyncSession`, `CompositionReview` under `src/components/viewer/`. All three
+sit in `Shell`, which turns the resolved theme into four CSS variables and
+draws the bar. The player is `lib/viewerPlayer.tsx` — the staff player's
+shape, but the page renders the `<video>` where it wants it and every signed
+URL carries the token. The sync session is the exception: two elements,
+the film as the clock and the music chasing it (see `docs/decisions.md`).
 
 ## The staff app
 

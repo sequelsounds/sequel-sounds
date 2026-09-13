@@ -239,3 +239,23 @@ export function VolumeMuteIcon(props: IconProps) {
     </Svg>
   )
 }
+
+/** An arrow into a tray: save this file. */
+export function DownloadIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 4v11" />
+      <path d="m7.5 10.5 4.5 4.5 4.5-4.5" />
+      <path d="M4 17.5v1.5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5" />
+    </Svg>
+  )
+}
+
+/** A speech bubble: the notes on a track. */
+export function NoteIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4.5 5.5h15v10h-8l-4 3.5v-3.5h-3z" />
+    </Svg>
+  )
+}

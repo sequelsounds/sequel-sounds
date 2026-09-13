@@ -1182,4 +1182,516 @@
   .search-well::placeholder {
     color: var(--color-sequel-mid);
   }
+
+  /* Which page a link opens. Three, side by side, in the tool's mono
+     voice; the chosen one inverts like a pressed .btn-tool. */
+  .kind-picker {
+    display: flex;
+    border: 1px solid var(--color-sequel-brown);
+  }
+
+  .kind-picker button {
+    flex: 1 1 0;
+    padding: 0.45rem 0.25rem;
+    border: 0;
+    border-left: 1px solid var(--color-sequel-brown);
+    background: none;
+    color: var(--color-sequel-brown);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 300;
+    line-height: 1.4;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .kind-picker button:first-child {
+    border-left: 0;
+  }
+
+  .kind-picker button[aria-checked='true'] {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  /* ------------------------------------------------------------- the viewer
+   * The client-facing playlist page. Every colour on it comes off four
+   * variables the page sets from the playlist's theme, so a brand's page
+   * and Sequel's own differ only in what the variables hold. The mixes are
+   * derived rather than named, which is what lets one CSS file dress any
+   * pair of colours a brand turns up with.
+   */
+  .viewer {
+    --v-bg: var(--color-sequel-silver);
+    --v-fg: var(--color-sequel-brown);
+    --v-accent: var(--color-sequel-brown);
+    --v-mid: color-mix(in srgb, var(--v-fg) 62%, var(--v-bg));
+    --v-line: color-mix(in srgb, var(--v-fg) 35%, transparent);
+    --v-well: color-mix(in srgb, var(--v-fg) 7%, var(--v-bg));
+    --v-playing: color-mix(in srgb, var(--v-fg) 13%, var(--v-bg));
+    --surface-bg: var(--v-bg);
+    --surface-fg: var(--v-fg);
+    --field-border: var(--v-line);
+    min-height: 100vh;
+    background-color: var(--v-bg);
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    color: var(--v-fg);
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .viewer-page {
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: 2rem 2rem 8rem;
+  }
+
+  .viewer-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 4rem;
+    margin-bottom: 2rem;
+  }
+
+  .viewer-logo {
+    display: block;
+    height: 2.25rem;
+    width: auto;
+    max-width: 14rem;
+    object-fit: contain;
+    object-position: left center;
+  }
+
+  .viewer-eyebrow {
+    font-size: 0.8rem;
+    line-height: 0.8rem;
+    font-weight: 400;
+  }
+
+  .viewer-title {
+    margin-top: 0.75rem;
+    font-family: var(--font-title);
+    font-size: 2rem;
+    line-height: 2rem;
+    font-weight: 400;
+    text-transform: uppercase;
+  }
+
+  .viewer-desc {
+    margin-top: 1rem;
+    max-width: 40rem;
+    font-weight: 300;
+    white-space: pre-line;
+  }
+
+  .viewer-meta {
+    margin-top: 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 300;
+    color: var(--v-mid);
+  }
+
+  /* A section's label, in the tool's own mono voice. */
+  .viewer-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 1.5rem;
+    padding: 0 8px 6px;
+    border-bottom: 1px solid var(--v-line);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 300;
+    text-transform: uppercase;
+    color: var(--v-mid);
+  }
+
+  .viewer-list {
+    margin-top: 0.5rem;
+  }
+
+  .viewer-row {
+    display: grid;
+    grid-template-columns: 1.5rem 40px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 12px 8px;
+    text-align: left;
+    background: none;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .viewer-row:hover {
+    background-color: var(--v-well);
+  }
+
+  .viewer-row.is-playing {
+    background-color: var(--v-playing);
+  }
+
+  .viewer-row .num {
+    font-size: 0.75rem;
+    color: var(--v-mid);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .viewer-row .title {
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .viewer-row .sub {
+    margin-top: 2px;
+    font-size: 0.75rem;
+    font-weight: 300;
+    color: var(--v-mid);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .viewer-row .dur {
+    font-size: 0.75rem;
+    color: var(--v-mid);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A row's own marks: quiet until the row is under the pointer, like the
+     Library's. Never hidden — a client should see what can be done with a
+     track without discovering it. */
+  .viewer-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .viewer .icon-btn {
+    opacity: 0.55;
+  }
+
+  .viewer .icon-btn:hover,
+  .viewer-row:hover .icon-btn {
+    opacity: 1;
+  }
+
+  .viewer .icon-btn.is-on {
+    opacity: 1;
+    color: var(--v-accent);
+  }
+
+  /* The count beside the notes mark. */
+  .viewer-count {
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--v-mid);
+  }
+
+  /* The film. 16:9 on black, never taller than most of the window, so the
+     list below is still reachable without scrolling past the picture. */
+  .viewer-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: 62vh;
+    margin: 0 0 1.5rem;
+    background: #000;
+  }
+
+  .viewer-stage video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* Parked, not hidden: an off-screen element keeps playing. */
+  .viewer-stage.is-away {
+    position: fixed;
+    left: -10px;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+    aspect-ratio: auto;
+  }
+
+  /* The bottom bar: the tool's player, in the page's own two colours
+     inverted, the way the Sequel bar is brown on silver. */
+  .viewer-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 34px minmax(120px, 300px) 1fr 100px auto;
+    align-items: center;
+    gap: 18px;
+    height: 4.5rem;
+    padding: 0 22px;
+    background-color: var(--v-fg);
+    color: var(--v-bg);
+  }
+
+  .viewer-bar .play {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    background-color: var(--v-bg);
+    color: var(--v-fg);
+  }
+
+  .viewer-bar .play:disabled {
+    opacity: 0.4;
+  }
+
+  .viewer-bar .volume-line {
+    background: color-mix(in srgb, var(--v-bg) 35%, transparent);
+  }
+
+  .viewer-bar .volume-fill,
+  .viewer-bar .volume-thumb {
+    background: var(--v-bg);
+  }
+
+  /* Notes under a row. */
+  .viewer-notes {
+    padding: 4px 8px 18px calc(1.5rem + 40px + 28px + 8px);
+  }
+
+  .viewer-notes.is-flush {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .viewer-note {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    padding: 8px 0;
+    border-top: 1px solid var(--v-line);
+    font-size: 0.8rem;
+  }
+
+  .viewer-note:first-child {
+    border-top: 0;
+  }
+
+  .viewer-note .who {
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .viewer-note .when {
+    margin-left: 8px;
+    font-weight: 300;
+    color: var(--v-mid);
+  }
+
+  .viewer-note .body {
+    font-weight: 300;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  /* A timestamp is a button: it takes the player there. */
+  .viewer-stamp {
+    display: inline-block;
+    padding: 0 6px;
+    border: 1px solid var(--v-line);
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4rem;
+    cursor: pointer;
+  }
+
+  .viewer-stamp:hover {
+    background-color: var(--v-fg);
+    color: var(--v-bg);
+    border-color: var(--v-fg);
+  }
+
+  .viewer-compose {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .viewer-compose textarea {
+    min-height: 3.5rem;
+  }
+
+  .viewer-compose-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.75rem;
+    color: var(--v-mid);
+  }
+
+  /* The viewer's own buttons: the tool's mono voice, in the page's colours. */
+  .viewer .btn-v {
+    padding: 0.55rem 1.1rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 300;
+    line-height: 1.4;
+    text-transform: uppercase;
+    white-space: nowrap;
+    border: 1px solid var(--v-fg);
+    background-color: var(--v-fg);
+    color: var(--v-bg);
+  }
+
+  .viewer .btn-v.is-outline {
+    background-color: transparent;
+    color: var(--v-fg);
+  }
+
+  .viewer .btn-v.is-outline:hover:not(:disabled) {
+    background-color: var(--v-fg);
+    color: var(--v-bg);
+  }
+
+  .viewer .btn-v:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  /* The sync session's controls, under the picture. */
+  .viewer-sync {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--v-line);
+  }
+
+  .viewer-sync-cue {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    padding: 10px 0 0;
+    font-size: 0.75rem;
+    color: var(--v-mid);
+  }
+
+  .viewer-sync-cue strong {
+    font-weight: 400;
+    color: var(--v-fg);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .viewer-nudge {
+    display: inline-flex;
+    border: 1px solid var(--v-line);
+  }
+
+  .viewer-nudge button {
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    background: none;
+    border: 0;
+    border-left: 1px solid var(--v-line);
+    color: inherit;
+  }
+
+  .viewer-nudge button:first-child {
+    border-left: 0;
+  }
+
+  .viewer-nudge button:hover {
+    background-color: var(--v-fg);
+    color: var(--v-bg);
+  }
+
+  /* The film's own scrub bar, for a sync session where the picture is the
+     clock. A thin line with a played portion; clicking seeks. */
+  .viewer-scrub {
+    position: relative;
+    height: 24px;
+    cursor: pointer;
+  }
+
+  .viewer-scrub::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 11px;
+    height: 2px;
+    background: var(--v-line);
+  }
+
+  .viewer-scrub .played {
+    position: absolute;
+    left: 0;
+    top: 11px;
+    height: 2px;
+    background: var(--v-fg);
+  }
+
+  .viewer-scrub .cue {
+    position: absolute;
+    top: 4px;
+    width: 2px;
+    height: 16px;
+    margin-left: -1px;
+    background: var(--v-accent);
+  }
+
+  /* The sign-in gate, on the dark ground the staff login stands on. */
+  .viewer-gate {
+    width: 100%;
+    max-width: 22rem;
+  }
+
+  .viewer-gate .eyebrow {
+    font-size: 0.8rem;
+    font-weight: 300;
+    opacity: 0.7;
+  }
+
+  .viewer-pick {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .viewer-pick button {
+    padding: 0.55rem 0.5rem;
+    border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 0.8rem;
+    text-align: left;
+  }
+
+  .viewer-pick button[aria-pressed='true'] {
+    background-color: var(--surface-fg);
+    color: var(--surface-bg);
+    border-color: var(--surface-fg);
+  }
 }

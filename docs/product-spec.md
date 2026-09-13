@@ -32,6 +32,29 @@ where they differ:
 - Playlist = an ordered list of any tracks (from any project), with named sections. Optionally attached to a project (auto when created inside one; can be attached/moved later). Unattached playlists live under a top-level Playlists page.
 - A track can be a video (kind=video). A playlist can have one video attached ("Add picture") — either picked from the project's Sequel Track assets (mirrored via the same webhook; file copied from sequel-uploaded-project-assets into the media bucket and processed) or uploaded directly. Video tracks belong to the project and can be reused across playlists.
 
+## Three kinds of link (13 Sep 2026)
+
+A playlist's link opens one of three pages. `playlists.kind` says which, and
+the Creator shows the three side by side because the choice changes what
+every other control on the panel means.
+
+| kind | in the Creator | what the page is |
+| --- | --- | --- |
+| `standard` | **Playlist** | Listen through, download what the switches allow, leave a note on a track. A film in the list plays in a picture above the rows. |
+| `sync` | **Sync session** | The playlist's film (Add film) at the top, the tracks under it. Pick a track and it plays against the picture; click in its waveform to start the music from that moment, wherever the picture is; nudge by tenths; **Save this sync** records the cue as a note on the track and a `sync_save` event. |
+| `composition` | **Composition** | The films in the list are the work — a composer's cuts. One plays large, notes are left at a moment in it, and every note's timestamp takes the picture back there. **Sign-in is required and cannot be switched off** (a database constraint, not just the UI). |
+
+"Sync session" is a working name for what the brief called the super
+playlist; it is the industry's word for music against picture and reads as
+one on a client's screen. Change the label in `KINDS` in `Creator.tsx` if a
+better one turns up — the kind's value stays `sync`.
+
+**Downloads** are two switches per playlist: *Downloads* (the preview
+renders — the mp3, or the 720p mp4) and *Original files too* (the file as
+delivered, uncompressed). `sign-media` enforces both: a viewer never gets a
+URL the switches do not back, whatever the page asks for. Staff are not
+switched.
+
 ## Viewers (clients, agencies, directors, sound teams)
 
 - All playlist links are shareable and forward freely. Sign-in is REQUIRED by default: email → 6-digit code, no password, month-long session. Staff can flip an individual playlist to "open link".
@@ -57,7 +80,20 @@ See the layout reference above for the approved screen.
 
 ## Themes
 
-- Per playlist: logo, colours, background image. A few saved presets (one per client brand). Applies to the viewer page only.
+- **Themes follow the brand.** A preset carries the brand it dresses
+  (`theme_presets.brand`, matched case-insensitively to the project's
+  `raw->>'brand'` as Track sends it), and every playlist on that brand's
+  projects wears it without anyone choosing. A playlist can keep a theme of
+  its own (`playlist_themes`), which wins over the preset field by field.
+- Fields: background colour, text colour, accent, logo URL, background
+  image URL, a heading above the title. Colours are hex. The viewer page
+  derives every other tone (rules, hover, secondary text, the bar) from
+  the two main colours, so any pair a brand turns up with dresses the page.
+- The Creator's **Theme** button opens the panel: dress this playlist, then
+  *Save for this playlist* or *Save as {brand} preset*. Logos are URLs for
+  now — there is no upload path for theme assets yet.
+- The page resolves the theme server-side (`effective_theme()`), so a
+  viewer never reads presets or the project's raw record.
 
 ## Stats
 
@@ -74,11 +110,24 @@ See the layout reference above for the approved screen.
 
 1. Xano→Supabase sync incl. assets, and the Track side (column, Creative tab, Open in Studio).
 2. Staff app: projects, inbox, playlist creator, player.
-3. Viewer sign-in + viewer page + comments.
-4. Video sync.
-5. Themes, activity views.
+3. Viewer sign-in + viewer page + comments. **Built 13 Sep** — see "Three kinds of link".
+4. Video sync. **Built 13 Sep** as the sync session.
+5. Themes (**built 13 Sep**, by brand), activity views.
 
 ## Known gaps
+
+**Viewer sign-in is untested end to end.** The gate sends the code with
+`shouldCreateUser: true` and the profile step writes `viewer_profiles`, but
+neither has been driven with a real inbox from this machine. If the
+project's auth settings refuse sign-ups the gate reports "Sign-in is
+switched off for this link" — check *Authentication → Sign In / Providers →
+Allow new users to sign up* in the dashboard. The composition page is
+behind that gate, so it has only been checked as code.
+
+**Theme logos are URLs.** There is no `purpose: 'theme'` in `sign-upload`
+yet; paste a hosted image (the Webflow asset library works) into the
+panel. Adding an upload path means a `themes/` prefix in the bucket and a
+matching clause in `sign-media`'s key pattern.
 
 Things that exist as data but not yet as anything you can use. Checked
 against the live database, 13 Sep.

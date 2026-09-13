@@ -38,6 +38,8 @@ type Props = {
   artworkKey: string | null
   kind: ArtKind
   className?: string
+  /** A share page signs its reads with the link's token rather than a session. */
+  token?: string | null
 }
 
 /**
@@ -48,8 +50,13 @@ type Props = {
  * "nothing here"; the mark says which of the things it is, which is the one
  * fact a row cannot otherwise show at a glance.
  */
-export default function Artwork({ artworkKey, kind, className = '' }: Props) {
-  const { data: url } = useMediaUrl(artworkKey)
+export default function Artwork({
+  artworkKey,
+  kind,
+  className = '',
+  token = null,
+}: Props) {
+  const { data: url } = useMediaUrl(artworkKey, token)
   const dark = DARK.includes(kind)
   const cls = `art ${dark ? 'is-video' : ''} ${className}`
 

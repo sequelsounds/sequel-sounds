@@ -1,7 +1,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import type { PlaylistDetail, PlaylistSummary, ProjectDetail, ProjectSummary, RecentProject, TrackWithUse } from '../lib/queries'
+import type {
+  PlaylistDetail,
+  PlaylistSummary,
+  ProjectDetail,
+  ProjectSummary,
+  RecentProject,
+  TrackWithUse,
+} from '../lib/queries'
 import Library from '../routes/Library'
 import Playlists from '../routes/Playlists'
 import Project from '../routes/Project'
@@ -78,7 +85,14 @@ const cavendish = {
   at: '2026-09-11T10:12:00Z',
   note: 'Two routes as discussed, B is the braver one',
 }
-const pink = { id: 's2', company: 'Pink Noise Studio', email: 'tom@pinknoise.co', name: 'Tom', at: '2026-09-10T15:40:00Z', note: null }
+const pink = {
+  id: 's2',
+  company: 'Pink Noise Studio',
+  email: 'tom@pinknoise.co',
+  name: 'Tom',
+  at: '2026-09-10T15:40:00Z',
+  note: null,
+}
 // A staff drop, not a partner's: no inbox link, so the Inbox must not list
 // it however much it otherwise looks like a submission.
 const ours = {
@@ -92,20 +106,65 @@ const ours = {
 }
 
 const tracks: TrackWithUse[] = [
-  track('WHIP STINGER A --- Killer vintage and raw Old School guitar riff', 'The Ricochets', 'Badass Rock', 62, cavendish, [PL1]),
-  track('ENTER THE ZONE --- Instrumental hip hop groove with heavy bass', 'Bad Habit', 'Urban Grit', 134, cavendish, [PL1]),
+  track(
+    'WHIP STINGER A --- Killer vintage and raw Old School guitar riff',
+    'The Ricochets',
+    'Badass Rock',
+    62,
+    cavendish,
+    [PL1],
+  ),
+  track(
+    'ENTER THE ZONE --- Instrumental hip hop groove with heavy bass',
+    'Bad Habit',
+    'Urban Grit',
+    134,
+    cavendish,
+    [PL1],
+  ),
   track('Slow Water', 'Marla Reyes', 'Blue Hours', 180, cavendish),
-  track('Hockey Route 1 — Classic Rock A', 'Cavendish Studio', "Hellmann's search", 161, cavendish, [PL1, PL2]),
-  track('Hockey Route 1 — Classic Rock B', 'Cavendish Studio', "Hellmann's search", 159, cavendish),
+  track(
+    'Hockey Route 1 — Classic Rock A',
+    'Cavendish Studio',
+    "Hellmann's search",
+    161,
+    cavendish,
+    [PL1, PL2],
+  ),
+  track(
+    'Hockey Route 1 — Classic Rock B',
+    'Cavendish Studio',
+    "Hellmann's search",
+    159,
+    cavendish,
+  ),
   track('Gutter Glam', 'Velvet Antler', 'Singles', 202, cavendish, [PL1]),
-  track('Riff Raff Riot', 'The Ricochets', 'Badass Rock', 118, cavendish, [PL1]),
+  track('Riff Raff Riot', 'The Ricochets', 'Badass Rock', 118, cavendish, [
+    PL1,
+  ]),
   track('Crunch Time', 'Dial Tone', 'Ad Cuts Vol. 4', 59, cavendish, [PL1]),
   track('Big Bite Boogie', 'Dial Tone', 'Ad Cuts Vol. 4', 64, cavendish, [PL1]),
   track('Spice Rack', 'Marla Reyes', 'Blue Hours', 167, cavendish),
   track('Loud Lunch', 'Bad Habit', 'Urban Grit', 125, cavendish),
   track('Salsa Static', 'Velvet Antler', 'Singles', 190, cavendish),
-  ...Array.from({ length: 14 }, (_, i) => track(`Pink Noise cue ${i + 1}`, 'Pink Noise', 'Nachips demos', 90 + i * 7, pink)),
-  ...Array.from({ length: 9 }, (_, i) => track(`BMG option ${i + 1}`, 'Various', 'BMG Production Music', 100 + i * 5, ours)),
+  ...Array.from({ length: 14 }, (_, i) =>
+    track(
+      `Pink Noise cue ${i + 1}`,
+      'Pink Noise',
+      'Nachips demos',
+      90 + i * 7,
+      pink,
+    ),
+  ),
+  ...Array.from({ length: 9 }, (_, i) =>
+    track(
+      `BMG option ${i + 1}`,
+      'Various',
+      'BMG Production Music',
+      100 + i * 5,
+      ours,
+    ),
+  ),
   track('260911 - NACHOS - OP2 fix2', '', '', 30, ours, [PL1], 'video'),
   track('260910 - NACHIPS - OP1', '', '', 30, ours, [PL1], 'video'),
 ]
@@ -125,11 +184,61 @@ const project: ProjectDetail = {
 }
 
 const projectSummaries: ProjectSummary[] = [
-  { id: P1, xano_id: '4821', name: 'Nachips', client_name: 'Old El Paso · Hogarth', sequel_no: '256-OLD-26-II', status: 'active', created_at: '2026-09-01', tracks: [{ count: tracks.length }], playlists: [{ count: 2 }] },
-  { id: 'p2', xano_id: '4822', name: 'Bango Bisma', client_name: 'Bango', sequel_no: '61-COM-25-II', status: 'active', created_at: '2026-08-20', tracks: [{ count: 12 }], playlists: [{ count: 1 }] },
-  { id: 'p3', xano_id: '4823', name: "Hellmann's Habs", client_name: 'Unilever · Ogilvy', sequel_no: '118-HEL-26-II', status: 'active', created_at: '2026-08-02', tracks: [{ count: 48 }], playlists: [{ count: 3 }] },
-  { id: 'p4', xano_id: '4824', name: 'Flavour Unlocked', client_name: 'Knorr', sequel_no: '227-KNO-26-II', status: 'active', created_at: '2026-07-14', tracks: [{ count: 30 }], playlists: [{ count: 2 }] },
-  { id: 'p5', xano_id: '4825', name: 'Sunsilk', client_name: 'Unilever', sequel_no: null, status: 'closed', created_at: '2026-06-01', tracks: [{ count: 7 }], playlists: [{ count: 0 }] },
+  {
+    id: P1,
+    xano_id: '4821',
+    name: 'Nachips',
+    client_name: 'Old El Paso · Hogarth',
+    sequel_no: '256-OLD-26-II',
+    status: 'active',
+    created_at: '2026-09-01',
+    tracks: [{ count: tracks.length }],
+    playlists: [{ count: 2 }],
+  },
+  {
+    id: 'p2',
+    xano_id: '4822',
+    name: 'Bango Bisma',
+    client_name: 'Bango',
+    sequel_no: '61-COM-25-II',
+    status: 'active',
+    created_at: '2026-08-20',
+    tracks: [{ count: 12 }],
+    playlists: [{ count: 1 }],
+  },
+  {
+    id: 'p3',
+    xano_id: '4823',
+    name: "Hellmann's Habs",
+    client_name: 'Unilever · Ogilvy',
+    sequel_no: '118-HEL-26-II',
+    status: 'active',
+    created_at: '2026-08-02',
+    tracks: [{ count: 48 }],
+    playlists: [{ count: 3 }],
+  },
+  {
+    id: 'p4',
+    xano_id: '4824',
+    name: 'Flavour Unlocked',
+    client_name: 'Knorr',
+    sequel_no: '227-KNO-26-II',
+    status: 'active',
+    created_at: '2026-07-14',
+    tracks: [{ count: 30 }],
+    playlists: [{ count: 2 }],
+  },
+  {
+    id: 'p5',
+    xano_id: '4825',
+    name: 'Sunsilk',
+    client_name: 'Unilever',
+    sequel_no: null,
+    status: 'closed',
+    created_at: '2026-06-01',
+    tracks: [{ count: 7 }],
+    playlists: [{ count: 0 }],
+  },
 ]
 
 const recent: RecentProject[] = [
@@ -141,6 +250,9 @@ const recent: RecentProject[] = [
 ]
 
 const playlistBase = {
+  kind: 'standard' as const,
+  allow_download: true,
+  allow_originals: false,
   description: null,
   is_active: true,
   expires_at: null,
@@ -153,14 +265,49 @@ const playlistBase = {
 }
 
 const playlists: PlaylistSummary[] = [
-  { id: PL1, name: 'Nachips — Round 1', project_id: P1, token: 'tok1', ...playlistBase, playlist_tracks: [{ count: 8 }], projects_mirror: { id: P1, name: project.name } },
-  { id: PL2, name: 'Nachips — hockey alts', project_id: P1, token: 'tok2', ...playlistBase, updated_at: '2026-09-09T12:00:00Z', playlist_tracks: [{ count: 1 }], projects_mirror: { id: P1, name: project.name } },
+  {
+    id: PL1,
+    name: 'Nachips — Round 1',
+    project_id: P1,
+    token: 'tok1',
+    ...playlistBase,
+    playlist_tracks: [{ count: 8 }],
+    projects_mirror: { id: P1, name: project.name },
+  },
+  {
+    id: PL2,
+    name: 'Nachips — hockey alts',
+    project_id: P1,
+    token: 'tok2',
+    ...playlistBase,
+    updated_at: '2026-09-09T12:00:00Z',
+    playlist_tracks: [{ count: 1 }],
+    projects_mirror: { id: P1, name: project.name },
+  },
 ]
 
 const sections = [
-  { id: 'sec1', playlist_id: PL1, name: 'Hero options', position: 0, created_at: '' },
-  { id: 'sec2', playlist_id: PL1, name: 'Alternates', position: 1, created_at: '' },
-  { id: 'sec3', playlist_id: PL1, name: 'Picture', position: 2, created_at: '' },
+  {
+    id: 'sec1',
+    playlist_id: PL1,
+    name: 'Hero options',
+    position: 0,
+    created_at: '',
+  },
+  {
+    id: 'sec2',
+    playlist_id: PL1,
+    name: 'Alternates',
+    position: 1,
+    created_at: '',
+  },
+  {
+    id: 'sec3',
+    playlist_id: PL1,
+    name: 'Picture',
+    position: 2,
+    created_at: '',
+  },
 ]
 
 const order: [string, string][] = [
@@ -183,15 +330,29 @@ const playlist: PlaylistDetail = {
   playlist_sections: sections,
   playlist_tracks: order.map(([t, section_id], position) => {
     const tr = byTitle(t)
-    return { id: `pt${position}`, playlist_id: PL1, track_id: tr.id, section_id, position, note: null, sync_offset_seconds: null, created_at: '', tracks: tr }
+    return {
+      id: `pt${position}`,
+      playlist_id: PL1,
+      track_id: tr.id,
+      section_id,
+      position,
+      note: null,
+      sync_offset_seconds: null,
+      created_at: '',
+      tracks: tr,
+    }
   }),
-  projects_mirror: { id: P1, name: project.name },
+  projects_mirror: { id: P1, name: project.name, brand: null },
   video: null,
+  playlist_themes: null,
 }
 
 // A plausible waveform for the first track, so the bar has something to draw.
 const peaks = Array.from({ length: 4000 }, (_, i) => {
-  const v = 0.15 + Math.abs(Math.sin(i / 60) * 0.5 + Math.sin(i / 23) * 0.25) + ((i * 7919) % 13) / 100
+  const v =
+    0.15 +
+    Math.abs(Math.sin(i / 60) * 0.5 + Math.sin(i / 23) * 0.25) +
+    ((i * 7919) % 13) / 100
   return i % 2 === 0 ? -Math.min(1, v) : Math.min(1, v)
 })
 
@@ -206,7 +367,13 @@ export default function Preview() {
       // fine
     }
     const c = new QueryClient({
-      defaultOptions: { queries: { staleTime: Infinity, retry: false, refetchOnWindowFocus: false } },
+      defaultOptions: {
+        queries: {
+          staleTime: Infinity,
+          retry: false,
+          refetchOnWindowFocus: false,
+        },
+      },
     })
     // Fixtures are keyed by p1 / pl1 / t1 — readable, and not uuids. That is
     // fine until a mutation succeeds against the real database, because its
@@ -216,7 +383,8 @@ export default function Preview() {
     //
     // So nothing here is ever invalidated. The seeded data stands until the
     // page is reloaded, which is the whole point of the route.
-    c.invalidateQueries = (() => Promise.resolve()) as typeof c.invalidateQueries
+    c.invalidateQueries = (() =>
+      Promise.resolve()) as typeof c.invalidateQueries
     c.setQueryData(['projects'], projectSummaries)
     c.setQueryData(['project', P1], project)
     // A project nobody has sent anything to yet — /__preview/projects/p0 —
@@ -289,7 +457,8 @@ export default function Preview() {
             12,
           ),
         staff_notes: null,
-        artwork_s3_key: t === tracks[0] ? darkArt : t === tracks[1] ? lightArt : null,
+        artwork_s3_key:
+          t === tracks[0] ? darkArt : t === tracks[1] ? lightArt : null,
       })
     }
     return c

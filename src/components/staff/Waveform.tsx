@@ -7,6 +7,9 @@ type Props = {
   progress: number
   onSeek: (fraction: number) => void
   className?: string
+  /** The two tones, for a page whose colours are not the bar's brown and silver. */
+  played?: string
+  unplayed?: string
 }
 
 const BAR = 3
@@ -22,7 +25,14 @@ const UNPLAYED = '#7d7370'
  * and two thousand DOM nodes per track would be felt. Redrawn on resize and on
  * every progress tick — cheap at a few hundred rectangles.
  */
-export default function Waveform({ peaks, progress, onSeek, className = '' }: Props) {
+export default function Waveform({
+  peaks,
+  progress,
+  onSeek,
+  className = '',
+  played = PLAYED,
+  unplayed = UNPLAYED,
+}: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -59,7 +69,7 @@ export default function Waveform({ peaks, progress, onSeek, className = '' }: Pr
           }
         }
         const h = pairs > 0 ? Math.max(2, amp * height) : 3
-        ctx.fillStyle = i < playedBars ? PLAYED : UNPLAYED
+        ctx.fillStyle = i < playedBars ? played : unplayed
         ctx.fillRect(i * (BAR + GAP), (height - h) / 2, BAR, h)
       }
     }
@@ -68,7 +78,7 @@ export default function Waveform({ peaks, progress, onSeek, className = '' }: Pr
     const observer = new ResizeObserver(draw)
     observer.observe(canvas)
     return () => observer.disconnect()
-  }, [peaks, progress])
+  }, [peaks, progress, played, unplayed])
 
   return (
     <canvas

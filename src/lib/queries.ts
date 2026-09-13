@@ -228,8 +228,9 @@ export type PlaylistTrackRow = Tables<'playlist_tracks'> & {
 export type PlaylistDetail = Tables<'playlists'> & {
   playlist_sections: Tables<'playlist_sections'>[]
   playlist_tracks: PlaylistTrackRow[]
-  projects_mirror: { id: string; name: string } | null
+  projects_mirror: { id: string; name: string; brand: string | null } | null
   video: Track | null
+  playlist_themes: Tables<'playlist_themes'> | null
 }
 
 export function usePlaylist(id: string | null) {
@@ -240,7 +241,7 @@ export function usePlaylist(id: string | null) {
       const { data, error } = await supabase
         .from('playlists')
         .select(
-          `*, playlist_sections(*), playlist_tracks(*, tracks(${TRACK_COLS})), projects_mirror(id, name), video:tracks!playlists_video_track_id_fkey(${TRACK_COLS})`,
+          `*, playlist_sections(*), playlist_tracks(*, tracks(${TRACK_COLS})), projects_mirror(id, name, brand:raw->>brand), video:tracks!playlists_video_track_id_fkey(${TRACK_COLS}), playlist_themes(*)`,
         )
         .eq('id', id!)
         .single()
@@ -248,6 +249,106 @@ export function usePlaylist(id: string | null) {
       return data as unknown as PlaylistDetail
     },
   })
+}
+
+// ---------------------------------------------------------------- themes
+
+export type ThemeFields = Pick<
+  Tables<'playlist_themes'>,
+  | 'logo_url'
+  | 'background_url'
+  | 'background_color'
+  | 'text_color'
+  | 'accent_color'
+  | 'heading'
+>
+
+export const EMPTY_THEME: ThemeFields = {
+  logo_url: null,
+  background_url: null,
+  background_color: null,
+  text_color: null,
+  accent_color: null,
+  heading: null,
+}
+
+/** The preset a brand's playlists wear when they have no theme of their own. */
+export function useBrandPreset(brand: string | null | undefined) {
+  return useQuery({
+    queryKey: ['theme-preset', brand?.toLowerCase() ?? null],
+    enabled: !!brand,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('theme_presets')
+        .select('*')
+        .ilike('brand', brand!)
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+  })
+}
+
+export function useThemeActions() {
+  const qc = useQueryClient()
+  const touched = (playlistId: string, brand?: string | null) => {
+    void qc.invalidateQueries({ queryKey: ['playlist', playlistId] })
+    if (brand)
+      void qc.invalidateQueries({
+        queryKey: ['theme-preset', brand.toLowerCase()],
+      })
+  }
+
+  /** The playlist's own theme — one row per playlist, written whole. */
+  const saveTheme = useMutation({
+    mutationFn: async (input: { playlistId: string; theme: ThemeFields }) => {
+      const { error } = await supabase
+        .from('playlist_themes')
+        .upsert({ playlist_id: input.playlistId, ...input.theme })
+      if (error) throw error
+    },
+    onSuccess: (_d, v) => touched(v.playlistId),
+  })
+
+  /** Back to whatever the brand wears. */
+  const clearTheme = useMutation({
+    mutationFn: async (playlistId: string) => {
+      const { error } = await supabase
+        .from('playlist_themes')
+        .delete()
+        .eq('playlist_id', playlistId)
+      if (error) throw error
+    },
+    onSuccess: (_d, playlistId) => touched(playlistId),
+  })
+
+  /**
+   * The brand's preset, created or replaced. Keyed on the brand rather than
+   * the name, so saving Hellmann's twice updates Hellmann's rather than
+   * making a second one.
+   */
+  const savePreset = useMutation({
+    mutationFn: async (input: {
+      playlistId: string
+      brand: string
+      theme: ThemeFields
+    }) => {
+      const { heading: _h, ...fields } = input.theme
+      const { data: existing } = await supabase
+        .from('theme_presets')
+        .select('id')
+        .ilike('brand', input.brand)
+        .maybeSingle()
+      const row = { name: input.brand, brand: input.brand, ...fields }
+      const { error } = existing
+        ? await supabase.from('theme_presets').update(row).eq('id', existing.id)
+        : await supabase.from('theme_presets').insert(row)
+      if (error) throw error
+    },
+    onSuccess: (_d, v) => touched(v.playlistId, v.brand),
+  })
+
+  return { saveTheme, clearTheme, savePreset }
 }
 
 // ---------------------------------------------------------------- recent

@@ -78,6 +78,17 @@ alphabetical, the way the generator emits it.
   fades up from black gets a black cover — one of six test uploads did, a
   4KB JPEG with a mean brightness of 0, picture arriving by t=2. Worth
   switching to ffmpeg's `thumbnail` filter next time the Lambda is open.
+- **A link's kind decides its page.** `playlists.kind` is standard / sync /
+  composition; `src/routes/SharedPlaylist.tsx` picks the page. A
+  composition review always requires sign-in — a check constraint, so an
+  update that sets `kind = 'composition'` must set `require_sign_in` in the
+  same statement. `sign-media` enforces the two download switches; do not
+  add a download the page decides on its own.
+- **The viewer page has its own client and player.** `lib/viewer.ts` and
+  `lib/viewerPlayer.tsx`, not `lib/queries.ts` and `lib/player.tsx`: token
+  in a header, the app's session as bearer, only the columns a client
+  should see (`VIEWER_TRACK_COLS`). Never widen that list with submitter or
+  staff fields.
 - **Browser-side metadata is a first pass.** The Lambda re-reads tags server-side
   and is authoritative. Never make an upload depend on a browser tag read.
 - **Nothing blocks an upload on a guess.** Duplicate detection is advisory at
@@ -105,6 +116,11 @@ at components rather than exercise them. The route no longer *refetches*
 after a write — its fixture ids (`p1`, `t1`) are not uuids, and an
 invalidation used to send them to Postgres and come back with `invalid
 input syntax for type uuid` — but writes still go out.
+
+The viewer page can be looked at live without a sign-in: any playlist with
+*Sign-in required* off resolves at `/p/<token>`, and the tokens are in the
+`playlists` table. The sync session and composition pages need a playlist
+of that kind; make a throwaway one by SQL and delete it after.
 
 `:focus-visible` does not match a programmatic `.focus()` — only real keyboard
 interaction. Test focus styles by sending Tab keypresses.

@@ -5,6 +5,71 @@ rediscovering an argument later.
 
 ---
 
+## A link opens one of three pages
+
+**2026-09-13.** The brief for shared playlists was three different rooms: a
+client listening through a shortlist and taking the files; a director
+trying takes against the cut; a composer's cuts being marked up at
+timestamps by people who have to be named. One page with everything on it
+would have been the wrong page for all three, so `playlists.kind` picks
+one: `standard`, `sync`, `composition`. The Creator shows the three side
+by side rather than in a menu, because the choice changes what the other
+controls mean — "Add film" is a picture on a sync session and a curiosity
+on a playlist.
+
+A composition review cannot be an open link. The people on it are named
+and their notes are attributed, which an anonymous visitor cannot be. That
+is a check constraint, not a switch the UI greys out — the UI greys it out
+too, but the database is where it is true.
+
+## The picture is the clock
+
+**2026-09-13.** The staff player is one `<video>` for everything, for good
+reasons. The sync session is deliberately not: two elements, the film
+muted and the music chasing it. The person is scrubbing the *picture* —
+that is the whole activity — and an audio element re-aligned on every tick
+of the video is the arrangement that never lets the music drift from the
+shot it is being judged against. The cue is two numbers: where in the
+track the music starts (`inPoint`) and the film time it starts at
+(`offset`, negative when the music leads the picture). Film time f plays
+track time f − offset + inPoint; outside the track's length the music is
+simply paused, so a run-up into the cue is a couple of seconds of picture
+alone.
+
+## Themes follow the brand
+
+**2026-09-13.** The spec had presets "one per client brand", picked by
+hand. Every project already carries its brand from Track (`raw->>'brand'`:
+Hellmann's, Knorr, Dove, Tresemmé…), so a preset names the brand it
+dresses and the playlist wears it unless it has a theme of its own.
+Resolved in the database (`effective_theme()`), so the page never reads
+presets or the project record — a forwarded link tells the recipient the
+colours and nothing about the job.
+
+The viewer page derives every tone from two colours. Rules, hover, the
+secondary text, the bar's inversion: all `color-mix()` off `--v-bg` and
+`--v-fg`. A brand turns up with any pair and the page still reads.
+
+## The viewer sends the token and its own session together
+
+**2026-09-13.** A sign-in link only resolves for a signed-in request, and a
+signed-in request only reaches one playlist through its token — so the
+page has to send both on every call. supabase-js's `accessToken` option
+does that without a second auth client: the page's client reads the app's
+own session for its bearer and carries the token as a header, and the
+same code serves an anonymous visitor (bearer falls back to the
+publishable key), a signed-in viewer and a member of staff previewing.
+
+## Downloads are decided in the function
+
+**2026-09-13.** The two switches — downloads, originals too — live on the
+playlist, but the page is not what enforces them. `sign-media` reads them
+by token and refuses to sign a URL they do not back, so a page that asks
+for the wrong thing gets nothing rather than a file. A download is a
+signed read with `response-content-disposition` on it, which is part of
+the signature and so cannot be added after the fact; the name on it is the
+track's title, not `original.wav` forty times over.
+
 ## The volume slider is not an input
 
 **2026-09-13.** It rendered square in Chromium and round in Firefox. A range
