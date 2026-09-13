@@ -90,6 +90,16 @@ real components over fixture data (`src/dev/Preview.tsx`). It is compiled out
 of production builds. When testing uploads, clean up afterwards: delete both the `tracks`
 row and the S3 object.
 
+**The preview is fixtures over the real client.** `/__preview` mounts the
+real components with seeded query data, but `supabase` is the same client
+the app uses — so a mutation fired from that route reaches the live
+database. Creating a playlist there creates a playlist. Use the real routes
+for anything you mean to keep, and treat `/__preview` as somewhere to look
+at components rather than exercise them. The route no longer *refetches*
+after a write — its fixture ids (`p1`, `t1`) are not uuids, and an
+invalidation used to send them to Postgres and come back with `invalid
+input syntax for type uuid` — but writes still go out.
+
 `:focus-visible` does not match a programmatic `.focus()` — only real keyboard
 interaction. Test focus styles by sending Tab keypresses.
 

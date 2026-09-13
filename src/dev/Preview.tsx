@@ -188,6 +188,15 @@ export default function Preview() {
     const c = new QueryClient({
       defaultOptions: { queries: { staleTime: Infinity, retry: false, refetchOnWindowFocus: false } },
     })
+    // Fixtures are keyed by p1 / pl1 / t1 — readable, and not uuids. That is
+    // fine until a mutation succeeds against the real database, because its
+    // onSuccess invalidates and React Query then goes and fetches those keys
+    // for real: `invalid input syntax for type uuid: "p1"`, in the middle of
+    // a page that was meant to be made of fixtures.
+    //
+    // So nothing here is ever invalidated. The seeded data stands until the
+    // page is reloaded, which is the whole point of the route.
+    c.invalidateQueries = (() => Promise.resolve()) as typeof c.invalidateQueries
     c.setQueryData(['projects'], projectSummaries)
     c.setQueryData(['project', P1], project)
     // A project nobody has sent anything to yet — /__preview/projects/p0 —
