@@ -72,6 +72,12 @@ alphabetical, the way the generator emits it.
   `TITLE --- sales copy` into the title frame and dump keywords into the
   comment. Nothing in the pipeline rewrites that; DISCO does not either.
   Staff fix it from the "i" button.
+- **Video artwork is a frame at one second.** Measured, not documented: the
+  Lambda grabs t=1.000 exactly and scales it to 1066x600. Audio gets an
+  `artwork.jpg` only if the file carries embedded cover art. So a film that
+  fades up from black gets a black cover — one of six test uploads did, a
+  4KB JPEG with a mean brightness of 0, picture arriving by t=2. Worth
+  switching to ffmpeg's `thumbnail` filter next time the Lambda is open.
 - **Browser-side metadata is a first pass.** The Lambda re-reads tags server-side
   and is authoritative. Never make an upload depend on a browser tag read.
 - **Nothing blocks an upload on a guess.** Duplicate detection is advisory at
