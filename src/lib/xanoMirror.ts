@@ -691,3 +691,90 @@ export function useRosterMember(uuid: string | undefined) {
     },
   })
 }
+
+/**
+ * A Sequel song — one Sequel composed for a client, and registered with the
+ * PROs once the paperwork is back.
+ */
+export type SequelSong = {
+  id: number
+  uuid: string | null
+  track_title: string | null
+  composer: string | null
+  brand: string | null
+  project: string | null
+  project_master_list_id: number | null
+  /** "Awaiting Registration" on the band counts Unregistered. */
+  registration_status: string | null
+  schedule_a_status: string | null
+  ownership: string | null
+  duration: string | null
+  tunecode: string | null
+  status: string | null
+  supplier_list_id: number | null
+  supplier_title: string | null
+  supplier_uuid: string | null
+  // The song page's other five tabs.
+  alternative_titles: string | null
+  agreement_number: string | null
+  prs_registration_date: string | null
+  commencement_date: string | null
+  clock_numbers: string | null
+  campaign_description: string | null
+  script_title: string | null
+  /**
+   * ⚠️ The song's own Advertising_Agency column, which is NOT what the page's
+   * "Ad Agency" shows. Track reads the song's project, that project's
+   * client_agency, and that client's Company — `ad_agency` below. The two
+   * disagree: "Go Go Noodles" carries "UStudios" here while its project's
+   * client is Oliver London, and Oliver London is what Track renders. Both are
+   * kept so the disagreement stays visible rather than being quietly resolved.
+   */
+  advertising_agency: string | null
+  /** What the page's Ad Agency field shows: the project's client company. */
+  ad_agency: string | null
+  notes: string | null
+}
+
+/**
+ * Every active song.
+ *
+ * ⚠️ The view filters `status = 'Active'`, not `is distinct from 'Archived'`.
+ * That is Get_songs' own rule and it differs from every other list in Track: a
+ * song with a blank status is absent here where a client or supplier with one
+ * would still show. All 14 rows carry a status today, so nothing is hidden by
+ * it yet.
+ */
+export function useSongs() {
+  return useQuery({
+    queryKey: ['mirror', 'songs'],
+    queryFn: async (): Promise<SequelSong[]> => {
+      const { data, error } = await mirror.from('song_list').select('*')
+      if (error) throw error
+      return ((data ?? []) as SequelSong[]).sort((a, b) =>
+        (a.track_title ?? '') < (b.track_title ?? '')
+          ? -1
+          : (a.track_title ?? '') > (b.track_title ?? '')
+            ? 1
+            : 0,
+      )
+    },
+  })
+}
+
+/** One song, for `/songs/:uuid`. The same view the list reads. */
+export function useSong(uuid: string | undefined) {
+  return useQuery({
+    enabled: !!uuid,
+    queryKey: ['mirror', 'song', uuid],
+    queryFn: async (): Promise<SequelSong | null> => {
+      const { data, error } = await mirror
+        .from('song_list')
+        .select('*')
+        .eq('uuid', uuid!)
+        .maybeSingle()
+      if (error) throw error
+      return (data as SequelSong) ?? null
+    },
+  })
+}
