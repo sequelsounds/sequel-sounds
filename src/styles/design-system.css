@@ -2082,4 +2082,97 @@
     background-color: var(--color-sequel-silver);
     color: var(--color-sequel-brown);
   }
+
+  /* ======================================================== the projects list
+   * Track's `/projects`, read the same way as the project page: the grid, the
+   * type and the hover are Webflow's dashboard_project_titles and
+   * dashboard_project_row, checked against the rendered page.
+   *
+   * Both the head and the rows are the same eight-column grid, so they cannot
+   * drift apart: 1.5fr 1fr 1.5fr 1fr then four 0.75fr for Status, Service and
+   * the two action cells. 16px gap, 2rem in from the sides.
+   */
+  .project-list-grid {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 1.5fr 1fr 1.5fr 1fr 0.75fr 0.75fr 0.75fr 0.75fr;
+    gap: 16px;
+    padding: 0 2rem;
+    align-items: center;
+  }
+
+  /* dashboard_project_titles: a fixed 2rem, with the page's own rule beneath
+     it rather than a heavier one of its own. */
+  .project-list-head {
+    flex: none;
+    min-height: 2rem;
+    max-height: 2rem;
+    border-bottom: 1px solid var(--color-sequel-line);
+    color: var(--color-sequel-brown);
+  }
+
+  /* dashboard-project-title-txt. Capitalised, and a weight up on the rows —
+     the only thing separating the head from them, since it has no fill. */
+  .project-list-head-cell {
+    font-size: 0.8rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    text-transform: capitalize;
+  }
+
+  /* dashboard_project_row: 4rem fixed, no rule between rows, inverts whole on
+     hover. Taller than the 3rem rows on the project page — this is the list
+     you scan down, not one of its sub-lists. */
+  .project-list-row {
+    min-height: 4rem;
+    max-height: 4rem;
+    color: var(--color-sequel-brown);
+    cursor: pointer;
+    transition: background-color 160ms ease;
+  }
+
+  .project-list-row:hover {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  /* dashboard-project-row-title-txt */
+  .project-list-title {
+    overflow: hidden;
+    font-size: 0.8rem;
+    line-height: 0.8rem;
+    font-weight: 500;
+    text-transform: capitalize;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* dashboard-project-row-txt */
+  .project-list-cell {
+    overflow: hidden;
+    font-size: 0.8rem;
+    line-height: 0.7rem;
+    font-weight: 300;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* projects_search_field: no border of its own — the band's rule is the only
+     line around it — and its placeholder is the same brown as its text. */
+  .project-search {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    background-color: var(--color-sequel-silver);
+    color: var(--color-sequel-brown);
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 300;
+    outline: none;
+  }
+
+  .project-search::placeholder {
+    color: var(--color-sequel-brown);
+  }
 }

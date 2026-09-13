@@ -64,6 +64,33 @@ export type Project = {
   final_disco_link: string | null
   notes: string | null
   notes_or_request: string | null
+  // The pipeline-stage FK. The four counters on the list are keyed on the id
+  // rather than the label so renaming an option cannot zero a counter.
+  status_id: number | null
+  supervisor_id: number | null
+  // The list's Agency column, which is NOT `agency`: Track joins it through
+  // the client user's own company. Both are here because Track shows both,
+  // under the same word, on two different pages.
+  client_user_company: string | null
+}
+
+/** The signed-in person, as Xano knows them. */
+export type Me = { id: number; name: string | null; email: string | null }
+
+export function useMe() {
+  return useQuery({
+    queryKey: ['mirror', 'me'],
+    queryFn: async (): Promise<Me | null> => {
+      // database.types.ts only knows the public schema's own functions (see
+      // the note on `mirror` below — `npm run types` needs the Supabase CLI),
+      // so the call is cast rather than typed. The row is typed on the way out.
+      const { data, error } = await (
+        supabase as unknown as SupabaseClient
+      ).rpc('track_me')
+      if (error) throw error
+      return (data as Me[] | null)?.[0] ?? null
+    },
+  })
 }
 
 export type Song = {
@@ -188,9 +215,39 @@ async function rows<T>(view: string, projectId: number, order: string) {
   return (data ?? []) as T[]
 }
 
+/**
+ * The list behind `/projects` — which is "your projects", not all of them.
+ * Track's get_staff_projects is `Music_Supervisor == $auth.id && Status !=
+ * "Archived"`, sorted by id descending, and this matches it.
+ *
+ * RLS is a separate question and stays where it is: it decides what a person
+ * is allowed to read. This decides what the page chooses to show them.
+ *
+ * One deliberate difference. Xano reaches the client user with an inner join,
+ * so a project with no client user is dropped from the list silently — three
+ * of Andy's live projects are invisible on Track because of it. Nothing here
+ * joins, so they appear.
+ */
+export function useMyProjects(supervisorId: number | null | undefined) {
+  return useQuery({
+    enabled: supervisorId !== undefined,
+    queryKey: ['mirror', 'projects', supervisorId ?? null],
+    queryFn: async (): Promise<Project[]> => {
+      let q = mirror.from('project_list').select('*')
+      if (supervisorId != null) q = q.eq('supervisor_id', supervisorId)
+      const { data, error } = await q.order('id', { ascending: false })
+      if (error) throw error
+      return ((data ?? []) as Project[]).filter(
+        (p) => p.record_status !== 'Archived',
+      )
+    },
+  })
+}
+
+/** Every project the reader may see. Used by the pages that are not the list. */
 export function useProjects() {
   return useQuery({
-    queryKey: ['mirror', 'projects'],
+    queryKey: ['mirror', 'projects', 'all'],
     queryFn: async (): Promise<Project[]> => {
       const { data, error } = await mirror
         .from('project_list')
