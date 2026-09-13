@@ -11,10 +11,15 @@ import { usePartners, type Partner } from '../lib/xanoMirror'
  * the same six region tabs and the same `partner_row` grid. The differences
  * from `/clients` are small and all of them were checked on the running page:
  *
- *  1. The search matches the whole row, not the name. "Publisher" returns 34
- *     because it is a supplier type; "michelle@" returns one, on an address
- *     that appears in no visible column. Same behaviour as `/projects`, and the
- *     same trap: a digit matches nearly everything.
+ *  1. **The search diverges from Track, deliberately.** Track matches the
+ *     serialised record, so it also searches bios, uuids and ids — type a
+ *     single digit and nearly every supplier matches. `/users` matches named
+ *     fields instead, and the comment on its Xano endpoint says exactly why.
+ *     This follows `/users`. The fields below are the ones a person could
+ *     reasonably expect to search on: everything the row shows, plus the
+ *     region, the city, the briefing list and the brief address. So
+ *     "Publisher" still returns its 34 (it is a supplier type) and
+ *     "michelle@" still returns its one, and "3" no longer returns 90.
  *  2. The row's fourth mark is a mail link, not a share link.
  *  3. The counts still never move, as on `/clients`.
  *
@@ -75,7 +80,20 @@ export default function Partners() {
     return all.filter(
       (p: Partner) =>
         (region == null || p.region_id === region) &&
-        (!term || JSON.stringify(p).toLowerCase().includes(term)),
+        (!term ||
+          [
+            p.title,
+            p.supplier_type,
+            p.country_text,
+            p.region_text,
+            p.city,
+            p.briefing_list,
+            p.brief_email,
+            p.strengths,
+          ]
+            .join(' ')
+            .toLowerCase()
+            .includes(term)),
     )
   }, [all, q, region])
 

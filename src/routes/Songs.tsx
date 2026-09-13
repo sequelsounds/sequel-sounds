@@ -11,14 +11,16 @@ import { useSongs, type SequelSong } from '../lib/xanoMirror'
  *
  * Two things to know about how Track does it:
  *
- *  1. **The search hides rows rather than filtering the list.** Track puts the
- *     match in each row's visibility rule, over the serialised record. So it
- *     matches fields no column shows — the CAE numbers, the agreement number,
- *     the notes — and the two counters never move, because they read the
- *     request's length rather than what is on screen. Reproduced, with one
- *     narrowing: the mirror view carries the columns this page and the project
- *     page need, not all 53, so a search for a CAE number matches on Track and
- *     not here.
+ *  1. **The search diverges from Track, deliberately.** Track puts the match
+ *     in each row's visibility rule, over the serialised record, so it also
+ *     searches the CAE numbers, the agreement number and the notes — and a
+ *     single digit matches almost every song. `/users` matches named fields
+ *     instead and its Xano comment says why; this follows `/users`, over the
+ *     four columns the row shows plus the project and the Schedule A status.
+ *
+ *     What is reproduced is the second half of Track's behaviour: the counters
+ *     still never move, because they read the whole list rather than what is
+ *     on screen.
  *  2. **Both counters are totals.** Tracks is every active song; Awaiting
  *     Registration is the Unregistered ones. Neither follows the search.
  *
@@ -69,7 +71,19 @@ export default function Songs() {
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase()
     if (!term) return all
-    return all.filter((s: SequelSong) => JSON.stringify(s).toLowerCase().includes(term))
+    return all.filter((s: SequelSong) =>
+      [
+        s.track_title,
+        s.composer,
+        s.brand,
+        s.registration_status,
+        s.project,
+        s.schedule_a_status,
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(term),
+    )
   }, [all, q])
 
   return (
