@@ -9,6 +9,7 @@ import {
   usePlaylists,
   type PlaylistSummary,
 } from '../lib/queries'
+import { Loader } from '../components/Loader'
 
 /** Every playlist: the unattached ones first, then grouped by project. */
 export default function Playlists() {
@@ -73,7 +74,9 @@ export default function Playlists() {
 
       <div className="min-h-0 flex-1 overflow-auto">
         {playlists.isPending && (
-          <p className="px-7 py-4 text-sequel-mid">Loading…</p>
+          <div className="flex justify-center py-16">
+            <Loader />
+          </div>
         )}
         {playlists.error && (
           <p className="form-error px-7 py-4">{playlists.error.message}</p>

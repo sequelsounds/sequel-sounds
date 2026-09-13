@@ -49,6 +49,7 @@ import {
 import Menu from './Menu'
 import Switch from './Switch'
 import ThemePanel from './ThemePanel'
+import { Loader } from '../Loader'
 
 type Section = Tables<'playlist_sections'>
 
@@ -753,7 +754,9 @@ export default function Creator() {
           <p>Pick another on the Playlists tab.</p>
         </div>
       ) : !data ? (
-        <div className="p-[18px] text-[13px] text-sequel-mid">Loading…</div>
+        <div className="flex justify-center py-10">
+          <Loader />
+        </div>
       ) : (
         <>
           <div className="flex items-center gap-[10px] border-b border-sequel-line px-[18px] py-[14px]">

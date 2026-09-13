@@ -24,6 +24,7 @@ import {
   type Identity,
 } from '../lib/viewer'
 import { ViewerPlayerProvider, type ViewerPlayable } from '../lib/viewerPlayer'
+import LoadingModal from '../components/Loader'
 
 /**
  * A playlist, for whoever holds its link.
@@ -179,11 +180,7 @@ function Loaded({ profile }: { profile: Profile }) {
 }
 
 function Holding() {
-  return (
-    <div className="surface-light flex min-h-screen items-center justify-center">
-      <SequelLogo />
-    </div>
-  )
+  return <LoadingModal />
 }
 
 function Dead() {

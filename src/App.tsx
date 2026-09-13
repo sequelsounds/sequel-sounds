@@ -12,6 +12,7 @@ import Projects from './routes/Projects'
 import SharedPlaylist from './routes/SharedPlaylist'
 import SharedTrack from './routes/SharedTrack'
 import StaffLayout from './routes/StaffLayout'
+import LoadingModal from './components/Loader'
 
 // Dev only: the shell over fixture data, for checking layout without a
 // sign-in code. `import.meta.env.DEV` is a build-time constant, so the branch
@@ -21,15 +22,19 @@ const Preview = import.meta.env.DEV ? lazy(() => import('./dev/Preview')) : null
 function RequireStaff({ children }: { children: React.ReactNode }) {
   const session = useSession()
   const staff = useIsStaff()
-  if (session === undefined) return <div className="p-8 text-sm text-sequel-mid">Loading…</div>
+  if (session === undefined) return <LoadingModal />
   if (session === null) return <Navigate to="/login" replace />
-  if (staff.isPending) return <div className="p-8 text-sm text-sequel-mid">Loading…</div>
+  if (staff.isPending) return <LoadingModal />
   if (!staff.data) {
     // Signed in, but not on the allowlist — a viewer who found the staff URL.
     return (
       <div className="p-8 text-sm">
         <p>This account is not a staff account.</p>
-        <button type="button" className="mt-3 underline" onClick={() => supabase.auth.signOut()}>
+        <button
+          type="button"
+          className="mt-3 underline"
+          onClick={() => supabase.auth.signOut()}
+        >
           Sign out
         </button>
       </div>

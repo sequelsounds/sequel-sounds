@@ -2,6 +2,7 @@ import Search from '../components/staff/Search'
 import TrackTable from '../components/staff/TrackTable'
 import { plural } from '../lib/format'
 import { useLibraryTracks } from '../lib/queries'
+import { Loader } from '../components/Loader'
 
 /** Every track across every project. The second-search tool. */
 export default function Library() {
@@ -29,12 +30,20 @@ export default function Library() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
-        {tracks.isPending && <p className="px-7 py-4 text-sequel-mid">Loading…</p>}
-        {tracks.error && <p className="form-error px-7 py-4">{tracks.error.message}</p>}
+        {tracks.isPending && (
+          <div className="flex justify-center py-16">
+            <Loader />
+          </div>
+        )}
+        {tracks.error && (
+          <p className="form-error px-7 py-4">{tracks.error.message}</p>
+        )}
         {tracks.data && tracks.data.length === 0 && (
           <p className="px-7 py-6 text-sequel-mid">Nothing matches.</p>
         )}
-        {tracks.data && tracks.data.length > 0 && <TrackTable tracks={tracks.data} />}
+        {tracks.data && tracks.data.length > 0 && (
+          <TrackTable tracks={tracks.data} />
+        )}
       </div>
     </>
   )

@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import Search from '../components/staff/Search'
 import { plural } from '../lib/format'
 import { useProjects } from '../lib/queries'
+import { Loader } from '../components/Loader'
 
 export default function Projects() {
   const projects = useProjects()
@@ -28,7 +29,9 @@ export default function Projects() {
 
       <div className="min-h-0 flex-1 overflow-auto">
         {projects.isPending && (
-          <p className="px-7 py-4 text-sequel-mid">Loading…</p>
+          <div className="flex justify-center py-16">
+            <Loader />
+          </div>
         )}
         {projects.error && (
           <p className="form-error px-7 py-4">{projects.error.message}</p>

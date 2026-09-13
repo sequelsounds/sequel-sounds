@@ -7,6 +7,7 @@ import Waveform from '../components/staff/Waveform'
 import { formatDuration } from '../lib/format'
 import { mediaUrls } from '../lib/media'
 import { tokenClient } from '../lib/tokenClient'
+import LoadingModal from '../components/Loader'
 
 /**
  * One track on its own, behind its own share token.
@@ -33,7 +34,9 @@ function SharedTrack({ token }: { token: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tracks')
-        .select('id, title, artist, album, duration_seconds, preview_key, artwork_s3_key, waveform_peaks')
+        .select(
+          'id, title, artist, album, duration_seconds, preview_key, artwork_s3_key, waveform_peaks',
+        )
         .single()
       if (error) throw error
       return data
@@ -89,12 +92,15 @@ function SharedTrack({ token }: { token: string }) {
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 pb-16 pt-10">
         <SequelLogo className="mb-12" />
 
-        {track.isPending && <p className="text-sm text-sequel-mid">Loading…</p>}
+        {track.isPending && <LoadingModal />}
         {track.error && (
           <div>
-            <h1 className="font-title text-[2rem] font-normal">Link not found</h1>
+            <h1 className="font-title text-[2rem] font-normal">
+              Link not found
+            </h1>
             <p className="mt-2 text-sm text-sequel-mid">
-              This link has been withdrawn, or it was never right. Ask whoever sent it for another.
+              This link has been withdrawn, or it was never right. Ask whoever
+              sent it for another.
             </p>
           </div>
         )}
@@ -103,7 +109,11 @@ function SharedTrack({ token }: { token: string }) {
           <>
             <div className="flex items-start gap-5">
               {artworkUrl ? (
-                <img src={artworkUrl} alt="" className="h-28 w-28 object-cover" />
+                <img
+                  src={artworkUrl}
+                  alt=""
+                  className="h-28 w-28 object-cover"
+                />
               ) : (
                 <span className="art h-28! w-28!" aria-hidden="true" />
               )}
@@ -112,7 +122,9 @@ function SharedTrack({ token }: { token: string }) {
                   {track.data.title}
                 </h1>
                 <p className="mt-1 text-sequel-mid">
-                  {[track.data.artist, track.data.album].filter(Boolean).join(' · ')}
+                  {[track.data.artist, track.data.album]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </p>
               </div>
             </div>
@@ -154,7 +166,9 @@ function SharedTrack({ token }: { token: string }) {
               )}
             </div>
 
-            {previewUrl && <audio ref={audio} src={previewUrl} preload="metadata" />}
+            {previewUrl && (
+              <audio ref={audio} src={previewUrl} preload="metadata" />
+            )}
           </>
         )}
       </div>

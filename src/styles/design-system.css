@@ -1232,6 +1232,57 @@
     color: var(--color-sequel-silver);
   }
 
+  /* ----------------------------------------------------------- the loader
+   * Webflow's Loading Modal, measured off the live site rather than
+   * redrawn: `loading modal wrapper` is a sheet over everything on Sequel
+   * Silver; `loading page loader wrap` is 6rem x 3.8rem; the embed inside
+   * is a 20x20 SVG rect in Sequel Brown that turns over on X then Y across
+   * six seconds on cubic-bezier(.09,.57,.49,.9), forever. The square is
+   * `currentColor` here so the same loader can sit on the dark surface.
+   */
+  .loading-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--surface-bg, var(--color-sequel-silver));
+    color: var(--surface-fg, var(--color-sequel-brown));
+  }
+
+  .loader {
+    width: 6rem;
+    height: 3.8rem;
+  }
+
+  .loader svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .loader-square {
+    fill: currentColor;
+    transform-origin: 50% 50%;
+    animation: loader-turn 6s 0s cubic-bezier(0.09, 0.57, 0.49, 0.9) infinite;
+  }
+
+  @keyframes loader-turn {
+    25% {
+      transform: rotateX(180deg) rotateY(0);
+    }
+    50% {
+      transform: rotateX(180deg) rotateY(180deg);
+    }
+    75% {
+      transform: rotateX(0) rotateY(180deg);
+    }
+    100% {
+      transform: rotateX(0) rotateY(0);
+    }
+  }
+
   /* ------------------------------------------------------------- the viewer
    * The client-facing playlist page. Every colour on it comes off four
    * variables the page sets from the playlist's theme, so a brand's page
