@@ -2177,6 +2177,45 @@
   }
 
 
+
+  /* ------------------------------------------------------- the client page
+   * dashboard_project_row_user_edit: the projects list embedded in a detail
+   * page — five columns at 1.5fr 1fr 1fr 1fr 1fr on a 16px gap, and a fixed
+   * 3.5rem rather than the 4rem of the standalone list. Agency is dropped
+   * because every row belongs to the client being viewed. Its cells are the
+   * standalone list's, so .project-list-title and .project-list-cell.
+   */
+  .client-project-row {
+    display: grid;
+    width: 100%;
+    min-height: 3.5rem;
+    max-height: 3.5rem;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;
+    gap: 16px;
+    padding: 0 2rem;
+    align-items: center;
+    color: var(--color-sequel-brown);
+    cursor: pointer;
+    transition: background-color 160ms ease;
+  }
+
+  .client-project-row:hover {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  /* app-tabs, which is the same strip as .project-tabs with one difference:
+     the project page puts the label in its own element at weight 500, and this
+     page puts it straight in the tab, where it keeps the inherited weight
+     until w--current adds 500 along with the rule. */
+  .project-tabs.is-plain .project-tab {
+    font-weight: 400;
+  }
+
+  .project-tabs.is-plain .project-tab[aria-selected='true'] {
+    font-weight: 500;
+  }
+
   /* ======================================================== the clients list
    * Track's `/clients`, read off the running page and its Webflow style
    * records. The page was duplicated from `/partners`, so the row is still

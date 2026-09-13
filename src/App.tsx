@@ -4,6 +4,7 @@ import { useSession } from './lib/auth'
 import { useIsStaff } from './lib/staff'
 import { supabase } from './lib/supabase'
 import Inbox from './routes/Inbox'
+import Client from './routes/Client'
 import Clients from './routes/Clients'
 import Library from './routes/Library'
 import Login from './routes/Login'
@@ -68,6 +69,7 @@ export default function App() {
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/:id" element={<Project />} />
         <Route path="/clients" element={<Clients />} />
+        <Route path="/clients/:uuid" element={<Client />} />
         <Route path="/playlists" element={<Playlists />} />
         <Route path="/playlists/:id" element={<PlaylistRoute />} />
         <Route path="/library" element={<Library />} />

@@ -415,3 +415,110 @@ export function useClients() {
     },
   })
 }
+
+/** One client, for `/clients/:uuid`. */
+export function useClient(uuid: string | undefined) {
+  return useQuery({
+    enabled: !!uuid,
+    queryKey: ['mirror', 'client', uuid],
+    queryFn: async (): Promise<Client | null> => {
+      // client_detail, not client_list: get_client_detail has no archive
+      // filter, so an archived client is off the list and still opens by URL.
+      const { data, error } = await mirror
+        .from('client_detail')
+        .select('*')
+        .eq('uuid', uuid!)
+        .maybeSingle()
+      if (error) throw error
+      return (data as Client) ?? null
+    },
+  })
+}
+
+/** A project as the client page lists it — five columns, not the list's eight. */
+export type ClientProject = {
+  id: number
+  uuid: string | null
+  title: string | null
+  sequel_no: string | null
+  brand: string | null
+  campaign_name: string | null
+  projects_status: number | null
+  stage_text: string | null
+  // The counters key on this, not on service_name: 1 Composition,
+  // 2 Commercial, 3 Library, 4 Sonic Branding, 5 Sound Design, 6 Talent.
+  services_id: number | null
+  service_name: string | null
+  pipeline_gbp: number | null
+}
+
+/**
+ * The client's projects, newest first.
+ *
+ * ⚠️ Joined on `client_agency`. Project Master List has two client-ish
+ * columns and `client` is the other one — an FK to Client Groups, not to
+ * Clients.
+ */
+export function useClientProjects(clientId: number | undefined) {
+  return useQuery({
+    enabled: Number.isFinite(clientId),
+    queryKey: ['mirror', 'client-projects', clientId],
+    queryFn: async (): Promise<ClientProject[]> => {
+      const { data, error } = await mirror
+        .from('client_projects')
+        .select('*')
+        .eq('client_agency', clientId!)
+        .order('id', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as ClientProject[]
+    },
+  })
+}
+
+export type ClientProfit = {
+  client_id: number
+  year: number
+  total_profit_gbp: number
+  ytd_profit_gbp: number
+  invoices_counted: number
+  /**
+   * Invoices whose QuickBooks rate was never pulled. They are left out of both
+   * totals rather than counted at zero, which would understate the profit
+   * quietly. Nothing on the page shows this yet; Track does not show it
+   * either, and the number is here so it can be.
+   */
+  invoices_unrated: number
+}
+
+/**
+ * The two profit tiles, in GBP.
+ *
+ * Each invoice is converted at `exchange_rate_lock` — the rate QuickBooks
+ * applied on the day, stamped on the invoice — so a historic total never moves
+ * when rates change. Profit means `total_sequel_profit`: every Sequel fee
+ * including studio fees and contingency, and no supplier lines.
+ *
+ * The year is passed in rather than derived on the server, as Track does it,
+ * which is also what lets a past year be asked for.
+ */
+export function useClientProfit(clientId: number | undefined, year: number) {
+  return useQuery({
+    enabled: Number.isFinite(clientId),
+    queryKey: ['mirror', 'client-profit', clientId, year],
+    queryFn: async (): Promise<ClientProfit | null> => {
+      const { data, error } = await (supabase as unknown as SupabaseClient).rpc(
+        'track_client_profit',
+        { p_client: clientId!, p_year: year },
+      )
+      if (error) throw error
+      const row = (data as ClientProfit[] | null)?.[0]
+      if (!row) return null
+      // Postgres hands numerics back as strings over PostgREST.
+      return {
+        ...row,
+        total_profit_gbp: Number(row.total_profit_gbp),
+        ytd_profit_gbp: Number(row.ytd_profit_gbp),
+      }
+    },
+  })
+}
