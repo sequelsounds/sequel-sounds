@@ -522,3 +522,86 @@ export function useClientProfit(clientId: number | undefined, year: number) {
     },
   })
 }
+
+/**
+ * A supplier, as `/partners` lists them.
+ *
+ * One table, `Supplier List`, split by type: `/partners` is everything that is
+ * NOT a Composition Team, `/roster` is only the Composition Teams. Xano's
+ * endpoint for the first is called `get_all_suppliers`, which it is not.
+ */
+export type Partner = {
+  id: number
+  uuid: string | null
+  title: string | null
+  supplier_type: string | null
+  briefing_list: string | null
+  approved: boolean | null
+  strengths: string | null
+  brief_email: string | null
+  website: string | null
+  city: string | null
+  ca_status: string | null
+  country_id: number | null
+  country_text: string | null
+  region_id: number | null
+  region_text: string | null
+}
+
+/**
+ * Every supplier that is not a composition team.
+ *
+ * ⚠️ Ordered by title, where Track has no order at all. `get_all_suppliers` is
+ * a bare query with no `sort`, so Track shows heap order — today it opens id 8,
+ * 149, 113, 22, 111 — and that order changes whenever a supplier is edited.
+ * There is nothing to reproduce, so this picks a stable one.
+ */
+export function usePartners() {
+  return useQuery({
+    queryKey: ['mirror', 'partners'],
+    queryFn: async (): Promise<Partner[]> => {
+      const { data, error } = await mirror
+        .from('partner_list')
+        .select('*')
+        .order('title', { ascending: true })
+      if (error) throw error
+      return (data ?? []) as Partner[]
+    },
+  })
+}
+
+/** One supplier, for `/partners/:uuid`. */
+export type PartnerDetail = Partner & {
+  bio: string | null
+  phone_number: string | null
+  creative_team_member_1_name: string | null
+  creative_team_member_1_email: string | null
+  creative_team_member_2_name: string | null
+  creative_team_member_2_email: string | null
+  creative_team_member_3_name: string | null
+  creative_team_member_3_email: string | null
+  clearance_contact_name_1: string | null
+  clearance_contact_email_1: string | null
+  clearance_contact_name_2: string | null
+  clearance_contact_email_2: string | null
+  finance_email: string | null
+  qbo_vendor_id: string | null
+  default_currency_id: number | null
+  vat_registered: boolean | null
+}
+
+export function usePartner(uuid: string | undefined) {
+  return useQuery({
+    enabled: !!uuid,
+    queryKey: ['mirror', 'partner', uuid],
+    queryFn: async (): Promise<PartnerDetail | null> => {
+      const { data, error } = await mirror
+        .from('partner_detail')
+        .select('*')
+        .eq('uuid', uuid!)
+        .maybeSingle()
+      if (error) throw error
+      return (data as PartnerDetail) ?? null
+    },
+  })
+}

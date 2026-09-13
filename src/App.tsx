@@ -8,6 +8,8 @@ import Client from './routes/Client'
 import Clients from './routes/Clients'
 import Library from './routes/Library'
 import Login from './routes/Login'
+import Partner from './routes/Partner'
+import Partners from './routes/Partners'
 import Playlists, { PlaylistRoute } from './routes/Playlists'
 import Project from './routes/Project'
 import Projects from './routes/Projects'
@@ -70,6 +72,8 @@ export default function App() {
         <Route path="/projects/:id" element={<Project />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/clients/:uuid" element={<Client />} />
+        <Route path="/partners" element={<Partners />} />
+        <Route path="/partners/:uuid" element={<Partner />} />
         <Route path="/playlists" element={<Playlists />} />
         <Route path="/playlists/:id" element={<PlaylistRoute />} />
         <Route path="/library" element={<Library />} />

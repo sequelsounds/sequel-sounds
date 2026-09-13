@@ -196,12 +196,10 @@ export default function Clients() {
             </div>
           ))}
 
+        {/* Track's own four words, in Track's own row — no-result-row, the
+            same height and indent as the rows it stands in for. */}
         {clients.data && rows.length === 0 && (
-          <p className="empty-note py-6">
-            {q || region != null
-              ? 'No clients match that.'
-              : 'No clients on this account.'}
-          </p>
+          <div className="no-result-row">No results found</div>
         )}
       </div>
     </>

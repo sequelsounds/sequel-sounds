@@ -20,7 +20,7 @@ import SequelLogo from '../SequelLogo'
 
 // The twelve, in Track's order. `to` is null where the page has not been
 // rebuilt yet: those are shown and not clickable, because a nav that quietly
-// omitted eight of its items would misrepresent how far along this is.
+// omitted seven of its items would misrepresent how far along this is.
 const LINKS: { label: string; to: string | null }[] = [
   { label: 'Dashboard', to: null },
   { label: 'Management', to: null },
@@ -28,7 +28,7 @@ const LINKS: { label: string; to: string | null }[] = [
   { label: 'Projects', to: '/projects' },
   { label: 'Roster', to: null },
   { label: 'Songs', to: null },
-  { label: 'Partners', to: null },
+  { label: 'Partners', to: '/partners' },
   { label: 'Clients', to: '/clients' },
   { label: 'Users', to: null },
   { label: 'Finance', to: null },
