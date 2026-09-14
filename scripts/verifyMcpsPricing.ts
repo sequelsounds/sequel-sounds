@@ -73,6 +73,7 @@ const REF: McpsReference = {
 const blank: McpsAnswers = {
   media: [],
   territoryText: '',
+  worldwideAnswer: false,
   territory: { is_worldwide: false, whole_continents: [], countries: [], distinct_continents: [] },
   multipleScripts: false,
   duration: '30 seconds or less',
@@ -144,7 +145,7 @@ console.log('\nQuote 379 — TV + VOD + Online, Mexico, online NOT worldwide, Ca
         is_worldwide: false,
         whole_continents: [],
         countries: ['Mexico'],
-        distinct_continents: ['Latin America'],
+        distinct_continents: ['North America'],
       },
       multipleScripts: true,
       onlineWorldwide: false,
@@ -179,7 +180,7 @@ console.log('\nQuote 380 — the same + Public Location, Mexico. The run that ex
         is_worldwide: false,
         whole_continents: [],
         countries: ['Mexico'],
-        distinct_continents: ['Latin America'],
+        distinct_continents: ['North America'],
       },
       multipleScripts: true,
       onlineWorldwide: false,
@@ -371,7 +372,7 @@ console.log('\nThe first line of the cap order — online bought worldwide force
       is_worldwide: false,
       whole_continents: [],
       countries: ['Mexico'],
-      distinct_continents: ['Latin America'],
+      distinct_continents: ['North America'],
     },
     onlineWorldwide: true,
   }
@@ -385,6 +386,98 @@ console.log('\nThe first line of the cap order — online bought worldwide force
   const narrow = priceMcps({ ...answers, onlineWorldwide: false }, REF, ctx)
   check('without the override, cap tier narrows', narrow.capTier, 'Single Country')
   check('and the cap is far lower', narrow.cap, 312500)
+}
+
+// ---------------------------------------------------------------------------
+console.log('\nWorldwide answered by button — replaces the typed text (§8 input worldwide_yn)')
+{
+  const r = priceMcps(
+    {
+      ...blank,
+      media: ['Linear TV (Excluding VOD)'],
+      territoryText: '',
+      worldwideAnswer: true,
+      territory: { is_worldwide: true, whole_continents: [], countries: [], distinct_continents: [] },
+    },
+    REF,
+    { region: 'Europe', currency: 'GBP' },
+  )
+  check('Territory', r.territory, 'Worldwide')
+  check('MCPS_territories', r.territoriesAsked, 'Worldwide')
+  check('priced at the worldwide row', r.perTrackGbp, 585000)
+}
+
+// ---------------------------------------------------------------------------
+console.log('\nTerritory at rank 2 names ALL the distinct continents, joined')
+// Europe plus one country outside it, reached through the mixed option.
+{
+  const r = priceMcps(
+    {
+      ...blank,
+      media: ['Video On Demand'],
+      territoryText: 'Europe and USA',
+      territory: {
+        is_worldwide: false,
+        whole_continents: ['Europe'],
+        countries: ['USA'],
+        distinct_continents: ['Europe', 'North America'],
+      },
+    },
+    REF,
+    { region: 'Europe', currency: 'GBP' },
+  )
+  // Continent 106,000 + country 76,000 = 182,000, against 200,000 worldwide.
+  check('mixed option wins', r.perTrackGbp, 182000)
+  check('Territory joins both', r.territory, 'Europe and North America')
+}
+
+// ---------------------------------------------------------------------------
+console.log('\nTwo whole continents and no countries — the old app has no option for it (DEFECT, ported as-is)')
+{
+  const r = priceMcps(
+    {
+      ...blank,
+      media: ['Linear TV (Excluding VOD)'],
+      territoryText: 'Europe and Asia',
+      territory: {
+        is_worldwide: false,
+        whole_continents: ['Europe', 'Asia'],
+        countries: [],
+        distinct_continents: ['Europe', 'Asia'],
+      },
+    },
+    REF,
+    { region: 'Europe', currency: 'GBP' },
+  )
+  // Two Single Continent licences at the per-30s rate would be 550,000. The
+  // old app has no option that expresses that, so it falls back to the
+  // worldwide row at 585,000 and over-charges by 35,000 a track.
+  check('falls back to worldwide', r.perTrackGbp, 585000)
+  check('two continent licences would have been cheaper', 275000 * 2 < 585000, true)
+}
+
+// ---------------------------------------------------------------------------
+console.log('\nCutdowns and the note are derived from the rate, not the button')
+{
+  const base = {
+    ...blank,
+    media: ['All Media'],
+    territoryText: 'Spain',
+    territory: {
+      is_worldwide: false,
+      whole_continents: [],
+      countries: ['Spain'],
+      distinct_continents: ['Europe'],
+    },
+  }
+  const ctx = { region: 'Europe', currency: 'GBP' }
+  check('per-30s: no cutdowns', priceMcps(base, REF, ctx).cutdowns, false)
+  check('per-30s: note', priceMcps(base, REF, ctx).note, 'NA')
+  check('cutdowns answered yes -> Track_Rate -> derived true',
+    priceMcps({ ...base, cutdowns: true }, REF, ctx).cutdowns, true)
+  check('multiple scripts -> Campaign_Rate -> derived true',
+    priceMcps({ ...base, multipleScripts: true }, REF, ctx).cutdowns, true)
+  check('scripts', priceMcps({ ...base, multipleScripts: true }, REF, ctx).scripts, 'Multiple')
 }
 
 // ---------------------------------------------------------------------------

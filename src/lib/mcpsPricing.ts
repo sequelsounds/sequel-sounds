@@ -54,6 +54,12 @@ export type McpsAnswers = {
   media: string[]
   /** The territory text as typed, kept for the stored row. */
   territoryText: string
+  /**
+   * The worldwide YES/NO button, which is asked BEFORE the territory text and
+   * replaces it. The old app stores "Worldwide" as the requested territory in
+   * that case, not an empty string.
+   */
+  worldwideAnswer: boolean
   /** The classifier's reading of that text. */
   territory: TerritoryStructure
   multipleScripts: boolean
@@ -152,6 +158,15 @@ export type McpsPrice = {
   /** null when no online medium was selected. */
   onlineWorldwide: boolean | null
 
+  /** Hardcoded "Perpetuity", blanked on a searches-only quote. */
+  term: string
+  /** "Multiple" or "1", blanked on a searches-only quote. */
+  scripts: string
+  duration: string
+  /** DERIVED from the rate that resolved, not from the cutdowns button. */
+  cutdowns: boolean | null
+  note: string
+
   tracks: number
   /** Per track, GBP, minor units. The Sequel fee needs this, not the multiplied figure. */
   perTrackGbp: number
@@ -212,9 +227,18 @@ function tiersFor(rateCard: RateCardRow[], medium: string, rateType: RateType) {
   return { ww: at(TIER_WORLDWIDE), cont: at(TIER_CONTINENT), cty: at(TIER_COUNTRY) }
 }
 
-/** Everything asked for sits inside a single continent, so one continent licence covers it. */
-function withinOneContinent(t: TerritoryStructure): boolean {
-  return t.whole_continents.length <= 1 && t.distinct_continents.length === 1
+/**
+ * Sets the territory to worldwide when the classifier named nothing at all.
+ *
+ * Over-recovers rather than under-recovers — wrong in the safe direction. It
+ * is also what a legitimate "Worldwide" answer looks like: is_worldwide true
+ * and every array empty.
+ */
+export function normaliseTerritory(t: TerritoryStructure): TerritoryStructure {
+  if (t.countries.length === 0 && t.whole_continents.length === 0) {
+    return { ...t, is_worldwide: true }
+  }
+  return t
 }
 
 /**
@@ -228,6 +252,12 @@ function withinOneContinent(t: TerritoryStructure): boolean {
  * to Worldwide (§8.14). The rows were deleted and those media are now detected
  * structurally instead. Changing this to `<=` would record Public Location as
  * Single Country, which is wrong the other way — MCPS only sells it worldwide.
+ *
+ * ⚠️ The three options carry the old app's conditions exactly, including the
+ * gap: buying SEVERAL whole continents and no countries is not one of them.
+ * Europe + Asia on Linear TV is 825,000 as two continent licences and 877,500
+ * worldwide, so the old app charges the dearer one. Recorded as a defect, not
+ * corrected here — this is a port.
  */
 export function priceMedium(
   medium: string,
@@ -239,58 +269,75 @@ export function priceMedium(
   const { ww, cont, cty } = tiersFor(rateCard, medium, rateType)
 
   const isOnline = medium === ONLINE_INCL_SOCIAL || medium === SOCIAL_ONLY
-  const worldwideOnly = ww != null && cont == null && cty == null
+  const forcedWorldwide = isOnline && onlineWorldwide
 
-  const base = { medium, worldwideOnly, forcedWorldwide: false, notSoldAtScope: false }
+  /**
+   * ⚠️ Structural, and deliberately does NOT require a Worldwide row: the test
+   * is the ABSENCE of the two narrower ones. Re-adding the phantom rate card
+   * rows brings the 24 August territory bug straight back.
+   */
+  const worldwideOnly = cont == null && cty == null
 
-  // The online override, before anything else is considered (§8.7).
-  if (isOnline && onlineWorldwide && ww != null) {
-    return { ...base, price: ww, scope: SCOPE_WORLDWIDE, tier: TIER_WORLDWIDE, forcedWorldwide: true }
+  let price: number | null = null
+  let scope = SCOPE_NONE
+
+  if (ww != null) {
+    price = ww
+    scope = SCOPE_WORLDWIDE
   }
 
-  // Sold at one tier only — there is nothing to search.
-  if (worldwideOnly) {
-    return { ...base, price: ww, scope: SCOPE_WORLDWIDE, tier: TIER_WORLDWIDE }
-  }
-
-  if (t.is_worldwide) {
-    if (ww == null) return { ...base, price: 0, scope: SCOPE_NONE, tier: '', notSoldAtScope: true }
-    return { ...base, price: ww, scope: SCOPE_WORLDWIDE, tier: TIER_WORLDWIDE }
-  }
-
-  let best: { price: number; scope: number; tier: string } | null =
-    ww == null ? null : { price: ww, scope: SCOPE_WORLDWIDE, tier: TIER_WORLDWIDE }
-
-  // One continent licence, when everything sits inside one continent.
-  if (cont != null && withinOneContinent(t)) {
-    if (best == null || cont < best.price) {
-      best = { price: cont, scope: SCOPE_CONTINENT, tier: TIER_CONTINENT }
+  // Narrowing is skipped entirely for forced-worldwide online and for a
+  // worldwide request — there is nothing cheaper to look for.
+  if (!forcedWorldwide && !t.is_worldwide) {
+    // Buy the whole continent. Lawful only when everything sits in one.
+    if (t.distinct_continents.length === 1 && cont != null) {
+      if (price == null || cont < price) {
+        price = cont
+        scope = SCOPE_CONTINENT
+      }
     }
-  }
 
-  // Continents and countries bought individually. With no whole continent
-  // requested this is simply the country rate times the count.
-  const nCont = t.whole_continents.length
-  const nCty = t.countries.length
-  const haveRows = (nCont === 0 || cont != null) && (nCty === 0 || cty != null)
-  if (haveRows && nCont + nCty > 0) {
-    const combo = (cont ?? 0) * nCont + (cty ?? 0) * nCty
-    if (best == null || combo < best.price) {
-      best = {
-        price: combo,
-        scope: nCont > 0 ? SCOPE_CONTINENT : SCOPE_COUNTRY,
-        tier: nCont > 0 ? TIER_CONTINENT : TIER_COUNTRY,
+    // Buy each country separately. Lawful only when no whole continent was asked for.
+    if (t.whole_continents.length === 0 && t.countries.length > 0 && cty != null) {
+      const opt = cty * t.countries.length
+      if (price == null || opt < price) {
+        price = opt
+        scope = SCOPE_COUNTRY
+      }
+    }
+
+    // Whole continents PLUS separately named countries.
+    if (t.whole_continents.length > 0 && t.countries.length > 0 && cont != null && cty != null) {
+      const opt = cont * t.whole_continents.length + cty * t.countries.length
+      if (price == null || opt < price) {
+        price = opt
+        scope = SCOPE_CONTINENT
       }
     }
   }
 
   // Radio across a continent lands here: sold at Single Country only, and a
   // continent was asked for. The All Media cap becomes the price outright.
-  if (best == null) {
-    return { ...base, price: 0, scope: SCOPE_NONE, tier: '', notSoldAtScope: true }
-  }
+  const notSoldAtScope = price == null
 
-  return { ...base, ...best }
+  const tier =
+    notSoldAtScope || scope === SCOPE_NONE
+      ? ''
+      : scope === SCOPE_WORLDWIDE
+        ? TIER_WORLDWIDE
+        : scope === SCOPE_CONTINENT
+          ? TIER_CONTINENT
+          : TIER_COUNTRY
+
+  return {
+    medium,
+    price: price ?? 0,
+    scope: notSoldAtScope ? SCOPE_NONE : scope,
+    tier,
+    worldwideOnly,
+    forcedWorldwide,
+    notSoldAtScope,
+  }
 }
 
 /**
@@ -308,7 +355,6 @@ export function capTierFor(t: TerritoryStructure, onlineForcedWorldwide: boolean
   if (t.whole_continents.length > 0) return TIER_CONTINENT
   if (t.countries.length > 1) return TIER_CONTINENT
   if (t.countries.length === 1) return TIER_COUNTRY
-  // Nothing territory-driven at all. Over-recovers rather than under-recovers.
   return TIER_WORLDWIDE
 }
 
@@ -317,7 +363,10 @@ export function trackMultiplier(tracks: number | null): number {
   return tracks == null || tracks === 0 ? 1 : tracks
 }
 
-export function priceMcps(a: McpsAnswers, ref: McpsReference, ctx: McpsContext): McpsPrice {
+export function priceMcps(answers: McpsAnswers, ref: McpsReference, ctx: McpsContext): McpsPrice {
+  const a = { ...answers, territory: normaliseTerritory(answers.territory) }
+  const t = a.territory
+
   const rateType = rateTypeFor(a)
   const currencyKey = ctx.currency.toLowerCase()
   const fx = ref.fx[currencyKey] ?? 1
@@ -327,11 +376,11 @@ export function priceMcps(a: McpsAnswers, ref: McpsReference, ctx: McpsContext):
   const tracks = trackMultiplier(a.tracks)
   const searchFee = searchRate * Math.max(0, a.searchesCount || 0)
 
-  const mediaAnswered = a.searchesOnly ? [] : normaliseMedia(a.media)
+  /** Answering worldwide REPLACES the typed text, it does not sit beside it. */
+  const requested = a.worldwideAnswer ? 'Worldwide' : a.territoryText
 
-  const perMedium = mediaAnswered.map((m) =>
-    priceMedium(m, ref.rateCard, rateType, a.territory, a.onlineWorldwide),
-  )
+  const mediaAnswered = a.searchesOnly ? [] : normaliseMedia(a.media)
+  const perMedium = mediaAnswered.map((m) => priceMedium(m, ref.rateCard, rateType, t, a.onlineWorldwide))
 
   const mediaSum = perMedium.reduce((n, m) => n + m.price, 0)
   const notSoldAtScope = perMedium.some((m) => m.notSoldAtScope)
@@ -339,13 +388,13 @@ export function priceMcps(a: McpsAnswers, ref: McpsReference, ctx: McpsContext):
   const onlineSelected = mediaAnswered.some((m) => m === ONLINE_INCL_SOCIAL || m === SOCIAL_ONLY)
   const onlineForcedWorldwide = onlineSelected && a.onlineWorldwide
 
-  const capTier = capTierFor(a.territory, onlineForcedWorldwide)
+  const capTier = capTierFor(t, onlineForcedWorldwide)
   const capRow = ref.rateCard.find((r) => r.media === ALL_MEDIA && r.territory === capTier)
-  const cap = capRow ? capRow[rateType] : 0
+  const cap = capRow ? capRow[rateType] : null
 
-  // ⚠️ The cap fires on a TIE — `>=`, not `>`.
-  const capped = mediaAnswered.length > 0 && (notSoldAtScope || mediaSum >= cap)
-  const perTrackGbp = mediaAnswered.length === 0 ? 0 : capped ? cap : mediaSum
+  // ⚠️ The cap fires on a TIE — `>=`, not `>`. Not-sold-at-scope takes it outright.
+  const capped = cap != null && (notSoldAtScope || mediaSum >= cap)
+  const perTrackGbp = capped && cap != null ? cap : mediaSum
 
   /**
    * What the stored `Territory` says (§8.8). Three classes of medium are
@@ -354,33 +403,42 @@ export function priceMcps(a: McpsAnswers, ref: McpsReference, ctx: McpsContext):
    * grant, so a capped quote can read All Media / Mexico: widened on media,
    * held on territory. Quote 380 is the worked example.
    */
-  const rankable = perMedium.filter((m) => !m.forcedWorldwide && !m.worldwideOnly && !m.notSoldAtScope)
+  const rankable = perMedium.filter((m) => !m.forcedWorldwide && !m.worldwideOnly)
   const scope = rankable.reduce((n, m) => Math.max(n, m.scope), SCOPE_NONE)
-  const continentName = a.territory.whole_continents[0] ?? a.territory.distinct_continents[0] ?? ''
 
-  let territory = ''
-  if (!a.searchesOnly) {
-    if (scope === SCOPE_WORLDWIDE) territory = 'Worldwide'
-    else if (scope === SCOPE_CONTINENT && continentName) territory = continentName
-    // Rank 1 and rank 0 both fall through to what was typed. Rank 0 means every
-    // medium was online-forced or worldwide-only; "Worldwide" would overstate it.
-    else territory = a.territoryText
-  }
+  /**
+   * ⚠️ ALL the distinct continents, joined — not the first one. A quote that
+   * reaches rank 2 through the mixed option can legitimately span two, and
+   * "Europe and North America" is what the old app writes. The literal string
+   * "Single Continent" is its fallback when the classifier named none.
+   */
+  const continentNames = t.distinct_continents.length > 0 ? t.distinct_continents.join(' and ') : TIER_CONTINENT
 
-  const mediaBought = capped || notSoldAtScope ? [ALL_MEDIA] : mediaAnswered
+  let territory = requested
+  if (scope === SCOPE_WORLDWIDE) territory = 'Worldwide'
+  else if (scope === SCOPE_CONTINENT) territory = continentNames
+
+  const mediaBought = capped ? [ALL_MEDIA] : mediaAnswered
 
   /** The bundle really does decide whether the online lines are worldwide. */
-  const onlineLinesWorldwide = capped
-    ? capTier === TIER_WORLDWIDE
-    : perMedium.some(
-        (m) =>
-          (m.medium === ONLINE_INCL_SOCIAL || m.medium === SOCIAL_ONLY) && m.tier === TIER_WORLDWIDE,
-      )
+  let onlineScope = perMedium
+    .filter((m) => m.medium === ONLINE_INCL_SOCIAL || m.medium === SOCIAL_ONLY)
+    .reduce((n, m) => Math.max(n, m.scope), SCOPE_NONE)
+  if (capped && onlineSelected) {
+    onlineScope =
+      capTier === TIER_WORLDWIDE ? SCOPE_WORLDWIDE : capTier === TIER_CONTINENT ? SCOPE_CONTINENT : SCOPE_COUNTRY
+  }
 
-  // Rounded to whole minor units BEFORE the 10% is taken, because the Sequel
-  // fee is a percentage of the rounded figure, not of the raw product.
+  /**
+   * ⚠️ ROUNDING ORDER. The licence fee is the MULTIPLIED figure converted and
+   * then rounded once; the per-track figure is converted and rounded on its
+   * own, for the Sequel fee. Rounding per track and then multiplying gives a
+   * different answer on fractional rates, and the stored quotes were written
+   * the first way.
+   */
+  const finalGbp = perTrackGbp * tracks
+  const licenceFeeLocal = Math.round(finalGbp * fx * uplift)
   const perTrackLocal = Math.round(perTrackGbp * fx * uplift)
-  const licenceFeeLocal = perTrackLocal * tracks
 
   /**
    * ⚠️ The minimum applies to EACH TRACK, not once across the quote. Two tracks
@@ -391,23 +449,65 @@ export function priceMcps(a: McpsAnswers, ref: McpsReference, ctx: McpsContext):
    * ⚠️ Guarded on a positive licence fee. The old app's `max:` returns the
    * LARGER of the two despite its name, so a zero licence fee came back as the
    * regional minimum — a licensing fee for a licence nobody bought (§8.12).
+   *
+   * ⚠️ NOT rounded, because the old app does not round it. 10% of an odd figure
+   * stores fractional minor units. Recorded as a defect rather than corrected.
    */
-  const sequelPerTrack = perTrackLocal > 0 ? Math.max(Math.round(perTrackLocal * 0.1), minFee) : 0
+  const sequelPerTrack = perTrackLocal > 0 ? Math.max(perTrackLocal * 0.1, minFee) : 0
   const sequelLicensingFee = sequelPerTrack * tracks
+
+  /**
+   * Cutdowns and the note are DERIVED from the rate that resolved, not from
+   * the cutdowns button. Campaign and Track rates both include them.
+   */
+  let cutdowns: boolean | null = false
+  let note = 'NA'
+  if (rateType === 'campaign_rate') {
+    cutdowns = true
+    note = 'Includes unlimited cutdowns launched within 12 months of the first air date. '
+  } else if (rateType === 'track_rate') {
+    cutdowns = true
+    note =
+      'Includes unlimited adverts of a developing theme for a single product, under the same media and territory, launched within 12-months of the air date.'
+  }
+
+  let term = 'Perpetuity'
+  let scripts = a.multipleScripts ? 'Multiple' : '1'
+  let duration = a.duration
+  let territoriesAsked = requested
+
+  /**
+   * A searches-only quote was never asked any of these. Blanked at the SOURCE,
+   * not merely hidden on the page, so the stored row does not assert a
+   * perpetual worldwide licence that nobody agreed and nobody paid for (§8.13).
+   */
+  if (a.searchesOnly) {
+    term = ''
+    scripts = ''
+    duration = ''
+    cutdowns = null
+    territory = ''
+    territoriesAsked = ''
+  }
 
   return {
     rateType,
     perMedium,
     mediaSum,
-    cap,
+    cap: cap ?? 0,
     capTier,
     capped,
     notSoldAtScope,
     mediaBought,
     mediaAnswered,
     territory,
-    territoriesAsked: a.territoryText,
-    onlineWorldwide: onlineSelected ? onlineLinesWorldwide : null,
+    territoriesAsked,
+    onlineWorldwide: onlineSelected ? onlineScope === SCOPE_WORLDWIDE : null,
+    term,
+    scripts,
+    duration,
+    cutdowns,
+    note,
     tracks,
     perTrackGbp,
     perTrackLocal,
