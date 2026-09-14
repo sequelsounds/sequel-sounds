@@ -4,11 +4,19 @@ import { supabase } from './supabase'
 
 /**
  * Sequel Track's data, read from the `xano_mirror` schema in Supabase: a
- * replica of Xano kept in step by the sync_xano_mirror task, every 15 minutes.
+ * replica of Xano kept in step by the sync_xano_mirror task, hourly since
+ * 13 September 2026.
  *
- * Nothing here writes. Xano is still the system of record and the mirror has
- * no insert, update or delete policies at all, so a stray mutation fails at
- * the database rather than quietly diverging from Xano.
+ * Nothing in THIS file writes — the hooks here are reads, and the writes live
+ * beside them in `supplierWrites.ts` and whatever follows it.
+ *
+ * ⚠️ "Replica" is no longer true of every table. A table is taken OUT of
+ * sync_xano_mirror when the rebuild starts writing it, and Supabase becomes
+ * the original for it from that moment; the sync would otherwise put every
+ * edit back on the hour, and delete anything created. `supplier_list` went
+ * first, on 13 September 2026. Everything else here is still a replica, and
+ * still has no insert, update or delete policy at all, so a stray mutation
+ * fails at the database rather than quietly diverging from Xano.
  *
  * Visibility is RLS, not query filters. Staff see everything; a client user
  * sees only the projects they are named on. Every view below is
@@ -241,7 +249,7 @@ export type ProjectFile = {
  * CLAUDE.md), so the cast is what lets the authenticated client reach the
  * mirror. Rows are typed on the way out instead.
  */
-const mirror = (supabase as unknown as SupabaseClient).schema('xano_mirror')
+export const mirror = (supabase as unknown as SupabaseClient).schema('xano_mirror')
 
 async function rows<T>(view: string, projectId: number, order: string) {
   const { data, error } = await mirror

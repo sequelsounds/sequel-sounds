@@ -1951,13 +1951,67 @@
     resize: none;
   }
 
-  /* Nothing on this page saves yet - Xano is still the only writer. A
-     control that looks editable and silently discards what you type is
-     worse than one that says it is not ready, so read-only fields show the
-     no-entry cursor rather than being made to look live. */
+  /* A control that looks editable and silently discards what you type is
+     worse than one that says it is not ready, so the fields that still cannot
+     be written - the QuickBooks vendor and the billing address - show the
+     no-entry cursor rather than being made to look live. `:disabled` is the
+     same treatment for the moment a field is mid-save. */
   .edit-field-input[readonly],
   .edit-field-input:disabled {
     cursor: not-allowed;
+  }
+
+  /* The supplier fields DO save, one at a time, on blur - so they need a focus
+     ring, which a page of read-only boxes never did. Sequel Brown at full
+     strength against the same line colour at 50%. */
+  .edit-field-input:focus-visible {
+    outline: none;
+    border-color: var(--color-sequel-brown);
+  }
+
+  /* Label on the left, what just happened to this field on the right. The row
+     keeps the label's own 5px gap to the control, so adding the status does
+     not move the field. */
+  .edit-field-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .edit-field-head .edit-field-label {
+    margin-bottom: 5px;
+  }
+
+  /* Deliberately quiet: this is confirmation, not an announcement, and it sits
+     beside a label at the same size. An error is the exception and is allowed
+     to wrap. */
+  .edit-field-status {
+    flex: 0 1 auto;
+    margin-bottom: 5px;
+    color: var(--color-sequel-mid);
+    font-size: 0.7rem;
+    line-height: 0.8rem;
+    text-align: right;
+  }
+
+  .edit-field-status.is-saved {
+    color: var(--color-sequel-brown);
+  }
+
+  .edit-field-status.is-error {
+    color: var(--color-sequel-error-ink);
+    font-weight: 500;
+  }
+
+  /* The FK fields are selects. Same box as the text field, minus the padding
+     lie: a select's text sits differently, and `align-items` does nothing to
+     it. */
+  .edit-field-select {
+    display: block;
+    padding-right: 0.25rem;
+    background-color: rgb(255 255 255 / 5%);
+    appearance: auto;
   }
 
   /* ------------------------------------------------------------- the lists

@@ -1,30 +1,38 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
+import { EditField, EditSelect, ReadOnlyField } from '../components/staff/EditField'
 import { usePartner } from '../lib/xanoMirror'
+import { useCountries, useSaveSupplier, type SupplierPatch } from '../lib/supplierWrites'
 
 /**
- * One supplier — Sequel Track's `/partner-edit`, rebuilt.
+ * One supplier — Sequel Track's `/partner-edit`, rebuilt, and the first page
+ * in the rebuild that writes.
  *
- * The August notes had this page built but never once loaded. It loads. What
- * loading it shows is that three things on Track's own version are unfinished,
- * and this recreates all three rather than quietly repairing them:
+ * `supplier_list` came out of Xano's sync task on 13 September 2026, so this
+ * table is Supabase's own now and an edit made here survives. It does NOT
+ * reach Xano: Track's `/partner-edit` and this page have been separate copies
+ * of the same supplier since that date. See `lib/supplierWrites.ts`.
  *
- *  1. **The three tiles are empty and always will be.** They are labelled
- *     Demos, Wins and Win Fees, and their bindings are `project_service_type`,
- *     `project_sequel_no` and `project_status` — left over from duplicating
- *     `/project`, which the notes predicted in August. They are bound to a
- *     project that does not exist on this page, so they render nothing.
- *  2. **The Projects tab is empty markup.** Not an empty state — no markup at
- *     all.
- *  3. **The eyebrow says "Roster".** Stoddart Music is a Sync Rep, not a
- *     composition team; the line came across when the page was duplicated from
- *     `/roster-edit` and was never changed.
+ * Track saves each field on blur with no submit button, and that is kept.
+ * What is not kept is Track's silence about it — every field there fires a
+ * request and the page says nothing either way, so a refused write is
+ * indistinguishable from a saved one until a reload. Here each field reports
+ * itself, which matters more on this side because the database refuses some of
+ * these writes deliberately.
  *
- * Read-only, so Track's save-on-blur behaviour is not here and the controls say
- * so. The one field this cannot fill is the billing address: it is read live
- * from QuickBooks and deliberately not stored in Xano, so there is nothing in
- * the mirror to show.
+ * Three things on Track's version are unfinished, and the first two are still
+ * recreated rather than quietly repaired:
+ *
+ *  1. **The three tiles are empty and always will be.** Labelled Demos, Wins
+ *     and Win Fees, bound to `project_service_type`, `project_sequel_no` and
+ *     `project_status` — left over from duplicating `/project`. They are bound
+ *     to a project that does not exist on this page, so they render nothing.
+ *  2. **The Projects tab is empty markup.** Not an empty state — no markup.
+ *  3. **The eyebrow said "Roster"** on a page showing a sync rep, because the
+ *     page was duplicated from `/roster-edit`. That one IS fixed: it was a
+ *     one-word mistake with nothing behind it, and reproducing a wrong label
+ *     on a page people now actually edit is not faithfulness, it is a bug.
  */
 
 const TABS = ['Overview', 'Contact', 'Projects', 'Finance'] as const
@@ -47,31 +55,11 @@ function Stat({
   )
 }
 
-function Field({
-  label,
-  value,
-  textarea,
-}: {
-  label: string
-  value: string | number | null | undefined
-  textarea?: boolean
-}) {
-  const v = value === null || value === undefined ? '' : String(value)
-  return (
-    <div className="edit-field">
-      <label className="edit-field-label">{label}</label>
-      {textarea ? (
-        <textarea className="edit-field-input edit-field-input-text" value={v} readOnly />
-      ) : (
-        <input className="edit-field-input" value={v} readOnly />
-      )}
-    </div>
-  )
-}
-
 export default function Partner() {
   const { uuid } = useParams()
   const partner = usePartner(uuid)
+  const countries = useCountries()
+  const save = useSaveSupplier(uuid)
   const [tab, setTab] = useState<Tab>('Overview')
 
   if (partner.isPending) {
@@ -85,13 +73,14 @@ export default function Partner() {
   if (!partner.data) return <p className="empty-note py-8">No partner with that link.</p>
 
   const p = partner.data
+  const put = (patch: SupplierPatch) => save.mutateAsync({ id: p.id, patch })
+  const text = (column: keyof SupplierPatch) => (next: string | null) =>
+    put({ [column]: next } as SupplierPatch)
 
   return (
     <>
       <div className="header-band">
-        {/* Track's word, not a mistake in the copying: /partner-edit was
-            duplicated from /roster-edit and the eyebrow came with it. */}
-        <div className="page-eyebrow">Roster</div>
+        <div className="page-eyebrow">Partners</div>
         <div className="title-row">
           <h1 className="page-title">{p.title ?? `Untitled (#${p.id})`}</h1>
         </div>
@@ -128,28 +117,82 @@ export default function Partner() {
       <div className="min-h-0 flex-1 overflow-auto pt-8">
         {tab === 'Overview' && (
           <div className="edit-form">
-            <Field label="Partner Name" value={p.title} />
-            <Field label="Bio" value={p.bio} textarea />
-            <Field label="Strengths" value={p.strengths} />
+            <EditField label="Partner Name" value={p.title} onSave={text('title')} />
+            <EditField label="Bio" value={p.bio} textarea onSave={text('bio')} />
+            <EditField label="Strengths" value={p.strengths} onSave={text('strengths')} />
           </div>
         )}
 
         {tab === 'Contact' && (
           <div className="edit-form">
-            <Field label="Briefing Email" value={p.brief_email} />
-            <Field label="Contact Number" value={p.phone_number} />
-            <Field label="Website" value={p.website} />
-            <Field label="Country" value={p.country_text} />
-            <Field label="Creative Contact 1 Name" value={p.creative_team_member_1_name} />
-            <Field label="Creative Contact 1 Email" value={p.creative_team_member_1_email} />
-            <Field label="Creative Contact 2 Name" value={p.creative_team_member_2_name} />
-            <Field label="Creative Contact 2 Email" value={p.creative_team_member_2_email} />
-            <Field label="Creative Contact 3 Name" value={p.creative_team_member_3_name} />
-            <Field label="Creative Contact 3 Email" value={p.creative_team_member_3_email} />
-            <Field label="Clearance Contact 1 Name" value={p.clearance_contact_name_1} />
-            <Field label="Clearance Contact 1 Email" value={p.clearance_contact_email_1} />
-            <Field label="Clearance Contact 2 Name" value={p.clearance_contact_name_2} />
-            <Field label="Clearance Contact 2 Email" value={p.clearance_contact_email_2} />
+            <EditField label="Briefing Email" value={p.brief_email} onSave={text('brief_email')} />
+            <EditField
+              label="Contact Number"
+              value={p.phone_number}
+              onSave={text('phone_number')}
+            />
+            <EditField label="Website" value={p.website} onSave={text('website')} />
+            <EditField label="City" value={p.city} onSave={text('city')} />
+            {/* Country is an FK to countries_list, which is why it is a select
+                and why it writes `countries_list_id` rather than the text the
+                view joins in. `Country_to_delete` is the legacy text column and
+                nothing here touches it. */}
+            <EditSelect
+              label="Country"
+              value={p.country_id}
+              options={(countries.data ?? []).map((c) => ({ id: c.id, label: c.country ?? '—' }))}
+              onSave={(next) => put({ countries_list_id: next })}
+            />
+            <EditField
+              label="Creative Contact 1 Name"
+              value={p.creative_team_member_1_name}
+              onSave={text('creative_team_member_1_name')}
+            />
+            <EditField
+              label="Creative Contact 1 Email"
+              value={p.creative_team_member_1_email}
+              onSave={text('creative_team_member_1_email')}
+            />
+            <EditField
+              label="Creative Contact 2 Name"
+              value={p.creative_team_member_2_name}
+              onSave={text('creative_team_member_2_name')}
+            />
+            <EditField
+              label="Creative Contact 2 Email"
+              value={p.creative_team_member_2_email}
+              onSave={text('creative_team_member_2_email')}
+            />
+            <EditField
+              label="Creative Contact 3 Name"
+              value={p.creative_team_member_3_name}
+              onSave={text('creative_team_member_3_name')}
+            />
+            <EditField
+              label="Creative Contact 3 Email"
+              value={p.creative_team_member_3_email}
+              onSave={text('creative_team_member_3_email')}
+            />
+            <EditField
+              label="Clearance Contact 1 Name"
+              value={p.clearance_contact_name_1}
+              onSave={text('clearance_contact_name_1')}
+            />
+            <EditField
+              label="Clearance Contact 1 Email"
+              value={p.clearance_contact_email_1}
+              onSave={text('clearance_contact_email_1')}
+            />
+            <EditField
+              label="Clearance Contact 2 Name"
+              value={p.clearance_contact_name_2}
+              onSave={text('clearance_contact_name_2')}
+            />
+            <EditField
+              label="Clearance Contact 2 Email"
+              value={p.clearance_contact_email_2}
+              onSave={text('clearance_contact_email_2')}
+            />
           </div>
         )}
 
@@ -159,17 +202,39 @@ export default function Partner() {
 
         {tab === 'Finance' && (
           <div className="edit-form">
-            {/* Track shows the vendor's name and currency, read from QuickBooks
-                — the currency matters, because a supplier billing in two
-                currencies is two vendors and a bill can go to the wrong one.
-                The mirror holds only the id, so the id is what this shows. */}
-            <Field label="QuickBooks Vendor" value={p.qbo_vendor_id} />
-            <Field label="Finance Email" value={p.finance_email} />
-            {/* Deliberately empty. QuickBooks is the source of truth for a
-                vendor's billing address and Xano stores no copy, so there is
-                nothing in the mirror to read. An unlinked supplier has no
-                address anywhere in the system. */}
-            <Field label="Billing Address (from QuickBooks)" value="" />
+            {/* ⚠️ NOT editable here, on purpose, and the one field on this page
+                that is a real gap rather than a copy of one.
+
+                Track edits it through a picker that lists QuickBooks' own
+                vendors as "Name — CURRENCY", because QuickBooks ties a vendor
+                to one currency and the same supplier can exist twice —
+                "Audio Network GBP" and "Audio Network Milan". Without the
+                currency the two are indistinguishable and a bill goes to the
+                wrong entity. The mirror holds only the id, so a text box here
+                would be a raw id typed by hand into exactly that trap.
+
+                The database already refuses this column to anyone who is not
+                finance (supplier_list_write_guard), so the guard is in place
+                and waiting for the picker rather than the other way round. */}
+            <ReadOnlyField
+              label="QuickBooks Vendor"
+              value={p.qbo_vendor_id}
+              note="needs the vendor picker"
+            />
+            <EditField
+              label="Finance Email"
+              value={p.finance_email}
+              onSave={text('finance_email')}
+            />
+            {/* QuickBooks is the source of truth for a vendor's billing address
+                and Xano stores no copy, so there is nothing in the mirror to
+                read. An unlinked supplier has no address anywhere in the
+                system. */}
+            <ReadOnlyField
+              label="Billing Address (from QuickBooks)"
+              value=""
+              note="lives in QuickBooks"
+            />
           </div>
         )}
       </div>
