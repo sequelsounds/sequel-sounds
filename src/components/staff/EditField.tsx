@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 /**
  * A field that saves itself.
@@ -132,6 +132,28 @@ export function EditField({
     }
   }
 
+  // A textarea does not grow to its content: with no `rows` it renders at the
+  // browser's default of two, whatever height it is ALLOWED to reach. So the
+  // Bio was two lines tall with the rest of it cut off, and raising max-height
+  // alone changed nothing.
+  //
+  // Growing it to fit is better than a taller fixed box, and not only because
+  // the bio is visible: a scrolling textarea renders its text INTO the bottom
+  // padding, so the last line always shows sliced in half however carefully the
+  // height is picked — which looks exactly like the clipping this is meant to
+  // fix. A box that fits its content has no last line to slice. The CSS still
+  // caps it, and past the cap it scrolls, where a half line means "more below"
+  // rather than "broken".
+  const box = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const el = box.current
+    if (!el) return
+    // Collapse first: scrollHeight never shrinks below the current height.
+    el.style.height = 'auto'
+    // Box-sizing is border-box and scrollHeight excludes the border.
+    el.style.height = `${el.scrollHeight + 2}px`
+  }, [draft])
+
   const shared = {
     className: 'edit-field-input',
     value: draft,
@@ -150,6 +172,7 @@ export function EditField({
       {textarea ? (
         <textarea
           {...shared}
+          ref={box}
           className="edit-field-input edit-field-input-text"
           // Enter belongs to the text in a textarea; Escape puts the field back.
           onKeyDown={(e) => {

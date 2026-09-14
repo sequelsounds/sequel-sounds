@@ -1925,7 +1925,17 @@
   }
 
   /* Project edit input field: a fixed 2rem that does not grow with its
-     content, on white at 5% over the silver ground. */
+     content, on white at 5% over the silver ground.
+   *
+   * ⚠️ The line height is 1rem, not the 0.8rem the Webflow style record gives.
+   * 0.8rem line-height on 0.8rem type is a line box exactly as tall as the
+   * type, so every descender - g, j, p, y, and the comma - is clipped by the
+   * field's own edge. The same trap is noted on `.row-cost-symbol`, where the
+   * £ and $ drop below the baseline.
+   *
+   * The BOX does not move: min-height and max-height are both 2rem and the
+   * 0.5rem padding leaves exactly 1rem of content, so the line box now fills
+   * the space it already had instead of sitting short in it. */
   .edit-field-input {
     display: flex;
     width: 100%;
@@ -1939,16 +1949,37 @@
     color: rgb(55 43 41 / 70%);
     font-family: var(--font-sans);
     font-size: 0.8rem;
-    line-height: 0.8rem;
+    line-height: 1rem;
   }
 
-  /* Project edit input field text: the same field, free to grow to 6rem. */
+  /* The same field as a textarea - the Bio, and nothing else today.
+   *
+   * ⚠️ `max-height` alone did nothing. A textarea does not grow to its
+   * content: with no `rows` attribute it renders at the browser's default of
+   * two, so the box sat at two lines however high it was allowed to go, and a
+   * Bio of any length was cut off mid-word with no way to scroll it - `resize`
+   * is off, and the overflow was hidden by the height cap.
+   *
+   * `EditField` grows it to its content on every keystroke, so these two are
+   * the floor and the ceiling rather than the height. Eight lines of floor
+   * because a two-line box under a label that says Bio looks like a mistake;
+   * twenty of ceiling because past that the field owns the page, and a bio
+   * that long can scroll.
+   *
+   * ⚠️ Do not "simplify" this back to one fixed height. A scrolling textarea
+   * renders its text INTO the bottom padding, so whatever height is chosen the
+   * last visible line is sliced through the middle - which is indistinguishable
+   * from the clipping bug this rule exists to fix. Fitting the content is what
+   * removes the sliced line, not arithmetic on the height.
+   */
   .edit-field-input-text {
-    max-height: 6rem;
+    min-height: calc(9rem + 2px);
+    max-height: calc(21rem + 2px);
     padding-right: 0.125rem;
     align-items: flex-start;
     background-color: transparent;
-    resize: none;
+    overflow-y: auto;
+    resize: vertical;
   }
 
   /* A control that looks editable and silently discards what you type is
