@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
+import { NewQuote } from '../components/staff/NewQuote'
 import { formatBytes, formatMoney } from '../lib/format'
 import {
   useProjectLookups,
@@ -280,12 +281,28 @@ function Form({ children }: { children: React.ReactNode }) {
 }
 
 /** App subtitle wraps: the tab's own subtitle, and the button that adds to it. */
-function PaneBar({ title, action }: { title: string; action?: string }) {
+function PaneBar({
+  title,
+  action,
+  onAction,
+}: {
+  title: string
+  action?: string
+  /** Without one the button stays disabled — most of these panes have no
+      create flow behind them yet, and a live button that does nothing is
+      worse than one that says so. */
+  onAction?: () => void
+}) {
   return (
     <div className="pane-bar">
       <div className="pane-title">{title}</div>
       {action && (
-        <button type="button" className="btn btn-mono btn-outline" disabled>
+        <button
+          type="button"
+          className="btn btn-mono btn-outline"
+          disabled={!onAction}
+          onClick={onAction}
+        >
           {action}
         </button>
       )}
@@ -302,6 +319,7 @@ type List<T> = { isPending: boolean; error: Error | null; data?: T[] }
 function Rows<T>({
   title,
   action,
+  onAction,
   empty,
   state,
   variant,
@@ -310,6 +328,7 @@ function Rows<T>({
 }: {
   title: string
   action?: string
+  onAction?: () => void
   empty: string
   state: List<T>
   variant: 'quote' | 'invoice' | 'asset' | 'brief' | 'contract' | 'song'
@@ -325,7 +344,7 @@ function Rows<T>({
 }) {
   return (
     <>
-      <PaneBar title={title} action={action} />
+      <PaneBar title={title} action={action} onAction={onAction} />
       {state.isPending && (
         <div className="flex justify-center py-16">
           <Loader />
@@ -397,6 +416,8 @@ export default function Project() {
   const lookups = useProjectLookups()
   const people = useProjectPeople()
   const saveProject = useSaveProject(projectId)
+  const [quoting, setQuoting] = useState(false)
+  const navigate = useNavigate()
   const save = (patch: ProjectPatch) => saveProject.mutateAsync(patch)
 
   if (project.isPending) {
@@ -672,13 +693,42 @@ export default function Project() {
           />
         )}
 
+        {quoting && projectId !== undefined && (
+          <NewQuote
+            projectId={projectId}
+            prefill={{
+              clientId: p.agency_id ?? null,
+              term: p.term ?? '',
+              territory: p.territory ?? '',
+              media: p.media ?? '',
+              scripts: p.scripts ?? '',
+              // ⚠️ The project column is `durations`, plural; the quote field
+              // is Duration, singular. Not a typo.
+              duration: p.durations ?? '',
+              cutdowns: typeof p.cutdowns === 'boolean' ? p.cutdowns : null,
+              // ⚠️ proposed_*, never confirmed_* — those record the track that
+              // was actually signed off, and a draft quote must not read from
+              // or overwrite them.
+              songName: p.proposed_song ?? '',
+              artistName: p.proposed_artist ?? '',
+            }}
+            onClose={() => setQuoting(false)}
+            onCreated={(uuid) => {
+              setQuoting(false)
+              navigate(`/quotes/${uuid}`)
+            }}
+          />
+        )}
+
         {tab === 'Estimates' && (
           <Rows<Quote>
             title="ESTIMATES"
             action="CREATE ESTIMATE"
+            onAction={edit ? () => setQuoting(true) : undefined}
             empty="Nothing here yet, click the Create Estimate button to get started"
             state={quotes}
             variant="quote"
+            link={(q) => (q.uuid ? `/quotes/${q.uuid}` : null)}
             row={(q) => (
               <>
                 <Title>{q.description}</Title>
@@ -689,7 +739,7 @@ export default function Project() {
                   {/* The symbol, resolved through the currency FK — not the
                       quote's own Currency text, which reads "SGD $" on one
                       row and "SGD" on the next. */}
-                  <span className="row-cost-symbol">{q.currency_symbol}</span>
+                  <span className="row-cost-symbol">{q.currency_code ?? q.currency_symbol}</span>
                   <span className="row-field">{formatMoney(q.grand_total_amount)}</span>
                 </span>
                 <Cell>{fmt(shortDate, q.created_at)}</Cell>

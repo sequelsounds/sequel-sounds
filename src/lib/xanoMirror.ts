@@ -92,6 +92,10 @@ export type Project = {
   sequel_ownership: string | null
   concept: string | null
   updated_at: string | null
+  /** ⚠️ The PROPOSED track, never the confirmed one — a draft quote prefills
+      from these and must not touch what was signed off. */
+  proposed_song: string | null
+  proposed_artist: string | null
 }
 
 /**
@@ -187,6 +191,9 @@ export type CreativeLink = {
 }
 
 export type Quote = {
+  uuid: string | null
+  /** ⚠️ The CODE, not the symbol: "$" is both USD and SGD. */
+  currency_code: string | null
   id: number
   description: string | null
   status: string | null
