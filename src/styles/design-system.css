@@ -3322,13 +3322,40 @@
    * Track asks eleven questions one screen at a time in a modal, so this does
    * the same. One question, one control, and the buttons at the bottom.
    */
-  .wizard-progress {
-    margin-bottom: 0.75rem;
-    color: var(--color-sequel-mid);
-    font-size: 0.7rem;
-    line-height: 0.8rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+  /* Closing is the X, as it is on Track's own modals. */
+  .wizard-close {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    width: 1rem;
+    height: 1rem;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    opacity: 0.6;
+  }
+
+  .wizard-close:hover {
+    opacity: 1;
+  }
+
+  .wizard-close::before,
+  .wizard-close::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: var(--color-sequel-brown);
+  }
+
+  .wizard-close::before {
+    transform: rotate(45deg);
+  }
+
+  .wizard-close::after {
+    transform: rotate(-45deg);
   }
 
   .wizard-question {

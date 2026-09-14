@@ -285,14 +285,11 @@ export function NewProject({
         role="dialog"
         aria-modal="true"
         aria-label="New project"
-        className="surface-light w-full max-w-[34rem] border border-sequel-line p-7 shadow-[0_10px_40px_rgba(55,43,41,0.25)]"
+        className="surface-light relative w-full max-w-[34rem] border border-sequel-line p-10 shadow-[0_10px_40px_rgba(55,43,41,0.25)]"
       >
-        {step !== SUCCESS && (
-          <div className="wizard-progress">
-            Step {step} of {LAST_QUESTION}
-          </div>
-        )}
-
+        {/* Closing is the X, as it is on Track's own modals — they carry it in
+            the header rather than a button in the footer. */}
+        <button type="button" className="wizard-close" aria-label="Close" onClick={onClose} />
         {step === 1 && (
           <>
             <div className="wizard-question">Which user is this project for?*</div>
@@ -458,8 +455,11 @@ export function NewProject({
             </button>
           )}
 
+          {/* Not filled in. A dark NEXT sitting there before you have answered
+              reads as "press this", on a screen where the thing to do is
+              answer the question. */}
           {step < LAST_QUESTION && (
-            <button type="button" className="btn btn-mono btn-dark" onClick={next}>
+            <button type="button" className="btn btn-mono btn-outline" onClick={next}>
               NEXT
             </button>
           )}
@@ -475,17 +475,13 @@ export function NewProject({
             </button>
           )}
 
-          {step === SUCCESS ? (
+          {step === SUCCESS && (
             <button
               type="button"
               className="btn btn-mono btn-dark"
               onClick={() => created && onCreated(created.id)}
             >
               OPEN IT
-            </button>
-          ) : (
-            <button type="button" className="btn btn-mono btn-outline" onClick={onClose}>
-              Cancel
             </button>
           )}
         </div>
