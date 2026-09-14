@@ -684,6 +684,11 @@
      which is its bottom edge — and the cross sat ON the header's rule. */
   /* Webflow's own record for .menu-close_button: 2rem square, 0.5rem of
      padding, so the cross itself occupies exactly 1rem. */
+  /* ⚠️ PIXELS, not rem. Webflow's record is 2rem with 0.5rem of padding, but
+     rem follows the root font size — so a browser at a larger text size, or a
+     zoom, inflates the cross while the rest of the bar (set from the logo's
+     own pixel width) stays put. A 32px box and a 16px cross are the same thing
+     at the default size and cannot drift. */
   .wizard-close {
     position: absolute;
     top: 50%;
@@ -693,9 +698,9 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    padding: 0.5rem;
+    width: 32px;
+    height: 32px;
+    padding: 8px;
     cursor: pointer;
     background: none;
     border: 0;
@@ -709,7 +714,7 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 1rem;
+    width: 16px;
     height: 1px;
     background-color: var(--color-sequel-brown);
     transform: translate(-50%, -50%) rotate(45deg);
