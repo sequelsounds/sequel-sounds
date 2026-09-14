@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 /**
  * The pieces /management and /dashboard share: the money and date formats, the
@@ -30,6 +31,46 @@ export type ReportRow = {
   search: number
   demo: number
   other: number
+}
+
+/**
+ * One invoice's slice of a bar — on the fee mix and on every league pane.
+ *
+ * Every division of every bar is one job, and it opens that job. Track does
+ * the same, and until `/invoice` existed on this side a segment could only
+ * name the invoice on hover, which is the state the notes recorded as "not yet
+ * wired".
+ *
+ * An anchor rather than a click handler, so middle-click and open-in-new-tab
+ * work — the same reasoning as the project list rows. A row with no uuid falls
+ * back to a plain div: it is unreachable by URL on either stack, so a link
+ * would go nowhere.
+ */
+export function Unit({
+  row,
+  value,
+  className,
+  style,
+  onEnter,
+}: {
+  row: ReportRow
+  value: number
+  className: string
+  style: React.CSSProperties
+  onEnter: () => void
+}) {
+  if (!row.uuid) return <div className={className} style={style} onMouseEnter={onEnter} />
+  return (
+    <Link
+      to={`/invoices/${row.uuid}`}
+      className={className}
+      style={style}
+      onMouseEnter={onEnter}
+      // The bar is a row of identical rectangles, so without this every one of
+      // them announces as "link" and nothing else.
+      aria-label={`${row.project_title || 'Untitled project'} — ${money(value)}`}
+    />
+  )
 }
 
 /** Under this share of the bar a fee has no room for a stem. */
@@ -320,11 +361,13 @@ export function FeeMix({
             }}
           >
             {g.units.map((unit) => (
-              <div
+              <Unit
                 key={unit.row.id}
+                row={unit.row}
+                value={unit.value}
                 className="fee-mix-unit"
                 style={{ width: `${(unit.value / g.total) * 100}%` }}
-                onMouseEnter={() => tip.setTip(tipFor(unit.row, unit.value, g.label))}
+                onEnter={() => tip.setTip(tipFor(unit.row, unit.value, g.label))}
               />
             ))}
           </div>

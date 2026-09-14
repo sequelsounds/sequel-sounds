@@ -26,9 +26,9 @@ import { useDashboard, useMe, type DashboardInvoice } from '../lib/xanoMirror'
  * ⚠️ music_supervisor_id is whoever RAISED the invoice, not whoever owns the
  * project now. This is a billing page, not an ownership one.
  *
- * Read-only, like the rest of this pass. Track's bar segments open the invoice
- * they stand for; `/invoice` has not been rebuilt, so here a segment names the
- * job and stops there.
+ * Read-only. Its fee-mix segments each stand for one invoice and open it at
+ * `/invoices/:uuid`, the same as `/management`'s — the shared `Unit` in
+ * `reporting.tsx` is what does it, so the two pages cannot drift apart.
  */
 
 /** Track's own three, in Track's order and wording. */

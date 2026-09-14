@@ -177,6 +177,8 @@ export type Quote = {
 
 export type Invoice = {
   id: number
+  // The row links to /invoices/:uuid, so the list has to carry one.
+  uuid: string | null
   description: string | null
   invoice_number: string | null
   status: string | null
@@ -1095,6 +1097,170 @@ export function useDashboard() {
         invoices: (invoices.data ?? []) as DashboardInvoice[],
         projects: (projects.data ?? []) as DashboardProject[],
       }
+    },
+  })
+}
+
+/**
+ * One invoice, as Sequel Track's `/invoice` shows it — the screen finance uses
+ * to check an invoice before it is raised in QuickBooks.
+ *
+ * ⚠️ STAFF ONLY, and the gate is in the database. `invoice_detail` and
+ * `invoice_lines` both ask `track_is_staff()`, the same restriction Track
+ * applies with `assert_sequel_staff`. A client user who can reach the project
+ * gets no rows rather than an error.
+ *
+ * ⚠️ EVERY FIGURE IS IN THE INVOICE'S OWN CURRENCY. `total_to_invoice`,
+ * `gross_spend` and `total_sequel_profit` are local and unmarked in Xano;
+ * `/management` and `/dashboard` convert them with `exchange_rate_lock`
+ * because they sum across invoices. This page shows one, with its symbol, and
+ * does not convert — which is also what Track does.
+ */
+export type InvoiceDetail = {
+  id: number
+  uuid: string | null
+  invoice_number: string | null
+  status: string | null
+  description: string | null
+  invoice_date: string | null
+  due_date: string | null
+  created_at: string | null
+  po_number: string | null
+  po_attachment_url: string | null
+  aws_link: string | null
+  adpro_number: string | null
+  usage_territories: string | null
+  usage_region: string | null
+  song_name: string | null
+  artist_name: string | null
+
+  /**
+   * Raised in QuickBooks, so nothing may change it any more. One flag from one
+   * column, as Xano returns it: Track keys every read-only state on the page
+   * off this single boolean so the screen and the endpoints cannot disagree.
+   */
+  locked: boolean
+  qbo_invoice_id: string | null
+
+  project_master_list_id: number | null
+  project_uuid: string | null
+  project_title: string | null
+  project_sequel_no: string | null
+
+  client_id: number | null
+  client_name: string | null
+  /** ⚠️ Whoever RAISED the invoice, not whoever owns the project now. */
+  music_supervisor_id: number | null
+  music_supervisor: string | null
+
+  currency_id: number | null
+  currency: string | null
+  currency_symbol: string | null
+  exchange_rate: number | null
+  gbp_total_amount: number | null
+
+  // The nine fee boxes. Each is the header column PLUS any `sequel_fee` rows
+  // that project into it — ten historic invoices carry their demo contingency
+  // as a row with the column at zero, so without that fold the money is
+  // missing from the box while still counting in the totals below.
+  demo_contingency_fee: number
+  sequel_demo_fee: number
+  search_contingency_fee: number
+  sequel_search_fee: number
+  master_sequel_studios_fee: number
+  master_sequel_licence_fee: number
+  publishing_sequel_studios_fee: number
+  publishing_sequel_licence_fee: number
+  sequel_consultancy_fee: number
+
+  // How much of each box came from rows rather than from its own column, so a
+  // box can be marked as folded only when it actually was. The first cut of
+  // this page had one page-level count and marked all four Demos/Searches
+  // boxes from it — a true fact about the invoice, rendered as a false one
+  // about three of the boxes.
+  demo_contingency_from_rows: number
+  sequel_demo_from_rows: number
+  search_contingency_from_rows: number
+  sequel_search_from_rows: number
+  master_studios_from_rows: number
+  master_licence_from_rows: number
+  publishing_studios_from_rows: number
+  publishing_licence_from_rows: number
+  consultancy_from_rows: number
+  /** How many fee rows exist at all. Zero means every box is its column. */
+  fee_row_count: number
+
+  // ⚠️ Money that did NOT move. A reporting figure, and in none of the totals.
+  demo_cost_avoidance: number
+  search_cost_avoidance: number
+  master_cost_avoidance: number
+  publishing_cost_avoidance: number
+  other_cost_avoidance: number
+  total_cost_avoidance: number
+
+  total_to_invoice: number
+  gross_spend: number
+  total_sequel_profit: number
+}
+
+/**
+ * A supplier cost row.
+ *
+ * ⚠️ `sequel_fee` rows are NOT here — the view filters them out, as Xano's read
+ * shim does. They are Sequel's own margin; showing them as supplier costs
+ * would double them on screen and invite someone to give one a supplier, which
+ * is the exact condition that lets Sequel's margin be billed as a third party.
+ */
+export type InvoiceLine = {
+  id: number
+  invoice_id: number
+  invoice_uuid: string | null
+  category: string | null
+  supplier_id: number | null
+  supplier: string | null
+  fee_amount: number | null
+  /**
+   * Paythrough: Sequel takes the client's money and pays the label or
+   * publisher. False means the client settles that one direct — Sequel still
+   * records the spend, but it is not billed. That is the single difference
+   * between "total to invoice" and "total spend".
+   */
+  is_paythrough: boolean | null
+  confirmed: boolean | null
+  qbo_bill_id: string | null
+  share_percent: number | null
+  fee_type: string | null
+  line_type: string | null
+}
+
+export function useInvoice(uuid: string | undefined) {
+  return useQuery({
+    enabled: !!uuid,
+    queryKey: ['mirror', 'invoice', uuid],
+    queryFn: async (): Promise<InvoiceDetail | null> => {
+      const { data, error } = await mirror
+        .from('invoice_detail')
+        .select('*')
+        .eq('uuid', uuid!)
+        .maybeSingle()
+      if (error) throw error
+      return (data as InvoiceDetail) ?? null
+    },
+  })
+}
+
+export function useInvoiceLines(uuid: string | undefined) {
+  return useQuery({
+    enabled: !!uuid,
+    queryKey: ['mirror', 'invoice-lines', uuid],
+    queryFn: async (): Promise<InvoiceLine[]> => {
+      const { data, error } = await mirror
+        .from('invoice_lines')
+        .select('*')
+        .eq('invoice_uuid', uuid!)
+        .order('id')
+      if (error) throw error
+      return (data ?? []) as InvoiceLine[]
     },
   })
 }

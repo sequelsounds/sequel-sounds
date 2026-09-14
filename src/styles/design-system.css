@@ -2707,7 +2707,12 @@
 
   /* One division per invoice. A brand built on one big licence looks
      different from one built on twenty searches — that is the point. */
+  /* Every division of every bar is ONE invoice, and it links to it — which is
+     why these are anchors rather than divs, and why they need display: block
+     to keep filling their segment. An href, not a click handler, so
+     middle-click and open-in-new-tab work. */
   .fee-mix-unit {
+    display: block;
     height: 100%;
     background: var(--color-sequel-brown);
     transition: background-color 120ms;
@@ -2930,6 +2935,7 @@
   }
 
   .league-unit {
+    display: block;
     height: 100%;
     background: var(--color-sequel-brown);
     transition: background-color 120ms;
@@ -3124,5 +3130,105 @@
     left: auto;
     border-right: none;
     border-left: 5px solid var(--tip-bg, var(--color-sequel-brown));
+  }
+
+  /* ------------------------------------------------------------- the invoice
+   * `/invoice` is a read-out, not a form: every figure on it is derived
+   * server-side by Xano's recompute_invoice_totals and the page calculates
+   * nothing. Four separate bugs on Track's create form came from a screen and
+   * a stored value each implementing the same sum slightly differently, so the
+   * rule here is that a number is displayed, never worked out.
+   *
+   * Same 40% column and 2rem indent as .edit-form, so the money lines up with
+   * the fields on every other detail page.
+   */
+  .money-list {
+    width: 40%;
+    margin-left: 2rem;
+  }
+
+  .money-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 2rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgb(55 43 41 / 15%);
+    /* Webflow's body sets an absolute 20px and these panes inherit it; the app
+       shell sets a 1.4 ratio. Stated so a row here is the same height as one
+       on the pages this sits beside. */
+    line-height: 20px;
+  }
+
+  .money-row-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-sequel-brown);
+  }
+
+  /* Tabular figures so a column of amounts lines up without a table. Without
+     this the 1s are narrow and the column reads ragged. */
+  .money-row-value {
+    font-size: 0.8rem;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* A box carrying money that arrived as a line row rather than a column. The
+     figure is right either way - this only says where it came from, because a
+     reader comparing the page against the Invoices table would otherwise find
+     a zero there. */
+  .money-row-note {
+    margin-left: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 300;
+    color: var(--color-sequel-mid);
+  }
+
+  .money-row.is-total {
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--color-sequel-line);
+    border-bottom: none;
+  }
+
+  .money-row.is-total .money-row-value {
+    font-weight: 500;
+  }
+
+  /* Cost avoidance is money that did NOT move, and it is in none of the three
+     totals. It sits in its own section for that reason, and the note says so
+     rather than relying on whoever reads it to know. */
+  .section-note {
+    width: 40%;
+    margin-left: 2rem;
+    margin-bottom: 1rem;
+    font-size: 0.7rem;
+    font-weight: 300;
+    line-height: 1rem;
+    color: var(--color-sequel-mid);
+  }
+
+  /* Raised in QuickBooks: a financial record, and nothing may change it. The
+     banner reads the same single `locked` flag every other read-only state
+     keys off, so the page cannot say one thing while the database says
+     another. */
+  .locked-banner {
+    width: calc(100% - 4rem);
+    margin: 0 0 1rem 2rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-sequel-line);
+    background-color: rgb(255 255 255 / 40%);
+    font-size: 0.75rem;
+    font-weight: 300;
+    line-height: 1rem;
+    color: var(--color-sequel-brown);
+  }
+
+  /* The supplier cost rows: supplier, category, paythrough, bill, amount. */
+  .project-row-invoice-line {
+    grid-template-columns: 0.75fr 0.4fr 0.3fr 0.3fr 0.25fr;
+    gap: 16px;
   }
 }

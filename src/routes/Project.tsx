@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { formatBytes, formatMoney } from '../lib/format'
 import {
@@ -157,6 +157,7 @@ function Rows<T>({
   state,
   variant,
   row,
+  link,
 }: {
   title: string
   action?: string
@@ -164,6 +165,14 @@ function Rows<T>({
   state: List<T>
   variant: 'quote' | 'invoice' | 'asset' | 'brief' | 'contract' | 'song'
   row: (item: T) => React.ReactNode
+  /**
+   * Where a row goes when it has somewhere to go. Track makes the whole row a
+   * stretched link rather than putting a click handler on one cell, so that
+   * middle-click and open-in-new-tab work; a React `Link` is an anchor, which
+   * gets the same for free. Returning null leaves the row as a plain div —
+   * most of these lists have no page behind them yet.
+   */
+  link?: (item: T) => string | null
 }) {
   return (
     <>
@@ -175,11 +184,19 @@ function Rows<T>({
       )}
       {state.error && <p className="form-error px-8 py-4">{state.error.message}</p>}
       {state.data?.length === 0 && <p className="empty-note">{empty}</p>}
-      {state.data?.map((item, i) => (
-        <div key={i} className={`project-row project-row-${variant}`}>
-          {row(item)}
-        </div>
-      ))}
+      {state.data?.map((item, i) => {
+        const href = link?.(item) ?? null
+        const className = `project-row project-row-${variant}`
+        return href ? (
+          <Link key={i} to={href} className={className}>
+            {row(item)}
+          </Link>
+        ) : (
+          <div key={i} className={className}>
+            {row(item)}
+          </div>
+        )
+      })}
     </>
   )
 }
@@ -446,6 +463,7 @@ export default function Project() {
             empty="Nothing here yet, click the New invoice button to get started"
             state={invoices}
             variant="invoice"
+            link={(i) => (i.uuid ? `/invoices/${i.uuid}` : null)}
             row={(i) => (
               <>
                 <Title>{i.description || 'Untitled invoice'}</Title>

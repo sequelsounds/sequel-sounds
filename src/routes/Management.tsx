@@ -9,6 +9,7 @@ import {
   YearToggle,
   money,
   tipFor,
+  Unit,
   whole,
   yearOf,
 } from '../components/staff/reporting'
@@ -40,9 +41,9 @@ import { useManagement, type ManagementInvoice } from '../lib/xanoMirror'
  *     at all. Left as it is rather than invented; it is in the known-issues
  *     note instead.
  *
- * Read-only, like the rest of this pass. Track's bar segments open the
- * invoice they stand for; `/invoice` has not been rebuilt, so here a segment
- * says what it is and does not navigate.
+ * Read-only. Every division of every bar is ONE invoice and opens it at
+ * `/invoices/:uuid`, as Track's do — that page was rebuilt on 14 Sep, so the
+ * segments are wired rather than merely naming the job on hover.
  */
 
 const BROWN = 'var(--color-sequel-brown)'
@@ -176,11 +177,13 @@ function League({
               {item.units
                 .sort((a, b) => b.value - a.value)
                 .map((unit) => (
-                  <div
+                  <Unit
                     key={unit.row.id}
+                    row={unit.row}
+                    value={unit.value}
                     className="league-unit"
                     style={{ width: `${(unit.value / item.profit) * 100}%` }}
-                    onMouseEnter={() => tip.setTip(tipFor(unit.row, unit.value, item.name))}
+                    onEnter={() => tip.setTip(tipFor(unit.row, unit.value, item.name))}
                   />
                 ))}
             </div>
