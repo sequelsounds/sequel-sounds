@@ -310,25 +310,21 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
   const total = quoteTotal(a.fees, tracks)
 
   /**
-   * What the running total says, beyond the number.
+   * The running total carries its CURRENCY CODE, because a quote can be raised
+   * in any of the currencies in table 48 and `$` is stored for both USD and
+   * SGD — the same reason the document shows codes rather than symbols.
    *
-   * ⚠️ A bare figure is ambiguous twice over. The CODE, because the quote can
-   * be raised in any of the currencies in table 48 and `$` is stored for both
-   * USD and SGD — the same reason the document shows codes rather than
-   * symbols. And the TRACK COUNT, because the licensing and master screens
-   * multiply by it, so a total can double between two screens with nothing on
-   * the bar to say why.
+   * ⚠️ The track count was tried here too and taken out again — Andy's call,
+   * 14 Sep: not helpful. Six of the seven fee screens do multiply by it, so
+   * the figure still changes on the way to the summary; it just is not
+   * something the bar needs to explain.
    *
    * Currency is chosen at step three, before any fee screen, so by the time
-   * this bar appears it is always set. The fallback is there for the case
-   * where the lookup has not landed yet.
+   * this bar appears it is always set. The fallback covers the lookup not
+   * having landed yet.
    */
   const currencyCode =
     (lookups.data?.currencies ?? []).find((c: Option) => c.id === a.currencyId)?.label ?? ''
-  const trackNote =
-    flow.includes('tracks') && tracks !== null && tracks > 0
-      ? `${tracks} ${tracks === 1 ? 'track' : 'tracks'}`
-      : ''
   const totalText = [currencyCode, amount.format(total)].filter(Boolean).join(' ')
 
   /**
@@ -595,10 +591,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
               )
             })}
             <div className="qw-summary-row is-total">
-              <span>
-                QUOTE TOTAL
-                {trackNote && <span className="qw-total-note"> · {trackNote}</span>}
-              </span>
+              <span>QUOTE TOTAL</span>
               <span className="qw-summary-amount">{totalText}</span>
             </div>
             {error && <p className="form-error">{error}</p>}
@@ -620,7 +613,6 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
         {feeKey || key === 'summary' ? (
           <span className="qw-total">
             TOTAL <strong>{totalText}</strong>
-            {trackNote && <span className="qw-total-note"> · {trackNote}</span>}
           </span>
         ) : (
           <span />

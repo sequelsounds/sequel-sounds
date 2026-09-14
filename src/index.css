@@ -1081,13 +1081,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* The track count explains the number rather than being part of it, so it
-     sits back from the figure. */
-  .qw-total-note {
-    font-weight: 300;
-    opacity: 0.65;
-  }
-
   @media (max-width: 640px) {
     .qw-head,
     .qw-body {
