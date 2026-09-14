@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import SequelLogo from '../SequelLogo'
 import {
   FEE_SCREENS,
   QUOTE_TYPES,
@@ -174,7 +175,7 @@ function FeeScreen({
         <h2 className="wizard-title">{heading}</h2>
         <button
           type="button"
-          className="btn btn-mono btn-outline"
+          className="wizard-choice"
           onClick={() => onChange({ ...category, lines: [...category.lines, { description: '', cost: '' }] })}
         >
           + ENTRY
@@ -357,9 +358,14 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
   return (
     <div className="wizard" role="dialog" aria-modal="true" aria-label="New quote">
       <div className="wizard-head">
-        <span className="wizard-mark">SEQUEL</span>
+        {/* The old app's header carries the wordmark IMAGE, not the word set
+            in Fahkwang — which is the page title's typeface, not the logo. */}
+        <SequelLogo wordmark className="wizard-logo !h-auto !w-20" />
+        {/* Two crossed rules, as the old app draws it. A × glyph sits on the
+            text baseline and reads a size larger. */}
         <button type="button" className="wizard-close" aria-label="Close" onClick={onClose}>
-          ×
+          <span className="wizard-x" />
+          <span className="wizard-x is-counter" />
         </button>
       </div>
 
@@ -556,7 +562,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
 
       <div className="wizard-foot">
         {step > 0 ? (
-          <button type="button" className="btn btn-mono btn-outline" onClick={back}>
+          <button type="button" className="wizard-step-button" onClick={back}>
             BACK
           </button>
         ) : (
@@ -576,14 +582,14 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
         {key === 'summary' ? (
           <button
             type="button"
-            className="btn btn-mono btn-outline"
+            className="wizard-step-button"
             disabled={!canCreate || create.isPending}
             onClick={() => void submit()}
           >
             {create.isPending ? 'CREATING…' : 'CREATE QUOTE'}
           </button>
         ) : showNext ? (
-          <button type="button" className="btn btn-mono btn-outline" onClick={next}>
+          <button type="button" className="wizard-step-button" onClick={next}>
             NEXT
           </button>
         ) : (
