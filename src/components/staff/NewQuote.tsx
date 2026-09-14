@@ -116,8 +116,8 @@ function flowFor(a: Answers): StepKey[] {
 
 function Question({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
-    <div className="wizard-question">
-      <h2 className="wizard-title">{title}</h2>
+    <div className="qw-question">
+      <h2 className="qw-title">{title}</h2>
       {children}
     </div>
   )
@@ -131,17 +131,17 @@ function YesNo({
   onPick: (next: boolean) => void
 }) {
   return (
-    <div className="wizard-yesno">
+    <div className="qw-yesno">
       <button
         type="button"
-        className={`wizard-choice${value === true ? ' is-picked' : ''}`}
+        className={`qw-choice${value === true ? ' is-picked' : ''}`}
         onClick={() => onPick(true)}
       >
         YES
       </button>
       <button
         type="button"
-        className={`wizard-choice${value === false ? ' is-picked' : ''}`}
+        className={`qw-choice${value === false ? ' is-picked' : ''}`}
         onClick={() => onPick(false)}
       >
         NO
@@ -170,12 +170,12 @@ function FeeScreen({
   }
 
   return (
-    <div className="wizard-question is-wide">
-      <div className="wizard-fee-head">
-        <h2 className="wizard-title">{heading}</h2>
+    <div className="qw-question is-wide">
+      <div className="qw-fee-head">
+        <h2 className="qw-title">{heading}</h2>
         <button
           type="button"
-          className="wizard-choice"
+          className="qw-choice"
           onClick={() => onChange({ ...category, lines: [...category.lines, { description: '', cost: '' }] })}
         >
           + ENTRY
@@ -183,15 +183,15 @@ function FeeScreen({
       </div>
 
       {category.lines.map((line, i) => (
-        <div key={i} className="wizard-fee-row">
+        <div key={i} className="qw-fee-row">
           <input
-            className="wizard-input"
+            className="qw-input"
             placeholder="Description"
             value={line.description}
             onChange={(e) => setLine(i, { description: e.target.value })}
           />
           <input
-            className="wizard-input wizard-input-amount"
+            className="qw-input qw-input-amount"
             inputMode="decimal"
             placeholder="0"
             value={line.cost}
@@ -202,7 +202,7 @@ function FeeScreen({
           {category.lines.length > 1 ? (
             <button
               type="button"
-              className="wizard-fee-delete"
+              className="qw-fee-delete"
               aria-label="Remove this line"
               onClick={() =>
                 onChange({ ...category, lines: category.lines.filter((_, j) => j !== i) })
@@ -217,10 +217,10 @@ function FeeScreen({
       ))}
 
       {showQuantity && (
-        <div className="wizard-fee-row">
-          <span className="wizard-fee-label">Sequel Search Quantity</span>
+        <div className="qw-fee-row">
+          <span className="qw-fee-label">Sequel Search Quantity</span>
           <input
-            className="wizard-input wizard-input-amount"
+            className="qw-input qw-input-amount"
             inputMode="numeric"
             placeholder="0"
             value={category.searchQuantity ?? ''}
@@ -230,10 +230,10 @@ function FeeScreen({
         </div>
       )}
 
-      <div className="wizard-fee-row">
-        <span className="wizard-fee-label">{sequelLabel}</span>
+      <div className="qw-fee-row">
+        <span className="qw-fee-label">{sequelLabel}</span>
         <input
-          className="wizard-input wizard-input-amount"
+          className="qw-input qw-input-amount"
           inputMode="decimal"
           placeholder="0"
           value={category.sequel}
@@ -246,7 +246,7 @@ function FeeScreen({
         /* ⚠️ Confirmed intentional, and worth saying on the screen: a search
            fee is typed as a TOTAL, not a rate. 2,000 against a quantity of two
            means 2,000 for both searches. */
-        <p className="wizard-note">A total for all the searches, not a price each.</p>
+        <p className="qw-note">A total for all the searches, not a price each.</p>
       )}
     </div>
   )
@@ -356,24 +356,24 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
   const screen = feeKey ? FEE_SCREENS.find((s) => s.key === feeKey)! : null
 
   return (
-    <div className="wizard" role="dialog" aria-modal="true" aria-label="New quote">
-      <div className="wizard-head">
+    <div className="qw" role="dialog" aria-modal="true" aria-label="New quote">
+      <div className="qw-head">
         {/* The old app's header carries the wordmark IMAGE, not the word set
             in Fahkwang — which is the page title's typeface, not the logo. */}
-        <SequelLogo wordmark className="wizard-logo !h-auto !w-20" />
+        <SequelLogo wordmark className="qw-logo !h-auto !w-20" />
         {/* Two crossed rules, as the old app draws it. A × glyph sits on the
             text baseline and reads a size larger. */}
-        <button type="button" className="wizard-close" aria-label="Close" onClick={onClose}>
-          <span className="wizard-x" />
-          <span className="wizard-x is-counter" />
+        <button type="button" className="qw-close" aria-label="Close" onClick={onClose}>
+          <span className="qw-x" />
+          <span className="qw-x is-counter" />
         </button>
       </div>
 
-      <div className="wizard-body">
+      <div className="qw-body">
         {key === 'description' && (
           <Question title="Give this quote a short description:">
             <input
-              className="wizard-input"
+              className="qw-input"
               autoFocus
               placeholder="Example: Demos &amp; License (Worldwide)"
               value={a.description}
@@ -388,7 +388,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
         {key === 'client' && (
           <Question title="Who is the quote for?">
             <select
-              className="wizard-input"
+              className="qw-input"
               value={a.clientId ?? ''}
               onChange={(e) => patch({ clientId: e.target.value === '' ? null : Number(e.target.value) })}
             >
@@ -406,7 +406,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
           <Question title="Currency">
             {/* Advances on choice, as the old app's does. */}
             <select
-              className="wizard-input"
+              className="qw-input"
               value={a.currencyId ?? ''}
               onChange={(e) => {
                 if (e.target.value === '') return
@@ -426,12 +426,12 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
 
         {key === 'type' && (
           <Question title="Quote type">
-            <div className="wizard-types">
+            <div className="qw-types">
               {QUOTE_TYPES.map((t) => (
                 <button
                   key={t.label}
                   type="button"
-                  className={`wizard-choice${a.serviceId === t.id && t.label !== 'Library (Manual)' ? ' is-picked' : ''}`}
+                  className={`qw-choice${a.serviceId === t.id && t.label !== 'Library (Manual)' ? ' is-picked' : ''}`}
                   onClick={() => {
                     patch({ serviceId: t.id })
                     next()
@@ -442,32 +442,32 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
               ))}
               {/* ⚠️ Present and unusable rather than absent, so nobody hunts for
                   it. The MCPS path prices itself and the engine is not ported. */}
-              <button type="button" className="wizard-choice" disabled title="Raise MCPS library quotes in the old app until the pricing engine is ported">
+              <button type="button" className="qw-choice" disabled title="Raise MCPS library quotes in the old app until the pricing engine is ported">
                 LIBRARY (MCPS)
               </button>
             </div>
-            <p className="wizard-note">
+            <p className="qw-note">
               Library (MCPS) prices itself. Until that engine is rebuilt, raise those in the old app.
             </p>
           </Question>
         )}
 
         {key === 'terms' && (
-          <div className="wizard-question is-wide">
+          <div className="qw-question is-wide">
             {/* Prefilled from the project, then edited freely. ⚠️ Editing here
                 never writes back to the project: the project's terms are a
                 working pool and the quote takes a snapshot. */}
-            <label className="wizard-field-label">Term</label>
-            <input className="wizard-input" value={a.term} onChange={(e) => patch({ term: e.target.value })} />
-            <label className="wizard-field-label">Territory</label>
-            <input className="wizard-input" value={a.territory} onChange={(e) => patch({ territory: e.target.value })} />
-            <label className="wizard-field-label">Media</label>
-            <input className="wizard-input" value={a.media} onChange={(e) => patch({ media: e.target.value })} />
-            <label className="wizard-field-label">Scripts</label>
-            <input className="wizard-input" value={a.scripts} onChange={(e) => patch({ scripts: e.target.value })} />
-            <label className="wizard-field-label">Duration</label>
-            <input className="wizard-input" value={a.duration} onChange={(e) => patch({ duration: e.target.value })} />
-            <label className="wizard-field-label">Cutdowns Required?</label>
+            <label className="qw-field-label">Term</label>
+            <input className="qw-input" value={a.term} onChange={(e) => patch({ term: e.target.value })} />
+            <label className="qw-field-label">Territory</label>
+            <input className="qw-input" value={a.territory} onChange={(e) => patch({ territory: e.target.value })} />
+            <label className="qw-field-label">Media</label>
+            <input className="qw-input" value={a.media} onChange={(e) => patch({ media: e.target.value })} />
+            <label className="qw-field-label">Scripts</label>
+            <input className="qw-input" value={a.scripts} onChange={(e) => patch({ scripts: e.target.value })} />
+            <label className="qw-field-label">Duration</label>
+            <input className="qw-input" value={a.duration} onChange={(e) => patch({ duration: e.target.value })} />
+            <label className="qw-field-label">Cutdowns Required?</label>
             <YesNo value={a.cutdowns} onPick={(v) => patch({ cutdowns: v })} />
           </div>
         )}
@@ -499,7 +499,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
         {key === 'song' && (
           <Question title="What is the song called?">
             <input
-              className="wizard-input"
+              className="qw-input"
               autoFocus
               value={a.songName}
               onChange={(e) => patch({ songName: e.target.value })}
@@ -511,7 +511,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
         {key === 'artist' && (
           <Question title="And the artist?">
             <input
-              className="wizard-input"
+              className="qw-input"
               autoFocus
               value={a.artistName}
               onChange={(e) => patch({ artistName: e.target.value })}
@@ -526,7 +526,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
                 track — a quote covering no tracks still charges its fees once,
                 it does not charge nothing. */}
             <input
-              className="wizard-input"
+              className="qw-input"
               autoFocus
               inputMode="numeric"
               value={a.tracks}
@@ -537,32 +537,32 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
         )}
 
         {key === 'summary' && (
-          <div className="wizard-question is-wide">
-            <h2 className="wizard-title">Summary</h2>
+          <div className="qw-question is-wide">
+            <h2 className="qw-title">Summary</h2>
             {FEE_SCREENS.map((s) => {
               const cat = a.fees[s.key]
               const sum =
                 cat.lines.reduce((t, l) => t + toAmount(l.cost), 0) + toAmount(cat.sequel)
               const shown = s.multiply && tracks && tracks > 0 ? sum * tracks : sum
               return (
-                <div key={s.key} className="wizard-summary-row">
+                <div key={s.key} className="qw-summary-row">
                   <span>{s.heading}</span>
-                  <span className="wizard-summary-amount">{amount.format(shown)}</span>
+                  <span className="qw-summary-amount">{amount.format(shown)}</span>
                 </div>
               )
             })}
-            <div className="wizard-summary-row is-total">
+            <div className="qw-summary-row is-total">
               <span>QUOTE TOTAL</span>
-              <span className="wizard-summary-amount">{amount.format(total)}</span>
+              <span className="qw-summary-amount">{amount.format(total)}</span>
             </div>
             {error && <p className="form-error">{error}</p>}
           </div>
         )}
       </div>
 
-      <div className="wizard-foot">
+      <div className="qw-foot">
         {step > 0 ? (
-          <button type="button" className="wizard-step-button" onClick={back}>
+          <button type="button" className="qw-step-button" onClick={back}>
             BACK
           </button>
         ) : (
@@ -572,7 +572,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
         {/* The middle cell is always rendered, empty or not: the footer is a
             three-column grid, and leaving it out slides NEXT into the middle. */}
         {feeKey || key === 'summary' ? (
-          <span className="wizard-total">
+          <span className="qw-total">
             TOTAL <strong>{amount.format(total)}</strong>
           </span>
         ) : (
@@ -582,14 +582,14 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
         {key === 'summary' ? (
           <button
             type="button"
-            className="wizard-step-button"
+            className="qw-step-button"
             disabled={!canCreate || create.isPending}
             onClick={() => void submit()}
           >
             {create.isPending ? 'CREATING…' : 'CREATE QUOTE'}
           </button>
         ) : showNext ? (
-          <button type="button" className="wizard-step-button" onClick={next}>
+          <button type="button" className="qw-step-button" onClick={next}>
             NEXT
           </button>
         ) : (
