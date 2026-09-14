@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
 import { NewQuote } from '../components/staff/NewQuote'
@@ -417,7 +417,6 @@ export default function Project() {
   const people = useProjectPeople()
   const saveProject = useSaveProject(projectId)
   const [quoting, setQuoting] = useState(false)
-  const navigate = useNavigate()
   const save = (patch: ProjectPatch) => saveProject.mutateAsync(patch)
 
   if (project.isPending) {
@@ -713,10 +712,12 @@ export default function Project() {
               artistName: p.proposed_artist ?? '',
             }}
             onClose={() => setQuoting(false)}
-            onCreated={(uuid) => {
-              setQuoting(false)
-              navigate(`/quotes/${uuid}`)
-            }}
+            /* ⚠️ Closes back onto the Estimates list, which refreshes itself —
+               the old app's behaviour, and the right one. Sending someone to
+               the quote document mid-flow takes them off the project, and
+               raising two estimates in a row then means navigating back for
+               the second. The new row links to the document if they want it. */
+            onCreated={() => setQuoting(false)}
           />
         )}
 
