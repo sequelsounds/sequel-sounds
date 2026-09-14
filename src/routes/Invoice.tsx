@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { formatMoney } from '../lib/format'
 import { useInvoice, useInvoiceLines } from '../lib/xanoMirror'
+import { isS3PoKey, signPoRead } from '../lib/invoiceWrites'
 import type { InvoiceDetail, InvoiceLine } from '../lib/xanoMirror'
 
 /**
@@ -90,6 +91,63 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="money-row-value">{value}</span>
     </div>
   )
+}
+
+/**
+ * The PO attachment, which arrives in one of three shapes.
+ *
+ *   an `invoices/po/…` key  — this app's own, in S3. Signed on demand.
+ *   an absolute http URL    — a migrated SharePoint row's AWS_link.
+ *   anything else           — a RELATIVE Xano vault path, on the 147 imported
+ *                             invoices. It resolves only against the Xano
+ *                             instance and dies at cutover, so it is named
+ *                             rather than linked.
+ *
+ * ⚠️ The S3 URL is signed WHEN CLICKED, never stored. A presigned URL lasts
+ * fifteen minutes; putting one in the column would give every invoice a dead
+ * link by the afternoon.
+ */
+function PoAttachment({ url }: { url: string | null }) {
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  if (!url) return <>—</>
+
+  if (isS3PoKey(url)) {
+    return (
+      <>
+        <button
+          type="button"
+          className="link-button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true)
+            setFailed(false)
+            try {
+              window.open(await signPoRead(url), '_blank', 'noreferrer')
+            } catch {
+              setFailed(true)
+            } finally {
+              setBusy(false)
+            }
+          }}
+        >
+          {busy ? 'Opening…' : 'Open'}
+        </button>
+        {failed && <span className="form-error"> could not be opened</span>}
+      </>
+    )
+  }
+
+  if (url.startsWith('http')) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer">
+        Open
+      </a>
+    )
+  }
+
+  return <span title={url}>{url.split('/').pop()} (in the Xano vault)</span>
 }
 
 export default function Invoice() {
@@ -199,29 +257,7 @@ export default function Invoice() {
             <Detail label="Due date" value={fmtDate(v.due_date)} />
             <Detail label="Currency" value={v.currency ?? '—'} />
             <Detail label="PO number" value={v.po_number || '—'} />
-            <Detail
-              label="PO attachment"
-              value={
-                v.po_attachment_url ? (
-                  v.po_attachment_url.startsWith('http') ? (
-                    <a href={v.po_attachment_url} target="_blank" rel="noreferrer">
-                      Open
-                    </a>
-                  ) : (
-                    // ⚠️ Stored as a RELATIVE Xano vault path, so it only
-                    // resolves against the Xano instance. Not linked here
-                    // rather than guessing that host — and it is a link that
-                    // dies at cutover anyway. The filename is shown so the
-                    // file can be found.
-                    <span title={v.po_attachment_url}>
-                      {v.po_attachment_url.split('/').pop()} (in the Xano vault)
-                    </span>
-                  )
-                ) : (
-                  '—'
-                )
-              }
-            />
+            <Detail label="PO attachment" value={<PoAttachment url={v.po_attachment_url} />} />
             <Detail label="AdPro number" value={v.adpro_number || '—'} />
             <Detail label="Usage region" value={v.usage_region || '—'} />
             <Detail label="Territories" value={v.usage_territories || '—'} />

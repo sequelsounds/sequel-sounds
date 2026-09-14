@@ -921,6 +921,42 @@
     grid-template-columns: repeat(6, 1fr);
   }
 
+  /* A button that has to read as a link: the PO attachment signs its URL when
+     clicked rather than carrying one, so it cannot be an <a href>. */
+  .link-button {
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+    background: none;
+    border: 0;
+  }
+
+  .link-button:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  /* A supplier cost line on the invoice form: who, how much, whether the
+     client is billed for it, and the delete X. One grid so the four columns
+     line up down the list however many entries there are. */
+  .qw-line-row {
+    display: grid;
+    grid-template-columns: 1fr 9rem 11rem 1.5rem;
+    column-gap: 0.75rem;
+    align-items: center;
+    width: 100%;
+    margin-top: 0.75rem;
+  }
+
+  /* The Cost Avoidance block on the invoice summary: a heading with its own
+     total, then the four rows that make it up. */
+  .qw-summary-row.is-heading {
+    margin-top: 0.5rem;
+    font-weight: 500;
+  }
+
   /* One media label is too long for a single line and breaks inside its own
      bracket. It carries a newline, which needs pre-line to render — and every
      media button is then given the two-line height so the grid rows stay
@@ -1126,6 +1162,11 @@
 
     .qw-counts {
       grid-template-columns: repeat(4, 1fr);
+    }
+
+    .qw-line-row {
+      grid-template-columns: 1fr 1.5rem;
+      row-gap: 0.5rem;
     }
 
     .qw-fee-head,

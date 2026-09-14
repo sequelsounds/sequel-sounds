@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
 import { NewQuote } from '../components/staff/NewQuote'
+import { NewInvoice } from '../components/staff/NewInvoice'
 import { formatBytes, formatMoney } from '../lib/format'
 import {
   useProjectLookups,
@@ -417,6 +418,7 @@ export default function Project() {
   const people = useProjectPeople()
   const saveProject = useSaveProject(projectId)
   const [quoting, setQuoting] = useState(false)
+  const [invoicing, setInvoicing] = useState(false)
   const save = (patch: ProjectPatch) => saveProject.mutateAsync(patch)
 
   if (project.isPending) {
@@ -721,6 +723,19 @@ export default function Project() {
           />
         )}
 
+        {invoicing && projectId !== undefined && (
+          <NewInvoice
+            projectId={projectId}
+            /* The agency is who gets billed, the same prefill the quote wizard
+               uses and the same one the old app applies. */
+            prefill={{ clientId: p.agency_id ?? null }}
+            onClose={() => setInvoicing(false)}
+            /* Closes back onto the Invoicing list, as raising an estimate
+               closes back onto Estimates. */
+            onCreated={() => setInvoicing(false)}
+          />
+        )}
+
         {tab === 'Estimates' && (
           <Rows<Quote>
             title="ESTIMATES"
@@ -790,6 +805,7 @@ export default function Project() {
           <Rows<Invoice>
             title="invoicing"
             action="+ New INVOICE"
+            onAction={edit ? () => setInvoicing(true) : undefined}
             empty="Nothing here yet, click the New invoice button to get started"
             state={invoices}
             variant="invoice"
