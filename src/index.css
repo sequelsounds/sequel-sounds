@@ -419,45 +419,94 @@
 }
 
 /* --------------------------------------------------------------- the quote
-   The client-facing quote document. Every value here was measured off the
-   published Webflow page rather than chosen — see
-   `claude/sequel-track-quote-page-forensics.md` §6.
+   The client-facing quote document — the old app's `/quotation`, rebuilt.
 
-   ⚠️ The card paints from two variables set inline per service, exactly as the
-   old app does: the whole document recolours from one swap because nothing
-   below names a colour directly. */
+   ⚠️ EVERY NUMBER BELOW WAS MEASURED OFF THE PUBLISHED PAGE, not chosen. The
+   old app's own computed styles, card inner width 730:
+
+     page          #f1f0ee, padding 16px 0 0
+     download bar  800 x 32, 1px solid #372b29, Azeret Mono 12.8 uppercase,
+                   32 below it
+     card          794 wide, 32 padding
+     letterhead    grid 357/357 gap 16, Fahkwang 44.8/48, 160 below it
+     rule          1px, 32 below it
+     details       grid 363.4/363.4 gap 3.2; pairs 0.5fr/1fr gap 16
+     headings      Creato Display 17.6/17.6 w500, 16 below
+     body text     12.8/12.8 — w500 for labels, w300 for values
+     fee row       363.4/363.4 gap 3.2, and the right half is its OWN grid,
+                   173.7/173.7 gap 16, with the subtotal cell justify-self:
+                   end so the money right-aligns to the card's edge
+     total         32 above, 28 below
+     usage rows    1fr/1fr — NOT the 0.5fr/1fr of the details pairs
+     notes         no gap between paragraphs; 32 between note blocks
+     footer        grid 357/357 gap 16, wordmark left, small print right
+
+   ⚠️ 12.8px text on a 12.8px line-height is not a typo. The old app sets them
+   equal and the document's whole rhythm rests on it — a 16px line-height adds
+   3px to every row and nothing lines up with the original any more.
+
+   ⚠️ FIVE rules, and each one OPENS a band rather than closing the one
+   before: letterhead, Fees, Usage, Notes, footer. There is none between the
+   details block and Fees. In the old app three of them are the first child of
+   a wrapper rather than a sibling between two blocks, which is what makes
+   them easy to miss when reading the tree.
+
+   ⚠️ The card paints from two variables set inline per service, exactly as
+   the old app does: the whole document recolours from one swap because
+   nothing below names a colour directly.
+
+   Full account of what was checked: `claude/sequel-track-quote-page-forensics.md`. */
 @layer components {
-  /* The shell's <main> is overflow-hidden and expects each route to own its
-     scrolling — so this scrolls itself. Without min-height: 0 a flex child
-     refuses to shrink below its content and the card is simply unreachable
-     below the fold. */
+  /* Standalone, like the old app's. No nav rail, no shell — a client opens
+     this by link and gets a document on a silver page. */
   .quote-page {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
     width: 100%;
-    min-height: 0;
-    flex: 1;
-    overflow-y: auto;
-    padding: 2rem 1rem 4rem;
-  }
-
-  /* A document does not shrink to fit a flex row. */
-  .quote-card {
-    flex: 0 0 auto;
-    align-self: flex-start;
-  }
-
-  .quote-card {
-    width: 100%;
-    max-width: 794px;
-    padding: 2rem;
-    background-color: var(--quote-card);
-    color: var(--quote-ink);
+    min-height: 100dvh;
+    padding: 1rem 1rem 4rem;
+    background-color: #f1f0ee;
+    color: #372b29;
     font-family: 'Creato Display', Arial, sans-serif;
   }
 
-  /* 1fr 1fr, and the wordmarks sit on the baseline of the row. The 10rem gap
-     under it is the old app's and is what gives the document its letterhead. */
+  /* 800px — six wider than the card. That is the old app's and not a
+     rounding error, so it is kept. */
+  .quote-download {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 800px;
+    max-width: 100%;
+    height: 32px;
+    margin-bottom: 2rem;
+    border: 1px solid #372b29;
+    background-color: transparent;
+    color: #372b29;
+    font-family: 'Azeret Mono', ui-monospace, monospace;
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.25rem;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .quote-download:hover {
+    background-color: #372b29;
+    color: #f1f0ee;
+  }
+
+  .quote-card {
+    width: 794px;
+    max-width: 100%;
+    padding: 2rem;
+    background-color: var(--quote-card);
+    color: var(--quote-ink);
+  }
+
+  /* 357/357 with a 16px gutter, and the wordmarks sit on the row's baseline.
+     The 10rem beneath it is what makes the top of the page a letterhead. */
   .quote-title-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -469,6 +518,7 @@
     align-self: flex-end;
     font-family: Fahkwang, 'Creato Display', sans-serif;
     font-size: 2.8rem;
+    font-weight: 400;
     line-height: 3rem;
     color: var(--quote-ink);
   }
@@ -485,11 +535,14 @@
 
   /* Two columns of six label/value pairs. The old app fills these COLUMN-wise
      with grid-auto-flow: column; two explicit columns of six rows is the same
-     result and survives a missing value without reflowing the other side. */
+     result and survives a missing value without reflowing the other side.
+
+     ⚠️ The gutter here is 3.2px, not 16 — that is what makes each half 363.4
+     wide, and it is the stop every value in the document lines up on. */
   .quote-details {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.2rem 16px;
+    gap: 0.2rem;
     margin-top: 1rem;
     margin-bottom: 2rem;
   }
@@ -497,9 +550,10 @@
   .quote-details-col {
     display: grid;
     gap: 0.2rem;
+    align-content: start;
   }
 
-  /* 0.5fr 1fr — the label column is deliberately narrower than the value. */
+  /* 0.5fr 1fr — inside a pair the label column is deliberately the narrower. */
   .quote-pair {
     display: grid;
     grid-template-columns: 0.5fr 1fr;
@@ -507,23 +561,26 @@
     align-items: start;
   }
 
-  .quote-label {
+  .quote-label,
+  .quote-value,
+  .quote-cell {
     font-size: 0.8rem;
+    line-height: 0.8rem;
+  }
+
+  .quote-label {
     font-weight: 500;
-    line-height: 1rem;
   }
 
   .quote-value {
-    font-size: 0.8rem;
     font-weight: 300;
-    line-height: 1rem;
   }
 
   .quote-heading {
-    margin-bottom: 0.6rem;
+    margin-bottom: 1rem;
     font-size: 1.1rem;
-    font-weight: 400;
-    line-height: 1.4rem;
+    font-weight: 500;
+    line-height: 1.1rem;
     color: var(--quote-ink);
   }
 
@@ -532,20 +589,31 @@
   .quote-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    align-content: start;
     gap: 0.2rem;
+    /* 1rem, against 0.8rem of text — the old app's fee rows are 16px tall
+       with 12.8px sitting at the top of them, which is what opens the fee
+       table out against the tighter details block above it. */
+    min-height: 1rem;
     margin-bottom: 0.2rem;
   }
 
+  /* 16px here, unlike the 3.2 outside it — the old app's, and it is what puts
+     quantity at the halfway stop and the money hard against the card edge. */
   .quote-row-right {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.2rem;
+    gap: 16px;
+  }
+
+  /* The money column right-aligns to the card's inner edge. */
+  .quote-row-right > .quote-cell:last-child {
+    justify-self: end;
+    text-align: right;
   }
 
   .quote-cell {
-    font-size: 0.8rem;
     font-weight: 300;
-    line-height: 1rem;
   }
 
   .quote-row.is-bold .quote-cell {
@@ -557,29 +625,51 @@
   }
 
   .quote-total-row {
-    margin-top: 1.6rem;
-    margin-bottom: 2rem;
+    margin-top: 2rem;
+    margin-bottom: 1.75rem;
   }
 
+  /* ⚠️ 1fr 1fr, NOT the pair grid. A usage term's value starts at the halfway
+     stop, not a third of the way in — the old app uses a different grid here
+     and reusing the details pair puts every term in the wrong place. */
   .quote-terms {
     display: grid;
     gap: 0.25rem;
     margin-bottom: 2rem;
   }
 
+  .quote-term {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.2rem;
+    align-items: start;
+  }
+
   .quote-terms-gap {
     height: 0.75rem;
+  }
+
+  .quote-notes {
+    margin-bottom: 2rem;
   }
 
   .quote-note {
     margin-top: 2rem;
   }
 
+  /* ⚠️ No margin of its own. The old app's note block is a single rich-text
+     field at 12.8/12.8 separated by ONE blank line — 0.8rem between
+     paragraphs, nothing after the last one. A per-paragraph margin-bottom
+     adds a trailing gap the original does not have. */
   .quote-para {
-    margin-bottom: 0.75rem;
+    margin: 0;
     font-size: 0.8rem;
     font-weight: 300;
-    line-height: 1.1rem;
+    line-height: 0.8rem;
+  }
+
+  .quote-para + .quote-para {
+    margin-top: 0.8rem;
   }
 
   .quote-footer {
@@ -590,18 +680,24 @@
   }
 
   .quote-footer-word {
-    text-transform: uppercase;
     align-self: start;
+    text-transform: uppercase;
   }
 
+  /* The grid gap does the spacing here, so the sibling margin above must not
+     also apply — otherwise every line of small print gets 1.6rem. */
   .quote-footer-notes {
     display: grid;
-    gap: 0.25rem;
+    gap: 0.8rem;
+  }
+
+  .quote-footer-notes .quote-para + .quote-para {
+    margin-top: 0;
   }
 
   /* The card is a fixed-width document, so below its own width it simply fits
      the screen and the two-column bands stack. */
-  @media (max-width: 640px) {
+  @media (max-width: 840px) {
     .quote-page {
       padding: 1rem 0.5rem 2rem;
     }

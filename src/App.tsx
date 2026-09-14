@@ -62,6 +62,11 @@ export default function App() {
     <Routes>
       {/* Public, token-based */}
       <Route path="/inbox/:token" element={<Inbox />} />
+      {/* ⚠️ OUTSIDE the staff shell on purpose. The old app's `/quotation` is
+          a standalone document reached by uuid — silver page, DOWNLOAD button,
+          card, no nav rail — and it is what a client opens. Putting it inside
+          StaffLayout gave it a sidebar the original has never had. */}
+      <Route path="/quotes/:uuid" element={<Quote />} />
       <Route path="/p/:token" element={<SharedPlaylist />} />
       <Route path="/t/:token" element={<SharedTrack />} />
 
@@ -97,7 +102,6 @@ export default function App() {
             nothing here writes. It exists because the chart segments and the
             project invoice rows all want somewhere to go. */}
         <Route path="/invoices/:uuid" element={<Invoice />} />
-        <Route path="/quotes/:uuid" element={<Quote />} />
         <Route path="/playlists" element={<Playlists />} />
         <Route path="/playlists/:id" element={<PlaylistRoute />} />
         <Route path="/library" element={<Library />} />

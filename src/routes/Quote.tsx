@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import {
@@ -143,6 +144,23 @@ function Pair({ label, value }: { label: string; value: string | number | null |
   )
 }
 
+/**
+ * A usage-term line.
+ *
+ * ⚠️ NOT the same grid as `Pair`. The old app's detail pairs are 0.5fr/1fr,
+ * but its usage rows are 1fr/1fr — the value starts at the halfway stop, on
+ * the same vertical as the Quantity column above it. Reusing `Pair` here puts
+ * every term a third of the way in and the block stops lining up.
+ */
+function Term({ label, value }: { label: string; value: string | number | null | undefined }) {
+  return (
+    <div className="quote-term">
+      <span className="quote-label">{label}</span>
+      <span className="quote-value">{value === null || value === undefined ? '' : String(value)}</span>
+    </div>
+  )
+}
+
 function Row({
   desc,
   qty,
@@ -184,6 +202,11 @@ function Terms({ q }: { q: QuoteDetail }) {
         ? 'Yes'
         : 'No'
 
+  // ⚠️ FIVE rules on this document, and each one opens a band rather than
+  // closing the one before: letterhead, Fees, Usage, Notes, footer. The old
+  // app hangs three of them off the top of a wrapper, which is easy to miss
+  // when reading the tree — the Usage divider is the FIRST child of
+  // `.quote-terms-wrapper`, not a sibling sitting between the two blocks.
   return (
     <>
       <div className="quote-rule" />
@@ -191,22 +214,22 @@ function Terms({ q }: { q: QuoteDetail }) {
       <div className="quote-terms">
         {hasTrack && (
           <>
-            <Pair label="Track" value={q.song_name} />
-            <Pair label="Artist" value={q.artist_name} />
+            <Term label="Track" value={q.song_name} />
+            <Term label="Artist" value={q.artist_name} />
             <div className="quote-terms-gap" />
           </>
         )}
-        <Pair label="Territory" value={q.territory} />
-        <Pair label="Term" value={q.term} />
-        <Pair label="Media" value={media.join(', ')} />
-        <Pair label="Scripts" value={q.scripts} />
-        <Pair label="Cutdowns" value={cutdowns} />
-        <Pair label="Duration(s)" value={q.duration} />
+        <Term label="Territory" value={q.territory} />
+        <Term label="Term" value={q.term} />
+        <Term label="Media" value={media.join(', ')} />
+        <Term label="Scripts" value={q.scripts} />
+        <Term label="Cutdowns" value={cutdowns} />
+        <Term label="Duration(s)" value={q.duration} />
         {/* ⚠️ Gated on the VALUE, not on `service === 3`. Manual library quotes
             are service 3 too and carry no rate, so the old app prints the Rate
             label with nothing beside it. */}
         {q.mcps_track_rate?.trim() ? (
-          <Pair label="Rate" value={q.mcps_track_rate.replace(/_/g, ' ')} />
+          <Term label="Rate" value={q.mcps_track_rate.replace(/_/g, ' ')} />
         ) : null}
       </div>
     </>
@@ -268,27 +291,105 @@ function Notes({ q, sections }: { q: QuoteDetail; sections: Section[] }) {
 
   if (blocks.length === 0) return null
 
+  // The wrapper carries the 2rem that separates the last note from the rule
+  // the footer opens with — without it that rule is drawn over the text.
   return (
     <>
       <div className="quote-rule" />
-      {blocks.map((b) => (
-        <div key={b.title} className="quote-note">
-          <h2 className="quote-heading">{b.title}</h2>
-          {b.paras.map((p, i) => (
-            <p key={i} className="quote-para">
-              {p}
-            </p>
-          ))}
-        </div>
-      ))}
+      <div className="quote-notes">
+        {blocks.map((b) => (
+          <div key={b.title} className="quote-note">
+            <h2 className="quote-heading">{b.title}</h2>
+            {b.paras.map((p, i) => (
+              <p key={i} className="quote-para">
+                {p}
+              </p>
+            ))}
+          </div>
+        ))}
+      </div>
     </>
   )
+}
+
+/**
+ * DOWNLOAD — the old app's, ported.
+ *
+ * The old app's button is a Wized click workflow that runs html2pdf over the
+ * card: html2canvas at scale 2 onto a jsPDF page sized to the element, then a
+ * `/OpenAction … /XYZ null null 0.4` written into the PDF so it opens at 40%
+ * rather than filling a monitor with a single page.
+ *
+ * ⚠️ The inline-every-computed-colour loop is the old app's too, and it earns
+ * its keep: html2canvas reads inline and computed styles but chokes on colour
+ * functions it does not know, and Tailwind v4's resets are oklch. Painting the
+ * resolved colour onto each node before the capture, and putting it back
+ * after, sidesteps the whole question.
+ *
+ * ⚠️ NOT ported: the `log_quote_download` POST the old app fires alongside it.
+ * That writes to Xano, and quotes are on the blocked side of the migration —
+ * QuickBooks and BoldSign still read them there. It needs doing at cutover.
+ */
+async function downloadQuote(card: HTMLElement, fileName: string, background: string) {
+  const { default: html2pdf } = await import('html2pdf.js')
+
+  const nodes = [card, ...Array.from(card.querySelectorAll<HTMLElement>('*'))]
+  const restore = nodes.map((node) => {
+    const computed = getComputedStyle(node)
+    const previous = {
+      node,
+      color: node.style.color,
+      backgroundColor: node.style.backgroundColor,
+      borderColor: node.style.borderColor,
+    }
+    node.style.color = computed.color
+    if (computed.backgroundColor && computed.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+      node.style.backgroundColor = computed.backgroundColor
+    }
+    if (computed.borderColor) node.style.borderColor = computed.borderColor
+    return previous
+  })
+
+  const width = card.clientWidth
+  const height = card.scrollHeight
+
+  try {
+    const pdf = await html2pdf()
+      .set({
+        margin: 0,
+        filename: fileName,
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: background, logging: false, width, height },
+        jsPDF: { unit: 'px', format: [width, height], orientation: 'portrait' },
+      })
+      .from(card)
+      .toPdf()
+      .get('pdf')
+
+    try {
+      const pageObjId = pdf.internal.getPageInfo(1).objId
+      pdf.internal.write(`/OpenAction [${pageObjId} 0 R /XYZ null null 0.4]`)
+    } catch {
+      // Older jsPDF builds do not expose this; the file still downloads, it
+      // just opens at the viewer's default zoom.
+    }
+
+    pdf.save(fileName)
+  } finally {
+    for (const previous of restore) {
+      previous.node.style.color = previous.color
+      previous.node.style.backgroundColor = previous.backgroundColor
+      previous.node.style.borderColor = previous.borderColor
+    }
+  }
 }
 
 export default function Quote() {
   const { uuid } = useParams()
   const quote = useQuote(uuid)
   const lines = useQuoteLines(quote.data?.id)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [saving, setSaving] = useState(false)
 
   if (quote.isPending) {
     return (
@@ -304,9 +405,28 @@ export default function Quote() {
   const sections = fold(lines.data ?? [])
   const theme = (q.service_id !== null && THEME[q.service_id]) || UNTHEMED
 
+  const fileName = `Sequel Quote ${q.quote_no ?? ''}${q.client_name ? ` - ${q.client_name}` : ''}`
+    .replace(/[\\/:*?"<>|]/g, '')
+    .trim()
+
   return (
     <div className="quote-page">
+      <button
+        type="button"
+        className="quote-download"
+        disabled={saving}
+        onClick={() => {
+          if (!cardRef.current) return
+          setSaving(true)
+          void downloadQuote(cardRef.current, `${fileName}.pdf`, theme.card).finally(() =>
+            setSaving(false),
+          )
+        }}
+      >
+        {saving ? 'Preparing…' : 'Download'}
+      </button>
       <div
+        ref={cardRef}
         className="quote-card"
         style={
           { '--quote-card': theme.card, '--quote-ink': theme.ink } as React.CSSProperties
@@ -337,6 +457,7 @@ export default function Quote() {
           </div>
         </div>
 
+        <div className="quote-rule" />
         <h2 className="quote-heading">Fees</h2>
         <Row desc="Service Type" qty="Quantity" subtotal="Subtotal" bold />
 
