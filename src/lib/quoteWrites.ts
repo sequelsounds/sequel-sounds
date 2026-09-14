@@ -110,6 +110,24 @@ export type NewQuoteInput = {
   fees: Record<FeeKey, FeeCategory>
 }
 
+/**
+ * A typed amount, shown with thousands separators.
+ *
+ * ⚠️ Applied on BLUR, not on every keystroke. Reformatting as someone types
+ * moves the caret — you type 2500, the field becomes 2,500 and the cursor
+ * jumps to the front. The raw text is what state holds; this is only what the
+ * field shows when it is not being typed in.
+ */
+export function formatAmount(raw: string): string {
+  const cleaned = raw.replace(/[\s,£$€¥]/g, '')
+  if (cleaned === '') return ''
+  const n = Number(cleaned)
+  if (!Number.isFinite(n)) return raw
+  const [whole, fraction] = cleaned.split('.')
+  const grouped = Number(whole || 0).toLocaleString('en-GB')
+  return fraction === undefined ? grouped : `${grouped}.${fraction}`
+}
+
 /** A typed amount → a number the database can take. Blank is zero. */
 export function toAmount(raw: string): number {
   const cleaned = raw.replace(/[\s,£$€¥]/g, '')

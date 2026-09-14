@@ -851,36 +851,48 @@
     color: var(--color-sequel-silver);
   }
 
-  .qw-fee-head {
-    display: flex;
+  /* ⚠️ ONE GRID FOR THE WHOLE SCREEN. The heading row and every fee row share
+     these three columns, so + ENTRY, the amounts and the delete control all sit
+     on the same edges. They were three separate layouts before and none of the
+     left or right edges lined up. */
+  .qw-fee-head,
+  .qw-fee-row {
+    display: grid;
+    grid-template-columns: 1fr 12rem 2rem;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
+    column-gap: 1.5rem;
+  }
+
+  .qw-fee-head {
+    margin-bottom: 2rem;
   }
 
   .qw-fee-head .qw-title {
     margin-bottom: 0;
   }
 
+  /* Column 2 only, so + ENTRY sits directly over the amounts and shares their
+     right edge. The delete column stays clear in every row. */
   .qw-fee-head .qw-choice {
-    width: auto;
+    grid-column: 2;
+    width: 100%;
   }
 
-  .qw-fee-row {
-    display: grid;
-    grid-template-columns: 1fr 10rem 1.5rem;
-    align-items: center;
-    gap: 1rem;
-    margin-top: 1rem;
+  .qw-fee-row + .qw-fee-row {
+    margin-top: 1.25rem;
   }
 
+  /* ⚠️ The same left padding the inputs carry, so a label's text starts on the
+     same line as the text in the field above it rather than 12px to its left. */
   .qw-fee-label {
+    padding-left: 0.75rem;
     font-family: 'Creato Display', Arial, sans-serif;
     font-size: 0.875rem;
     font-weight: 500;
   }
 
   .qw-fee-delete {
+    justify-self: center;
     font-size: 1.1rem;
     line-height: 1;
     cursor: pointer;
@@ -995,9 +1007,10 @@
       grid-template-columns: 1fr;
     }
 
+    .qw-fee-head,
     .qw-fee-row {
-      grid-template-columns: 1fr 6.5rem 1.5rem;
-      gap: 0.5rem;
+      grid-template-columns: 1fr 7rem 1.5rem;
+      column-gap: 0.75rem;
     }
 
     .qw-head {

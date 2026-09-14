@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import SequelLogo from '../SequelLogo'
 import {
   FEE_SCREENS,
+  formatAmount,
   QUOTE_TYPES,
   emptyFees,
   quoteTotal,
@@ -150,6 +151,40 @@ function YesNo({
   )
 }
 
+/**
+ * An amount field. Holds the raw text, shows it grouped when it is not focused.
+ *
+ * ⚠️ Not formatted on change: reformatting mid-keystroke moves the caret to the
+ * front of the field, so 2500 becomes 2,500 with the cursor in the wrong place
+ * and the next digit lands inside the number.
+ */
+function AmountInput({
+  value,
+  onChange,
+  numeric,
+}: {
+  value: string
+  onChange: (next: string) => void
+  /** Whole numbers only — the search count. */
+  numeric?: boolean
+}) {
+  const [focused, setFocused] = useState(false)
+  return (
+    <input
+      className="qw-input qw-input-amount"
+      inputMode={numeric ? 'numeric' : 'decimal'}
+      placeholder="0"
+      value={focused ? value : formatAmount(value)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/,/g, '')
+        onChange(numeric ? raw.replace(/[^\d]/g, '') : raw.replace(/[^\d.]/g, ''))
+      }}
+    />
+  )
+}
+
 /** A fee screen: any number of supplier lines, then the one Sequel fee. */
 function FeeScreen({
   heading,
@@ -190,13 +225,7 @@ function FeeScreen({
             value={line.description}
             onChange={(e) => setLine(i, { description: e.target.value })}
           />
-          <input
-            className="qw-input qw-input-amount"
-            inputMode="decimal"
-            placeholder="0"
-            value={line.cost}
-            onChange={(e) => setLine(i, { cost: e.target.value })}
-          />
+          <AmountInput value={line.cost} onChange={(cost) => setLine(i, { cost })} />
           {/* The old app's delete X. Never on the last remaining row — a fee
               screen with no line at all has nothing to type into. */}
           {category.lines.length > 1 ? (
@@ -219,12 +248,10 @@ function FeeScreen({
       {showQuantity && (
         <div className="qw-fee-row">
           <span className="qw-fee-label">Sequel Search Quantity</span>
-          <input
-            className="qw-input qw-input-amount"
-            inputMode="numeric"
-            placeholder="0"
+          <AmountInput
+            numeric
             value={category.searchQuantity ?? ''}
-            onChange={(e) => onChange({ ...category, searchQuantity: e.target.value })}
+            onChange={(searchQuantity) => onChange({ ...category, searchQuantity })}
           />
           <span />
         </div>
@@ -232,13 +259,7 @@ function FeeScreen({
 
       <div className="qw-fee-row">
         <span className="qw-fee-label">{sequelLabel}</span>
-        <input
-          className="qw-input qw-input-amount"
-          inputMode="decimal"
-          placeholder="0"
-          value={category.sequel}
-          onChange={(e) => onChange({ ...category, sequel: e.target.value })}
-        />
+        <AmountInput value={category.sequel} onChange={(sequel) => onChange({ ...category, sequel })} />
         <span />
       </div>
 
