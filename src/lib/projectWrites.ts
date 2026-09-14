@@ -122,37 +122,51 @@ export function useSaveProject(id: number | undefined) {
   })
 }
 
-/** What creating a project needs. Exactly the nine the database requires. */
+/**
+ * What creating a project needs — Track's New Project wizard, step for step.
+ *
+ * ⚠️ NOT what the existing projects happen to have filled in. Product, campaign
+ * name and country are on 183 of the 183 projects with a 2026 Sequel No. and
+ * the wizard asks for none of them; they get filled in afterwards, on the
+ * project page. A required set derived from the data instead of from the form
+ * would refuse a project created the way Track creates one.
+ *
+ * The supervisor is absent because Track does not ask: Xano writes it as the
+ * caller, and the create guard now does the same.
+ *
+ * Client Job No is the one optional field — the one question on the wizard
+ * without an asterisk, and the one key its `is_form_complete` exempts.
+ */
 export type NewProjectInput = {
-  title: string
+  client_user_id: number
   brand: string
-  product: string
-  campaignname: string
-  project_type: string
-  country: string
+  title: string
+  client_agency: number
+  brand_no?: string | null
+  services_id: number
+  pipeline_gbp: number
+  proposed_start_date: string
   client: number
+  adpro_user: number
   brand_category: number
-  music_supervisor: number
 }
 
 /**
  * Creating a project.
- *
- * The nine fields are not this form's idea of thorough — they are what the
- * create guard refuses to go without, chosen because each is present on at
- * least 182 of the 183 projects with a 2026 Sequel No. Everything else is
- * editable the moment the page opens, so asking for more here would just be a
- * worse version of the page it hands you to.
  *
  * The Sequel No. is NOT sent. It is allocated by the database — the next
  * counter, the first three letters of the brand, the year, and `II` — so two
  * people creating at once cannot land on the same number, and nobody can pick
  * their own.
  *
+ * ⚠️ Campaign name is deliberately left blank. Xano's POST writes the literal
+ * string "CampaignName" into every project it creates, which is a bug rather
+ * than a default — it puts a fake value where a blank belongs, and a blank is
+ * what tells the project page there is something to fill in. Not copied.
+ *
  * This inserts with ids rather than going through `public.track_create_project`,
- * which takes names: the selects on the form already hold the ids, and the RPC
- * exists for callers that only have words — the MCP server, and anything else
- * that arrives later. Both land on the same policy and the same guard.
+ * which takes names: the wizard already holds the ids, and the RPC exists for
+ * callers that only have words. Both land on the same policy and the same guard.
  */
 export function useCreateProject() {
   const qc = useQueryClient()
@@ -175,7 +189,14 @@ export function useCreateProject() {
   })
 }
 
-/** The only three values `project_type` has ever held. */
+/**
+ * The only three values the `project_type` COLUMN has ever held.
+ *
+ * ⚠️ Not what Track's wizard means by "Project Type?" — step 6 of that writes
+ * `services_id` (Composition, Commercial, Library…) and never touches this
+ * column. The same three words name two different fields in Track; see the
+ * note on the wizard's step 6.
+ */
 export const PROJECT_TYPES = ['Advert', 'Film', 'Social post'] as const
 
 export type Option = { id: number; label: string }
@@ -198,15 +219,18 @@ export function useProjectLookups() {
     queryKey: ['mirror', 'project-lookups'],
     staleTime: Infinity,
     queryFn: async () => {
-      const [groups, categories, services, statuses, agencies] = await Promise.all([
+      const [groups, categories, services, statuses, agencies, countries] = await Promise.all([
         mirror.from('client_groups').select('id, client'),
         mirror.from('brand_category').select('id, category'),
         mirror.from('services').select('id, service'),
         mirror.from('projects_status_options').select('id, status, sort_order, selectable'),
-        mirror.from('clients').select('id, company, status'),
+        mirror.from('clients').select('id, company, status, country'),
+        mirror.from('countries_list').select('id, country'),
       ])
 
-      const failed = [groups, categories, services, statuses, agencies].find((r) => r.error)
+      const failed = [groups, categories, services, statuses, agencies, countries].find(
+        (r) => r.error,
+      )
       if (failed?.error) throw failed.error
 
       const rows = <T,>(r: { data: unknown }) => (r.data ?? []) as T[]
@@ -233,6 +257,22 @@ export function useProjectLookups() {
           .filter((r) => r.status !== 'Archived')
           .map((r) => ({ id: r.id, label: r.company ?? '' }))
           .sort(byLabel),
+        // Track's agency search shows the company over its country. Kept as a
+        // lookup rather than a wider Option, so the picker stays one shape.
+        //
+        // ⚠️ `clients.country` is an FK to `countries_list`, not a name. Showing
+        // it raw put "93" under Edelman Milan.
+        agencyCountries: (() => {
+          const names = new Map(
+            rows<{ id: number; country: string | null }>(countries).map((c) => [c.id, c.country ?? '']),
+          )
+          return Object.fromEntries(
+            rows<{ id: number; country: number | null }>(agencies).map((r) => [
+              r.id,
+              r.country == null ? '' : (names.get(r.country) ?? ''),
+            ]),
+          ) as Record<number, string>
+        })(),
       }
     },
   })
@@ -290,6 +330,10 @@ export function useProjectPeople() {
         supervisors: pool(SEQUEL),
         adpros: pool(ADPRO),
         clientUsers: pool(CLIENT_SIDE),
+        // Track's user search shows the name over the email address.
+        emails: Object.fromEntries(
+          ((data ?? []) as Row[]).map((u) => [u.id, u.email ?? '']),
+        ) as Record<number, string>,
       }
     },
   })

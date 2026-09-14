@@ -3317,43 +3317,87 @@
     color: var(--color-sequel-mid);
   }
 
-  /* The project create band. Nine required fields will not sit on one line, so
-     they reflow: three or four across on a wide window, one across on a narrow
-     one. The supplier band's single row is still the right shape for two
-     fields and is left alone. */
-  .create-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-    gap: 0.75rem 1rem;
-    margin-bottom: 1rem;
-  }
 
-  .create-field {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-  }
-
-  .create-field-label {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 0.8rem;
-    line-height: 0.8rem;
-    font-weight: 500;
-    color: var(--color-sequel-brown);
-  }
-
-  /* Inside the grid the cell decides the width, not the control. */
-  .create-grid .edit-field-input {
-    width: 100%;
-    min-width: 0;
-  }
-
-  /* Says where the Sequel number comes from, at the moment somebody would
-     otherwise look for a box to type it into. */
-  .create-band-note {
+  /* ------------------------------------------------------ new project wizard
+   * Track asks eleven questions one screen at a time in a modal, so this does
+   * the same. One question, one control, and the buttons at the bottom.
+   */
+  .wizard-progress {
+    margin-bottom: 0.75rem;
     color: var(--color-sequel-mid);
     font-size: 0.7rem;
     line-height: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .wizard-question {
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 400;
+    line-height: 1.4rem;
+    color: var(--color-sequel-brown);
+  }
+
+  .wizard-created {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.9rem;
+    color: var(--color-sequel-mid);
+  }
+
+  .wizard-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.75rem;
+  }
+
+  /* The two typeaheads, steps 1 and 4. The results sit under the box rather
+     than over the page: the dialog is short and a floating layer inside a
+     modal is one stacking context too many. */
+  .wizard-search {
+    position: relative;
+  }
+
+  .wizard-results {
+    max-height: 14rem;
+    margin-top: 0.5rem;
+    overflow-y: auto;
+    border: 1px solid var(--color-sequel-line);
+  }
+
+  .wizard-result {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .wizard-result:hover,
+  .wizard-result.is-picked {
+    background-color: rgb(255 255 255 / 0.5);
+  }
+
+  .wizard-result-name {
+    display: block;
+    font-size: 0.85rem;
+    line-height: 1.1rem;
+    color: var(--color-sequel-brown);
+  }
+
+  .wizard-result-sub {
+    display: block;
+    font-size: 0.7rem;
+    line-height: 0.9rem;
+    color: var(--color-sequel-mid);
+  }
+
+  .wizard-result-empty {
+    padding: 0.5rem 0.75rem;
+    color: var(--color-sequel-mid);
+    font-size: 0.8rem;
   }
 }

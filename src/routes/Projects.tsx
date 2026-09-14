@@ -63,9 +63,9 @@ export default function Projects() {
           <button
             type="button"
             className="btn btn-mono btn-outline"
-            onClick={() => setAdding((v) => !v)}
+            onClick={() => setAdding(true)}
           >
-            {adding ? 'Close' : '+ New Project'}
+            + New Project
           </button>
         </div>
         <div className="page-subtitle">{me.data?.name ?? ' '}</div>
@@ -73,7 +73,7 @@ export default function Projects() {
 
       {adding && (
         <NewProject
-          onCancel={() => setAdding(false)}
+          onClose={() => setAdding(false)}
           onCreated={(id) => {
             setAdding(false)
             navigate(`/projects/${id}`)

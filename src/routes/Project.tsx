@@ -4,7 +4,6 @@ import { Loader } from '../components/Loader'
 import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
 import { formatBytes, formatMoney } from '../lib/format'
 import {
-  PROJECT_TYPES,
   useProjectLookups,
   useProjectPeople,
   useSaveProject,
@@ -207,33 +206,6 @@ function PickField({
       label={label}
       value={value}
       options={options ?? []}
-      onSave={(next) => save({ [column]: next } as ProjectPatch)}
-    />
-  )
-}
-
-/** An enum stored as its own text — project type is the only one on this page. */
-function EnumField({
-  label,
-  value,
-  column,
-  options,
-  edit,
-  save,
-}: {
-  label: string
-  value: string | null | undefined
-  column: keyof ProjectPatch
-  options: readonly string[]
-  edit: boolean
-  save: (patch: ProjectPatch) => Promise<unknown>
-}) {
-  if (!edit) return <Field label={label} value={value} />
-  return (
-    <EditEnum
-      label={label}
-      value={value}
-      options={options}
       onSave={(next) => save({ [column]: next } as ProjectPatch)}
     />
   )
@@ -560,14 +532,6 @@ export default function Project() {
                 label_={p.service}
                 column="services_id"
                 options={lookups.data?.services}
-                edit={edit}
-                save={save}
-              />
-              <EnumField
-                label="Project Type"
-                value={p.project_type}
-                column="project_type"
-                options={PROJECT_TYPES}
                 edit={edit}
                 save={save}
               />
