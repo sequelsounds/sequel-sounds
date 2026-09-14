@@ -22,6 +22,7 @@ import Users from './routes/Users'
 import Invoice from './routes/Invoice'
 import Project from './routes/Project'
 import Projects from './routes/Projects'
+import Quote from './routes/Quote'
 import SharedPlaylist from './routes/SharedPlaylist'
 import SharedTrack from './routes/SharedTrack'
 import StaffLayout from './routes/StaffLayout'
@@ -96,6 +97,7 @@ export default function App() {
             nothing here writes. It exists because the chart segments and the
             project invoice rows all want somewhere to go. */}
         <Route path="/invoices/:uuid" element={<Invoice />} />
+        <Route path="/quotes/:uuid" element={<Quote />} />
         <Route path="/playlists" element={<Playlists />} />
         <Route path="/playlists/:id" element={<PlaylistRoute />} />
         <Route path="/library" element={<Library />} />

@@ -1415,3 +1415,115 @@ export function useSupplierInvoices(supplierId: number | undefined) {
     },
   })
 }
+
+/* ------------------------------------------------------------ the quote doc
+ * The client-facing quote document, behind `/quotes/:uuid`.
+ *
+ * Mirrors Xano's get_quote_by_uuid (api 419) through two views, with the
+ * formatting left to the page: 419 divides by 100 and comma-separates before
+ * the front end sees it, and these carry full precision so the page rounds
+ * once — the rule the invoice page already follows.
+ *
+ * ⚠️ NOT PUBLIC, unlike the old app. There, api 419 is `auth = false` so a
+ * client can open the document from a shared link, which means anyone holding
+ * a uuid can read it. Here `quotes_scoped_read` already lets the project's
+ * client contact, ad producer and supervisor see it once signed in, so the
+ * page works for a client without the document being open to the world.
+ * Whether a public share link is added on top is Andy's call, still open.
+ */
+
+export type QuoteDetail = {
+  id: number
+  uuid: string
+  quote_no: number
+  status: string | null
+  description: string | null
+  created_at: string | null
+  /** ⚠️ The QUOTE's service, not the project's. The two can differ. */
+  service_id: number | null
+  quote_service: string | null
+  project_service: string | null
+  quote_currency: number | null
+  currency_code: string | null
+  currency_symbol: string | null
+  /** Minor units. */
+  local_grand_total: number | null
+  term: string | null
+  territory: string | null
+  media: string[] | null
+  mcps_territories: string | null
+  scripts: string | null
+  duration: string | null
+  cutdowns_includedyn: boolean | null
+  mcps_track_rate: string | null
+  online_worldwide: boolean | null
+  song_name: string | null
+  artist_name: string | null
+  tracks_quoted: number | null
+  project_master_list_id: number | null
+  brand: string | null
+  project_title: string | null
+  sequel_no: string | null
+  brand_no: string | null
+  product: string | null
+  client_name: string | null
+  username: string | null
+  company: string | null
+  region: string | null
+  music_supervisor: string | null
+}
+
+export type QuoteLine = {
+  id: number
+  quote_id: number
+  category: string | null
+  section: string | null
+  sort_order: number | null
+  fee_type: string | null
+  fee_description: string | null
+  /** Minor units, full precision. */
+  cost: number | null
+  quantity: number | null
+  service_name: string | null
+}
+
+export function useQuote(uuid: string | undefined) {
+  return useQuery({
+    enabled: !!uuid,
+    queryKey: ['mirror', 'quote', uuid],
+    queryFn: async (): Promise<QuoteDetail | null> => {
+      const { data, error } = await mirror
+        .from('quote_detail')
+        .select('*')
+        .eq('uuid', uuid!)
+        .maybeSingle()
+      if (error) throw error
+      return (data as QuoteDetail) ?? null
+    },
+  })
+}
+
+/**
+ * The line items, in the order the document groups them: by the fee category's
+ * sort order, then supplier costs before the Sequel fee within each section —
+ * which is what Xano's `fee_type: "desc"` achieves, since "supplier_cost"
+ * sorts after "sequel_fee".
+ */
+export function useQuoteLines(quoteId: number | undefined) {
+  return useQuery({
+    enabled: Number.isFinite(quoteId),
+    queryKey: ['mirror', 'quote-lines', quoteId],
+    queryFn: async (): Promise<QuoteLine[]> => {
+      const { data, error } = await mirror
+        .from('quote_lines')
+        .select('*')
+        .eq('quote_id', quoteId!)
+      if (error) throw error
+      return ((data ?? []) as QuoteLine[]).sort(
+        (a, b) =>
+          (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
+          (b.fee_type ?? '').localeCompare(a.fee_type ?? ''),
+      )
+    },
+  })
+}

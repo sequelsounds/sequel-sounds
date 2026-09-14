@@ -417,3 +417,211 @@
     opacity: 0.4;
   }
 }
+
+/* --------------------------------------------------------------- the quote
+   The client-facing quote document. Every value here was measured off the
+   published Webflow page rather than chosen — see
+   `claude/sequel-track-quote-page-forensics.md` §6.
+
+   ⚠️ The card paints from two variables set inline per service, exactly as the
+   old app does: the whole document recolours from one swap because nothing
+   below names a colour directly. */
+@layer components {
+  /* The shell's <main> is overflow-hidden and expects each route to own its
+     scrolling — so this scrolls itself. Without min-height: 0 a flex child
+     refuses to shrink below its content and the card is simply unreachable
+     below the fold. */
+  .quote-page {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem 1rem 4rem;
+  }
+
+  /* A document does not shrink to fit a flex row. */
+  .quote-card {
+    flex: 0 0 auto;
+    align-self: flex-start;
+  }
+
+  .quote-card {
+    width: 100%;
+    max-width: 794px;
+    padding: 2rem;
+    background-color: var(--quote-card);
+    color: var(--quote-ink);
+    font-family: 'Creato Display', Arial, sans-serif;
+  }
+
+  /* 1fr 1fr, and the wordmarks sit on the baseline of the row. The 10rem gap
+     under it is the old app's and is what gives the document its letterhead. */
+  .quote-title-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 10rem;
+  }
+
+  .quote-wordmark {
+    align-self: flex-end;
+    font-family: Fahkwang, 'Creato Display', sans-serif;
+    font-size: 2.8rem;
+    line-height: 3rem;
+    color: var(--quote-ink);
+  }
+
+  .quote-wordmark-right {
+    text-align: right;
+  }
+
+  .quote-rule {
+    height: 1px;
+    margin-bottom: 2rem;
+    background-color: var(--quote-ink);
+  }
+
+  /* Two columns of six label/value pairs. The old app fills these COLUMN-wise
+     with grid-auto-flow: column; two explicit columns of six rows is the same
+     result and survives a missing value without reflowing the other side. */
+  .quote-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.2rem 16px;
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .quote-details-col {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  /* 0.5fr 1fr — the label column is deliberately narrower than the value. */
+  .quote-pair {
+    display: grid;
+    grid-template-columns: 0.5fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .quote-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1rem;
+  }
+
+  .quote-value {
+    font-size: 0.8rem;
+    font-weight: 300;
+    line-height: 1rem;
+  }
+
+  .quote-heading {
+    margin-bottom: 0.6rem;
+    font-size: 1.1rem;
+    font-weight: 400;
+    line-height: 1.4rem;
+    color: var(--quote-ink);
+  }
+
+  /* ⚠️ TWO columns, not three. Description on the left; the right half is its
+     own two-column grid holding quantity and subtotal. */
+  .quote-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.2rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .quote-row-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.2rem;
+  }
+
+  .quote-cell {
+    font-size: 0.8rem;
+    font-weight: 300;
+    line-height: 1rem;
+  }
+
+  .quote-row.is-bold .quote-cell {
+    font-weight: 500;
+  }
+
+  .quote-section {
+    margin-top: 1rem;
+  }
+
+  .quote-total-row {
+    margin-top: 1.6rem;
+    margin-bottom: 2rem;
+  }
+
+  .quote-terms {
+    display: grid;
+    gap: 0.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .quote-terms-gap {
+    height: 0.75rem;
+  }
+
+  .quote-note {
+    margin-top: 2rem;
+  }
+
+  .quote-para {
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 300;
+    line-height: 1.1rem;
+  }
+
+  .quote-footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .quote-footer-word {
+    text-transform: uppercase;
+    align-self: start;
+  }
+
+  .quote-footer-notes {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  /* The card is a fixed-width document, so below its own width it simply fits
+     the screen and the two-column bands stack. */
+  @media (max-width: 640px) {
+    .quote-page {
+      padding: 1rem 0.5rem 2rem;
+    }
+
+    .quote-card {
+      padding: 1.25rem;
+    }
+
+    .quote-title-row {
+      margin-bottom: 4rem;
+    }
+
+    .quote-wordmark {
+      font-size: 1.8rem;
+      line-height: 2rem;
+    }
+
+    .quote-details,
+    .quote-footer {
+      grid-template-columns: 1fr;
+    }
+  }
+}
