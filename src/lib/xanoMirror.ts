@@ -1274,3 +1274,53 @@ export function useInvoiceLines(uuid: string | undefined) {
     },
   })
 }
+
+/**
+ * What a supplier has actually done, counted off the invoice lines.
+ *
+ * The three tiles on the two supplier pages — Demos, Wins and Fees — have been
+ * empty on Track since the day those pages were made: they were duplicated
+ * from `/project` and the tiles came with them, still bound to
+ * `project_service_type`, `project_sequel_no` and `project_status`, none of
+ * which exist on a supplier page. Andy's definitions, 14 September 2026, and
+ * the arithmetic lives in the `supplier_stats` view rather than here.
+ *
+ * ⚠️ `fees_gbp` IS IN STERLING and every other money figure on these two pages
+ * is not. A line's `fee_amount` is in its invoice's currency, so a supplier's
+ * lines cannot be summed without converting — the view does it at each
+ * invoice's own `exchange_rate_lock`. Label the tile accordingly.
+ */
+export type SupplierStats = {
+  supplier_id: number
+  /** Every line in the Demos category counts as one. */
+  demos: number
+  /** Distinct invoices carrying a Library Master or Publishing line — both on
+   *  the same invoice is one win, not two. */
+  wins: number
+  /** Every line they are named on, in GBP. */
+  fees_gbp: number
+  /**
+   * What Sequel itself paid out, rather than what the supplier was paid in
+   * total. A non-paythrough line is settled by the client direct, so this is
+   * far lower and zero for most labels and publishers. Not shown; kept so the
+   * distinction is visible and switching the tile is one word.
+   */
+  fees_paythrough_gbp: number
+  invoice_count: number
+}
+
+export function useSupplierStats(supplierId: number | undefined) {
+  return useQuery({
+    enabled: Number.isFinite(supplierId),
+    queryKey: ['mirror', 'supplier-stats', supplierId],
+    queryFn: async (): Promise<SupplierStats | null> => {
+      const { data, error } = await mirror
+        .from('supplier_stats')
+        .select('*')
+        .eq('supplier_id', supplierId!)
+        .maybeSingle()
+      if (error) throw error
+      return (data as SupplierStats) ?? null
+    },
+  })
+}

@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { EditEnum, EditField, EditSelect, ReadOnlyField } from '../components/staff/EditField'
-import { useRosterMember } from '../lib/xanoMirror'
+// The house format for a GBP figure on a stats band: rounded to the pound, the
+// same as /management and /dashboard. Pennies belong on an invoice, not a tile.
+import { money } from '../components/staff/reporting'
+import { useRosterMember, useSupplierStats } from '../lib/xanoMirror'
 import {
   BRIEFING_LISTS,
   CA_STATUSES,
@@ -21,21 +24,29 @@ import {
  * Xano's sync on 13 September 2026, so an edit here does not reach Track and
  * an edit on Track does not reach here.
  *
- * Two things are still recreated rather than repaired, because unlike
- * `/roster`'s filters there is nothing here to make work: the Demos / Wins /
- * Win Fees tiles are bound to `project_service_type`, `project_sequel_no` and
- * `project_status` — leftovers from duplicating `/project` — and have no
- * source to read, and the Projects tab has no markup at all.
+ * The Demos / Wins / Fees tiles were empty on Track and empty here, bound to
+ * `project_service_type`, `project_sequel_no` and `project_status` — leftovers
+ * from duplicating `/project`. They now count off the invoice lines, to Andy's
+ * definitions; see `supplier_stats`. The Projects tab still has no markup at
+ * all, on either side.
  */
 
 const TABS = ['Overview', 'Contact', 'Projects', 'Finance'] as const
 type Tab = (typeof TABS)[number]
 
-function Stat({ label, className = '' }: { label: string; className?: string }) {
+function Stat({
+  label,
+  value,
+  className = '',
+}: {
+  label: string
+  value: string | number
+  className?: string
+}) {
   return (
     <div className={`stat ${className}`}>
       <span className="stat-label">{label}</span>
-      <span className="stat-value" />
+      <span className="stat-value">{value}</span>
     </div>
   )
 }
@@ -43,6 +54,7 @@ function Stat({ label, className = '' }: { label: string; className?: string }) 
 export default function RosterMember() {
   const { uuid } = useParams()
   const member = useRosterMember(uuid)
+  const stats = useSupplierStats(member.data?.id)
   const countries = useCountries()
   const save = useSaveSupplier(uuid)
   const [tab, setTab] = useState<Tab>('Overview')
@@ -72,15 +84,21 @@ export default function RosterMember() {
         <div className="page-subtitle">Edit our partners&rsquo; details...</div>
       </div>
 
-      {/* Empty on Track, and empty here: the bindings behind these three
-          labels belong to a project. A number invented on this side would be
-          worse than the blank. */}
+      {/* Empty on Track, because the bindings behind these three labels belong
+          to a project — they came across when this page was duplicated from
+          /project and were never repointed. Counted off the invoice lines
+          here; the arithmetic is in the supplier_stats view.
+          ⚠️ Fees is in STERLING, unlike every other money figure on this page,
+          which is why the tile says so. */}
       <div className="tab-band">
-        <Stat label="Demos" />
+        <Stat label="Demos" value={stats.data?.demos ?? ''} className="ml-0" />
         <div className="tab-band-divider" />
-        <Stat label="Wins" />
+        <Stat label="Wins" value={stats.data?.wins ?? ''} />
         <div className="tab-band-divider" />
-        <Stat label="Win Fees" />
+        <Stat
+          label="Fees (GBP)"
+          value={stats.data ? money(Number(stats.data.fees_gbp)) : ''}
+        />
       </div>
 
       <div className="project-tabs is-plain" role="tablist">

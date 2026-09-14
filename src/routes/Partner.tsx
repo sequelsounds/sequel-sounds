@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { EditEnum, EditField, EditSelect, ReadOnlyField } from '../components/staff/EditField'
-import { usePartner } from '../lib/xanoMirror'
+// The house format for a GBP figure on a stats band: rounded to the pound, the
+// same as /management and /dashboard. Pennies belong on an invoice, not a tile.
+import { money } from '../components/staff/reporting'
+import { usePartner, useSupplierStats } from '../lib/xanoMirror'
 import {
   BRIEFING_LISTS,
   CA_STATUSES,
@@ -31,10 +34,12 @@ import {
  * Three things on Track's version are unfinished, and the first two are still
  * recreated rather than quietly repaired:
  *
- *  1. **The three tiles are empty and always will be.** Labelled Demos, Wins
- *     and Win Fees, bound to `project_service_type`, `project_sequel_no` and
- *     `project_status` — left over from duplicating `/project`. They are bound
- *     to a project that does not exist on this page, so they render nothing.
+ *  1. **The three tiles were empty and are not any more.** Labelled Demos,
+ *     Wins and Win Fees, they were bound to `project_service_type`,
+ *     `project_sequel_no` and `project_status` — left over from duplicating
+ *     `/project` — so on Track they render nothing and always have. They are
+ *     counted off the invoice lines here, to Andy's definitions, and the last
+ *     is now "Fees" because it is every line rather than the winning ones.
  *  2. **The Projects tab is empty markup.** Not an empty state — no markup.
  *  3. **The eyebrow said "Roster"** on a page showing a sync rep, because the
  *     page was duplicated from `/roster-edit`. That one IS fixed: it was a
@@ -65,6 +70,7 @@ function Stat({
 export default function Partner() {
   const { uuid } = useParams()
   const partner = usePartner(uuid)
+  const stats = useSupplierStats(partner.data?.id)
   const countries = useCountries()
   const save = useSaveSupplier(uuid)
   const [tab, setTab] = useState<Tab>('Overview')
@@ -94,16 +100,21 @@ export default function Partner() {
         <div className="page-subtitle">Edit our partners&rsquo; details...</div>
       </div>
 
-      {/* Three tiles with nothing in them, because on Track there is nothing in
-          them: the bindings behind these labels belong to a project. Recreated
-          empty rather than filled with something plausible — a number invented
-          here would be worse than the blank. */}
+      {/* Empty on Track, and empty here until 14 Sep: the pages were duplicated
+          from /project and these three came with them, still bound to
+          project_service_type, project_sequel_no and project_status. Andy's
+          definitions, and the arithmetic is in the supplier_stats view.
+          ⚠️ Fees is in STERLING; every other money figure on this page is in
+          its own invoice's currency, which is why this one is labelled. */}
       <div className="tab-band">
-        <Stat label="Demos" value="" />
+        <Stat label="Demos" value={stats.data?.demos ?? ''} className="ml-0" />
         <div className="tab-band-divider" />
-        <Stat label="Wins" value="" />
+        <Stat label="Wins" value={stats.data?.wins ?? ''} />
         <div className="tab-band-divider" />
-        <Stat label="Win Fees" value="" />
+        <Stat
+          label="Fees (GBP)"
+          value={stats.data ? money(Number(stats.data.fees_gbp)) : ''}
+        />
       </div>
 
       <div className="project-tabs is-plain" role="tablist">
