@@ -3,7 +3,15 @@ import { Link, useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { formatMoney } from '../lib/format'
 import { useInvoice, useInvoiceLines } from '../lib/xanoMirror'
-import { isS3PoKey, signPoRead } from '../lib/invoiceWrites'
+import { isS3PoKey, signPoRead, useInvoiceLookups, USAGE_REGIONS } from '../lib/invoiceWrites'
+import {
+  LINE_CATEGORIES,
+  useAddInvoiceLine,
+  useDeleteInvoiceLine,
+  useUpdateInvoice,
+  useUpdateInvoiceLine,
+} from '../lib/invoiceEdits'
+import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
 import type { InvoiceDetail, InvoiceLine } from '../lib/xanoMirror'
 
 /**
@@ -35,6 +43,35 @@ import type { InvoiceDetail, InvoiceLine } from '../lib/xanoMirror'
  */
 
 const TABS = ['Details', 'Sequel fees', 'Supplier costs', 'Cost avoidance'] as const
+
+/**
+ * The nine fee boxes, in the order the old page shows them.
+ *
+ * ⚠️ Two studios fees and two licence fees, one per side, and they do NOT
+ * merge. They can legitimately differ, and an earlier version of Xano's read
+ * shim folded both licence rows into master and left publishing at zero. That
+ * they are one commission conceptually is a statement about the fee, not an
+ * instruction about the screen — it has been read as the latter twice.
+ */
+const FEE_BOXES: { label: string; column: string; fromRows: string }[] = [
+  { label: 'Demo contingency', column: 'demo_contingency_fee', fromRows: 'demo_contingency_from_rows' },
+  { label: 'Sequel demo fee', column: 'sequel_demo_fee', fromRows: 'sequel_demo_from_rows' },
+  { label: 'Search contingency', column: 'search_contingency_fee', fromRows: 'search_contingency_from_rows' },
+  { label: 'Sequel search fee', column: 'sequel_search_fee', fromRows: 'sequel_search_from_rows' },
+  { label: 'Master studios fee', column: 'master_sequel_studios_fee', fromRows: 'master_studios_from_rows' },
+  { label: 'Master licence fee', column: 'master_sequel_licence_fee', fromRows: 'master_licence_from_rows' },
+  { label: 'Publishing studios fee', column: 'publishing_sequel_studios_fee', fromRows: 'publishing_studios_from_rows' },
+  { label: 'Publishing licence fee', column: 'publishing_sequel_licence_fee', fromRows: 'publishing_licence_from_rows' },
+  { label: 'Consultancy fee', column: 'sequel_consultancy_fee', fromRows: 'consultancy_from_rows' },
+]
+
+const AVOIDANCE_BOXES: { label: string; column: string }[] = [
+  { label: 'Demos', column: 'demo_cost_avoidance' },
+  { label: 'Searches', column: 'search_cost_avoidance' },
+  { label: 'Library Master', column: 'master_cost_avoidance' },
+  { label: 'Publishing', column: 'publishing_cost_avoidance' },
+  { label: 'Other fees', column: 'other_cost_avoidance' },
+]
 type Tab = (typeof TABS)[number]
 
 const date = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -80,6 +117,42 @@ function Row({
         {note ? <span className="money-row-note">{note}</span> : null}
       </span>
       <span className="money-row-value">{value}</span>
+    </div>
+  )
+}
+
+/**
+ * A fee box that saves itself.
+ *
+ * Built on EditField rather than beside it, so the save state, the revert on
+ * refusal and the blur race are the ones already proven on the supplier pages.
+ * The value is handed over as plain digits — the grouped display belongs to
+ * the read-only view, and a thousands separator sent to a numeric column is
+ * how the old form silently stored 0 on a valid 200.
+ */
+function MoneyField({
+  label,
+  value,
+  note,
+  onSave,
+}: {
+  label: string
+  value: number | null
+  note?: string
+  onSave: (next: number) => Promise<unknown>
+}) {
+  return (
+    <div className="money-row is-editable">
+      <EditField
+        label={note ? `${label} (${note})` : label}
+        value={value === null ? '' : String(value)}
+        onSave={(next) => {
+          const n = Number((next ?? '').replace(/[^\d.-]/g, ''))
+          // ⚠️ A blank box is zero, not "leave it alone". Clearing a fee back
+          // to zero has to be possible, and 0 is not null so it still saves.
+          return onSave(Number.isFinite(n) ? n : 0)
+        }}
+      />
     </div>
   )
 }
@@ -154,6 +227,11 @@ export default function Invoice() {
   const { uuid } = useParams()
   const invoice = useInvoice(uuid)
   const lines = useInvoiceLines(uuid)
+  const lookups = useInvoiceLookups()
+  const updateInvoice = useUpdateInvoice(invoice.data?.id, uuid)
+  const addLine = useAddInvoiceLine(invoice.data?.id, uuid)
+  const updateLine = useUpdateInvoiceLine(uuid)
+  const deleteLine = useDeleteInvoiceLine(uuid)
   const [tab, setTab] = useState<Tab>('Details')
 
   if (invoice.isPending) {
@@ -180,6 +258,11 @@ export default function Invoice() {
   // there — but only on the boxes it is true of, which is why the view returns
   // a folded amount per box rather than one count for the invoice.
   const folded = (fromRows: number) => (fromRows > 0 ? 'incl. line rows' : undefined)
+
+  /** Any box that is a fold of a column and a row cannot be written back. */
+  const feeRowsFolded = FEE_BOXES.some(
+    (b) => ((v as unknown as Record<string, number>)[b.fromRows] ?? 0) > 0,
+  )
 
   return (
     <>
@@ -245,8 +328,30 @@ export default function Invoice() {
         {tab === 'Details' && (
           <div className="money-list">
             <Detail label="Status" value={v.status ?? '—'} />
-            <Detail label="Description" value={v.description || 'Untitled invoice'} />
-            <Detail label="Client" value={v.client_name ?? '—'} />
+            {v.locked ? (
+              <>
+                <Detail label="Description" value={v.description || 'Untitled invoice'} />
+                <Detail label="Client" value={v.client_name ?? '—'} />
+              </>
+            ) : (
+              <>
+                <div className="money-row is-editable">
+                  <EditField
+                    label="Description"
+                    value={v.description}
+                    onSave={(next) => updateInvoice.mutateAsync({ description: next ?? '' })}
+                  />
+                </div>
+                <div className="money-row is-editable">
+                  <EditSelect
+                    label="Client"
+                    value={v.client_id}
+                    options={lookups.data?.clients ?? []}
+                    onSave={(next) => updateInvoice.mutateAsync({ clientId: next })}
+                  />
+                </div>
+              </>
+            )}
             {/* ⚠️ Whoever RAISED the invoice, not whoever owns the project now.
                 The column is stamped server-side at submit and never rewritten,
                 so a reassigned project does not re-attribute its history. */}
@@ -255,14 +360,73 @@ export default function Invoice() {
             {/* Null on 148 of 150 — a historic backfill gap, not a missing
                 feature. Anything raised through QuickBooks now gets one. */}
             <Detail label="Due date" value={fmtDate(v.due_date)} />
-            <Detail label="Currency" value={v.currency ?? '—'} />
-            <Detail label="PO number" value={v.po_number || '—'} />
-            <Detail label="PO attachment" value={<PoAttachment url={v.po_attachment_url} />} />
-            <Detail label="AdPro number" value={v.adpro_number || '—'} />
-            <Detail label="Usage region" value={v.usage_region || '—'} />
-            <Detail label="Territories" value={v.usage_territories || '—'} />
-            <Detail label="Song" value={v.song_name || '—'} />
-            <Detail label="Artist" value={v.artist_name || '—'} />
+            {v.locked ? (
+              <>
+                <Detail label="Currency" value={v.currency ?? '—'} />
+                <Detail label="PO number" value={v.po_number || '—'} />
+                <Detail label="PO attachment" value={<PoAttachment url={v.po_attachment_url} />} />
+                <Detail label="AdPro number" value={v.adpro_number || '—'} />
+                <Detail label="Usage region" value={v.usage_region || '—'} />
+                <Detail label="Territories" value={v.usage_territories || '—'} />
+                <Detail label="Song" value={v.song_name || '—'} />
+                <Detail label="Artist" value={v.artist_name || '—'} />
+              </>
+            ) : (
+              <>
+                {/* ⚠️ Changing the currency REINTERPRETS every figure on the
+                    invoice — nothing converts. Editable anyway, as on the old
+                    page, because the alternative is re-keying the invoice when
+                    it was raised in the wrong one. */}
+                <div className="money-row is-editable">
+                  <EditSelect
+                    label="Currency"
+                    value={v.currency_id}
+                    options={lookups.data?.currencies ?? []}
+                    onSave={(next) => updateInvoice.mutateAsync({ currencyId: next })}
+                  />
+                </div>
+                <div className="money-row is-editable">
+                  <EditField
+                    label="PO number"
+                    value={v.po_number}
+                    onSave={(next) => updateInvoice.mutateAsync({ poNumber: next ?? '' })}
+                  />
+                </div>
+                <Detail label="PO attachment" value={<PoAttachment url={v.po_attachment_url} />} />
+                <Detail label="AdPro number" value={v.adpro_number || '—'} />
+                <div className="money-row is-editable">
+                  {/* ⚠️ Ten values and Xano rejects anything else, taking the
+                      whole write with it rather than just the field. */}
+                  <EditEnum
+                    label="Usage region"
+                    value={v.usage_region}
+                    options={USAGE_REGIONS}
+                    onSave={(next) => updateInvoice.mutateAsync({ usageRegion: next ?? '' })}
+                  />
+                </div>
+                <div className="money-row is-editable">
+                  <EditField
+                    label="Territories"
+                    value={v.usage_territories}
+                    onSave={(next) => updateInvoice.mutateAsync({ usageTerritories: next ?? '' })}
+                  />
+                </div>
+                <div className="money-row is-editable">
+                  <EditField
+                    label="Song"
+                    value={v.song_name}
+                    onSave={(next) => updateInvoice.mutateAsync({ songName: next ?? '' })}
+                  />
+                </div>
+                <div className="money-row is-editable">
+                  <EditField
+                    label="Artist"
+                    value={v.artist_name}
+                    onSave={(next) => updateInvoice.mutateAsync({ artistName: next ?? '' })}
+                  />
+                </div>
+              </>
+            )}
             {/* gbp_total_amount is QuickBooks' HomeTotalAmt: sterling,
                 INCLUDING VAT. It is not the net total and never was, which is
                 why it can read higher than the invoice total on a UK job.
@@ -275,7 +439,35 @@ export default function Invoice() {
           </div>
         )}
 
-        {tab === 'Sequel fees' && (
+        {tab === 'Sequel fees' && !v.locked && (
+          <div className="money-list">
+            {/* ⚠️ A box cannot be edited on an invoice whose fees are LINE
+                ROWS — the box shows column plus rows folded together, so
+                writing it back to the column counts the money twice. The
+                database refuses it; this is only the explanation. */}
+            {feeRowsFolded && (
+              <p className="section-note">
+                This invoice holds some of its Sequel fees as line rows, so the boxes below
+                cannot be edited here.
+              </p>
+            )}
+            {FEE_BOXES.map((box) => (
+              <MoneyField
+                key={box.column}
+                label={box.label}
+                value={(v as unknown as Record<string, number>)[box.column]}
+                note={folded((v as unknown as Record<string, number>)[box.fromRows])}
+                onSave={(n) => updateInvoice.mutateAsync({ fees: { [box.column]: n } })}
+              />
+            ))}
+            {updateInvoice.error && <p className="form-error">{updateInvoice.error.message}</p>}
+            {/* The stored profit, not a sum of the boxes above. If the two ever
+                disagree, the database is right and the boxes are the bug. */}
+            <Row label="Profit — all Sequel fees" value={amt(v.total_sequel_profit)} total />
+          </div>
+        )}
+
+        {tab === 'Sequel fees' && v.locked && (
           <div className="money-list">
             <Row label="Demo contingency" value={amt(v.demo_contingency_fee)} note={folded(v.demo_contingency_from_rows)} />
             <Row label="Sequel demo fee" value={amt(v.sequel_demo_fee)} note={folded(v.sequel_demo_from_rows)} />
@@ -331,15 +523,121 @@ export default function Invoice() {
             )}
             {lines.error && <p className="form-error px-8 py-4">{lines.error.message}</p>}
             {lines.data?.length === 0 && <p className="empty-note">No supplier costs.</p>}
-            {lines.data?.map((l: InvoiceLine) => (
-              <div key={l.id} className="project-row project-row-invoice-line">
-                <span className="row-title">{l.supplier || 'No supplier'}</span>
-                <span className="row-field">{l.category ?? ''}</span>
-                <span className="row-field">{l.is_paythrough ? 'Paythrough' : 'Client direct'}</span>
-                <span className="row-field">{l.qbo_bill_id ? 'Billed' : ''}</span>
-                <span className="row-field">{amt(l.fee_amount)}</span>
-              </div>
-            ))}
+
+            {/* Read-only once the invoice is in QuickBooks. The page hides its
+                controls off the same single flag the endpoints refuse on, so
+                the two cannot disagree — and a stale tab is refused anyway. */}
+            {v.locked &&
+              lines.data?.map((l: InvoiceLine) => (
+                <div key={l.id} className="project-row project-row-invoice-line">
+                  <span className="row-title">{l.supplier || 'No supplier'}</span>
+                  <span className="row-field">{l.category ?? ''}</span>
+                  <span className="row-field">{l.is_paythrough ? 'Paythrough' : 'Client direct'}</span>
+                  <span className="row-field">{l.qbo_bill_id ? 'Billed' : ''}</span>
+                  <span className="row-field">{amt(l.fee_amount)}</span>
+                </div>
+              ))}
+
+            {!v.locked && (
+              <>
+                {lines.data?.map((l: InvoiceLine) => (
+                  <div key={l.id} className="invoice-line-edit">
+                    <select
+                      className="edit-field-input"
+                      aria-label="Supplier"
+                      value={l.supplier_id ?? ''}
+                      onChange={(e) =>
+                        void updateLine.mutateAsync({
+                          lineId: l.id,
+                          supplierId: e.target.value === '' ? null : Number(e.target.value),
+                        })
+                      }
+                    >
+                      {/* A placeholder may be selected, never disabled — a
+                          disabled option cannot be displayed, so the browser
+                          falls through to the first real supplier and an
+                          unanswered select looks answered. */}
+                      <option value="">Select supplier</option>
+                      {(lookups.data?.suppliers ?? []).map((sup) => (
+                        <option key={sup.id} value={sup.id}>
+                          {sup.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      className="edit-field-input"
+                      aria-label="Category"
+                      value={l.category ?? ''}
+                      onChange={(e) =>
+                        void updateLine.mutateAsync({ lineId: l.id, category: e.target.value })
+                      }
+                    >
+                      {LINE_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      className="edit-field-input"
+                      aria-label="Paythrough"
+                      value={l.is_paythrough ? 'true' : 'false'}
+                      onChange={(e) =>
+                        void updateLine.mutateAsync({
+                          lineId: l.id,
+                          paythrough: e.target.value === 'true',
+                        })
+                      }
+                    >
+                      <option value="true">Paythrough</option>
+                      <option value="false">Client direct</option>
+                    </select>
+
+                    <input
+                      className="edit-field-input text-right"
+                      aria-label="Amount"
+                      inputMode="decimal"
+                      defaultValue={l.fee_amount === null ? '' : String(l.fee_amount)}
+                      onBlur={(e) => {
+                        const n = Number(e.target.value.replace(/[^\d.-]/g, ''))
+                        void updateLine.mutateAsync({
+                          lineId: l.id,
+                          amount: Number.isFinite(n) ? n : 0,
+                        })
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      className="qw-fee-delete"
+                      aria-label="Remove this line"
+                      onClick={() => void deleteLine.mutateAsync(l.id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+
+                <div className="px-8 py-4">
+                  <button
+                    type="button"
+                    className="qw-choice"
+                    disabled={addLine.isPending}
+                    onClick={() => void addLine.mutateAsync('Demos')}
+                  >
+                    {addLine.isPending ? 'ADDING…' : '+ ADD SUPPLIER COST'}
+                  </button>
+                </div>
+
+                {(updateLine.error || deleteLine.error || addLine.error) && (
+                  <p className="form-error px-8">
+                    {(updateLine.error ?? deleteLine.error ?? addLine.error)?.message}
+                  </p>
+                )}
+              </>
+            )}
           </>
         )}
 
@@ -351,11 +649,24 @@ export default function Invoice() {
               totals above.
             </p>
             <div className="money-list">
-              <Row label="Demos" value={amt(v.demo_cost_avoidance)} />
-              <Row label="Searches" value={amt(v.search_cost_avoidance)} />
-              <Row label="Library Master" value={amt(v.master_cost_avoidance)} />
-              <Row label="Publishing" value={amt(v.publishing_cost_avoidance)} />
-              <Row label="Other fees" value={amt(v.other_cost_avoidance)} />
+              {v.locked ? (
+                <>
+                  <Row label="Demos" value={amt(v.demo_cost_avoidance)} />
+                  <Row label="Searches" value={amt(v.search_cost_avoidance)} />
+                  <Row label="Library Master" value={amt(v.master_cost_avoidance)} />
+                  <Row label="Publishing" value={amt(v.publishing_cost_avoidance)} />
+                  <Row label="Other fees" value={amt(v.other_cost_avoidance)} />
+                </>
+              ) : (
+                AVOIDANCE_BOXES.map((box) => (
+                  <MoneyField
+                    key={box.column}
+                    label={box.label}
+                    value={(v as unknown as Record<string, number>)[box.column]}
+                    onSave={(n) => updateInvoice.mutateAsync({ fees: { [box.column]: n } })}
+                  />
+                ))
+              )}
               <Row label="Total cost avoidance" value={amt(v.total_cost_avoidance)} total />
             </div>
           </>

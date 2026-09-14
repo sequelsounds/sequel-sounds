@@ -921,6 +921,31 @@
     grid-template-columns: repeat(6, 1fr);
   }
 
+  /* An editable supplier cost line: supplier, category, paythrough, amount,
+     and the delete X. Five columns so the list stays readable however many
+     entries there are, and the same gutters as the read-only row above it. */
+  .invoice-line-edit {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) 8rem 1.5rem;
+    column-gap: 0.75rem;
+    align-items: center;
+    padding: 0.5rem 2rem;
+    border-bottom: 1px solid var(--color-sequel-line, rgba(55, 43, 41, 0.12));
+  }
+
+  /* A money row holding an editable field rather than a value: the field
+     brings its own label, so the row is a single full-width cell. */
+  .money-row.is-editable {
+    display: block;
+  }
+
+  @media (max-width: 40rem) {
+    .invoice-line-edit {
+      grid-template-columns: minmax(0, 1fr) 1.5rem;
+      row-gap: 0.5rem;
+    }
+  }
+
   /* A button that has to read as a link: the PO attachment signs its URL when
      clicked rather than carrying one, so it cannot be an <a href>. */
   .link-button {
