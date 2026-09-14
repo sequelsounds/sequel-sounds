@@ -3427,11 +3427,17 @@
     position: relative;
   }
 
+  /* ⚠️ ABSOLUTE, like any other dropdown. In flow it pushed the buttons down
+     and the sheet grew and shrank on every keystroke. */
   .wizard-results {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 5;
+    margin-top: 3.25rem;
     max-height: 14rem;
-    margin-top: 0.5rem;
     overflow-y: auto;
     border: 1px solid var(--color-sequel-line);
+    background-color: var(--color-sequel-silver);
   }
 
   .wizard-result {

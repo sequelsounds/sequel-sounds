@@ -123,11 +123,17 @@ function Typeahead({
   const [term, setTerm] = useState(picked?.label ?? '')
   const [open, setOpen] = useState(false)
 
+  // Nothing until something is typed. Showing the first eight on open put a
+  // list of strangers under the question before anyone had asked for one.
   const matches = useMemo(() => {
     const t = term.trim().toLowerCase()
-    if (!t) return (options ?? []).slice(0, 8)
+    if (!t) return []
     return (options ?? []).filter((o) => o.label.toLowerCase().includes(t)).slice(0, 8)
   }, [options, term])
+
+  // Not once the box holds the name that was picked — choosing someone should
+  // close the list, not leave it open on the one match.
+  const searching = term.trim() !== '' && term.trim() !== picked?.label
 
   return (
     <div className="wizard-search">
@@ -136,13 +142,12 @@ function Typeahead({
         value={term}
         autoFocus
         placeholder={placeholder}
-        onFocus={() => setOpen(true)}
         onChange={(e) => {
           setTerm(e.target.value)
           setOpen(true)
         }}
       />
-      {open && (
+      {open && searching && (
         <div className="wizard-results">
           {matches.length === 0 && <div className="wizard-result-empty">{emptyNote}</div>}
           {matches.map((o) => (
