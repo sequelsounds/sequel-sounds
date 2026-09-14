@@ -1,0 +1,12 @@
+-- `track_me()` was callable by `anon`, before signing in.
+--
+-- It is SECURITY DEFINER and reads `xano_mirror."user"`, so it runs with the
+-- owner's rights; what saved it is that it keys on `public.track_user_id()`,
+-- which keys on `auth.uid()`, which is null for an anonymous caller — so it
+-- has always returned nothing. That is a property of the query rather than a
+-- gate, and it is one edit away from not being true.
+--
+-- The three genuinely public SECURITY DEFINER functions are left alone:
+-- `effective_theme`, `playlist_gate` and `register_viewer` are what the
+-- token-based viewer pages run on, and those callers are anonymous by design.
+revoke execute on function public.track_me() from anon;
