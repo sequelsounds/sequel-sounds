@@ -145,7 +145,6 @@ export type NewProjectInput = {
   brand_no?: string | null
   services_id: number
   pipeline_gbp: number
-  proposed_start_date: string
   client: number
   adpro_user: number
   brand_category: number

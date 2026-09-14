@@ -21,11 +21,13 @@ import {
  *    5  Client Job No          (optional)   brand_no
  *    6  Project Type?*                      services_id      select
  *    7  Projected Pipeline in GBP*          pipeline_gbp
- *    8  Proposed start date*                proposed_start_date
- *    9  Account*                            client           select
- *    10 AdPro Lead*                         adpro_user       select
- *    11 Brand Category*                     brand_category   select
- *    12 Project created!
+ *    8  Account*                            client           select
+ *    9  AdPro Lead*                         adpro_user       select
+ *    10 Brand Category*                     brand_category   select
+ *    11 Project created!
+ *
+ * Track asks for a proposed start date between pipeline and account. Andy took
+ * it out on 14 Sep; the column and its field on the project page stay.
  *
  * ⚠️ Step 6 says "Project Type?" and writes the SERVICE. The column called
  * `project_type` (Advert / Film / Social post) is a different field that this
@@ -51,8 +53,8 @@ import {
  * here is DELETED on the hour.
  */
 
-const LAST_QUESTION = 11
-const SUCCESS = 12
+const LAST_QUESTION = 10
+const SUCCESS = 11
 
 type Answers = {
   client_user_id: number | null
@@ -62,7 +64,6 @@ type Answers = {
   brand_no: string
   services_id: number | null
   pipeline_gbp: string
-  proposed_start_date: string
   client: number | null
   adpro_user: number | null
   brand_category: number | null
@@ -76,7 +77,6 @@ const EMPTY: Answers = {
   brand_no: '',
   services_id: null,
   pipeline_gbp: '',
-  proposed_start_date: '',
   client: null,
   adpro_user: null,
   brand_category: null,
@@ -92,10 +92,9 @@ function answered(a: Answers, step: number): boolean {
     case 5: return true // Client Job No — the one question with no asterisk
     case 6: return a.services_id != null
     case 7: return a.pipeline_gbp.trim() !== '' && Number.isFinite(Number(a.pipeline_gbp))
-    case 8: return a.proposed_start_date.trim() !== ''
-    case 9: return a.client != null
-    case 10: return a.adpro_user != null
-    case 11: return a.brand_category != null
+    case 8: return a.client != null
+    case 9: return a.adpro_user != null
+    case 10: return a.brand_category != null
     default: return true
   }
 }
@@ -210,11 +209,9 @@ export function NewProject({
 
   const [step, setStep] = useState(1)
   const [a, setA] = useState<Answers>(EMPTY)
-  const [incomplete, setIncomplete] = useState(false)
   const [created, setCreated] = useState<{ id: number; sequel_no: string | null } | null>(null)
 
   const set = <K extends keyof Answers>(key: K, v: Answers[K]) => {
-    setIncomplete(false)
     setA((prev) => ({ ...prev, [key]: v }))
   }
 
@@ -244,20 +241,16 @@ export function NewProject({
     return () => document.removeEventListener('keydown', onKey)
   })
 
+  // There is no "please complete all sections" to show: NEXT is simply not
+  // available until the question has an answer, so the step cannot be skipped
+  // in the first place. Enter goes the same way.
   function next() {
-    if (!answered(a, step)) {
-      setIncomplete(true)
-      return
-    }
-    setIncomplete(false)
+    if (!answered(a, step)) return
     setStep((s) => Math.min(s + 1, LAST_QUESTION))
   }
 
   async function submit() {
-    if (!complete(a)) {
-      setIncomplete(true)
-      return
-    }
+    if (!complete(a)) return
     const input: NewProjectInput = {
       client_user_id: a.client_user_id!,
       brand: a.brand.trim(),
@@ -266,7 +259,6 @@ export function NewProject({
       brand_no: a.brand_no.trim() || null,
       services_id: a.services_id!,
       pipeline_gbp: Number(a.pipeline_gbp),
-      proposed_start_date: a.proposed_start_date,
       client: a.client!,
       adpro_user: a.adpro_user!,
       brand_category: a.brand_category!,
@@ -369,30 +361,25 @@ export function NewProject({
         {step === 7 && (
           <>
             <div className="wizard-question">Projected Pipeline in GBP*</div>
+            {/* Digits and one decimal point, and nothing else gets in. A
+                number field that accepts "£20k" and then silently refuses to
+                move on is worse than one that never took the letters. Not
+                type="number", which still lets e, + and - through and hangs a
+                spinner off the side of the box. */}
             <input
               className="edit-field-input"
               value={a.pipeline_gbp}
               autoFocus
               inputMode="decimal"
-              onChange={(e) => set('pipeline_gbp', e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value
+                if (next === '' || /^\d*\.?\d*$/.test(next)) set('pipeline_gbp', next)
+              }}
             />
           </>
         )}
 
         {step === 8 && (
-          <>
-            <div className="wizard-question">Proposed start date*</div>
-            <input
-              className="edit-field-input"
-              type="date"
-              value={a.proposed_start_date}
-              autoFocus
-              onChange={(e) => set('proposed_start_date', e.target.value)}
-            />
-          </>
-        )}
-
-        {step === 9 && (
           <>
             <div className="wizard-question">Account*</div>
             <Select
@@ -404,7 +391,7 @@ export function NewProject({
           </>
         )}
 
-        {step === 10 && (
+        {step === 9 && (
           <>
             <div className="wizard-question">AdPro Lead*</div>
             <Select
@@ -416,7 +403,7 @@ export function NewProject({
           </>
         )}
 
-        {step === 11 && (
+        {step === 10 && (
           <>
             <div className="wizard-question">Brand Category*</div>
             <Select
@@ -435,7 +422,6 @@ export function NewProject({
           </>
         )}
 
-        {incomplete && <p className="form-error mt-4">PLEASE COMPLETE ALL SECTIONS</p>}
         {/* The database's own words when it refuses — "missing the user it is
             for", "Not saved" — are more use than a generic line, so Track's
             "Something went wrong" is only the fallback. */}
@@ -446,10 +432,7 @@ export function NewProject({
             <button
               type="button"
               className="wizard-btn"
-              onClick={() => {
-                setIncomplete(false)
-                setStep((s) => s - 1)
-              }}
+              onClick={() => setStep((s) => s - 1)}
             >
               BACK
             </button>
@@ -459,7 +442,12 @@ export function NewProject({
               reads as "press this", on a screen where the thing to do is
               answer the question. */}
           {step < LAST_QUESTION && (
-            <button type="button" className="wizard-btn wizard-btn-right" onClick={next}>
+            <button
+              type="button"
+              className="wizard-btn wizard-btn-right"
+              disabled={!answered(a, step)}
+              onClick={next}
+            >
               NEXT
             </button>
           )}
@@ -468,7 +456,7 @@ export function NewProject({
             <button
               type="button"
               className="wizard-btn wizard-btn-right"
-              disabled={create.isPending}
+              disabled={!complete(a) || create.isPending}
               onClick={() => void submit()}
             >
               {create.isPending ? 'CREATING…' : 'CREATE PROJECT'}
