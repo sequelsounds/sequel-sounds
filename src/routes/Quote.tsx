@@ -109,7 +109,7 @@ function fold(lines: QuoteLine[]): Section[] {
  * renaming a service in Xano silently drops its colour.
  */
 const THEME: Record<number, { card: string; ink: string }> = {
-  1: { card: '#c3d4b8', ink: '#372b29' }, // Composition — pale green
+  1: { card: '#d0dbcd', ink: '#372b29' }, // Composition — pale green, Andy's value
   2: { card: '#7daab1', ink: '#372b29' }, // Commercial
   3: { card: '#ad7186', ink: '#f1f0ee' }, // Library
   4: { card: '#a7521a', ink: '#f1f0ee' }, // Sonic Branding

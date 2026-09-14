@@ -2151,16 +2151,22 @@
     white-space: nowrap;
   }
 
-  /* project item row cost wrap: the currency symbol is a fixed 0.7rem
-     column, so the amounts line up down the list however wide it is. */
+  /* project item row cost wrap: the currency sits in a fixed column, so the
+     amounts line up down the list however wide it is. */
   .row-cost {
     display: flex;
     align-items: center;
     justify-content: flex-start;
+    gap: 0.35rem;
   }
 
+  /* ⚠️ 3rem, not the 0.7rem this was. 0.7 fits one character, which was right
+     while the column held a symbol — but the estimate row shows the CODE now
+     (Andy's call: "$" is stored for both USD and SGD), and `overflow: hidden`
+     on a 0.7rem box turned "GBP" into "G". Four characters, not three: table
+     48 stores "EURO", not the ISO "EUR". */
   .row-cost-symbol {
-    width: 0.7rem;
+    width: 3rem;
     overflow: hidden;
     font-size: 0.8rem;
     /* Same clipping trap as the cells above: overflow: hidden on a line box the
