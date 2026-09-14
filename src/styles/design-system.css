@@ -1936,12 +1936,28 @@
    * The BOX does not move: min-height and max-height are both 2rem and the
    * 0.5rem padding leaves exactly 1rem of content, so the line box now fills
    * the space it already had instead of sitting short in it. */
+  /* ⚠️ THE VERTICAL PADDING IS LOAD-BEARING. DO THE ARITHMETIC BEFORE TOUCHING IT.
+   *
+   * The box is a fixed 2rem and `max-height` stops it growing, so whatever is
+   * left after the border and the padding is all the room the text gets:
+   *
+   *     32px box − 2px border − padding top and bottom  ≥  line-height
+   *
+   * At 0.5rem of padding that came to 14px for a 16px line, and a form control
+   * clips where a div would simply overflow — so two pixels came off the bottom
+   * of every glyph and every descender lost its tail. It was on EVERY field in
+   * the tool: seven on a client, five on a roster member and on a user, four on
+   * a song and on a project, plus every dropdown. 0.4rem leaves 17.2px for the
+   * same 16px line.
+   *
+   * The same sum applies to anything else with a capped height and text in it.
+   * docs/gotchas.md has the rule and a console check for a whole page. */
   .edit-field-input {
     display: flex;
     width: 100%;
     min-height: 2rem;
     max-height: 2rem;
-    padding: 0.5rem;
+    padding: 0.4rem 0.5rem;
     align-items: center;
     justify-content: space-between;
     border: 1px solid var(--color-sequel-line);
@@ -3437,16 +3453,6 @@
      modal is one stacking context too many. */
   .wizard-search {
     position: relative;
-  }
-
-  /* ⚠️ `.edit-field-input` is a 2rem box with 0.5rem of padding and a 1px
-     border, which leaves a 14px content box for its 16px line — so the bottom
-     two pixels of every descender are cut off. It is capped by `max-height`,
-     so the box cannot grow to fix itself. Inside the wizard there is room to
-     give it, and a "p" should not lose its tail. */
-  .wizard-modal .edit-field-input {
-    min-height: 2.25rem;
-    max-height: none;
   }
 
   /* ⚠️ ABSOLUTE, like any other dropdown. In flow it pushed the buttons down
