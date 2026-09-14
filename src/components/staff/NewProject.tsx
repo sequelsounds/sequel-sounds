@@ -285,16 +285,14 @@ export function NewProject({
         role="dialog"
         aria-modal="true"
         aria-label="New project"
-        className="wizard-modal surface-light border border-sequel-line shadow-[0_10px_40px_rgba(55,43,41,0.25)]"
+        className="surface-light w-full max-w-[34rem] border border-sequel-line p-7 shadow-[0_10px_40px_rgba(55,43,41,0.25)]"
       >
-        <button
-          type="button"
-          className="wizard-close"
-          aria-label="Close"
-          onClick={onClose}
-        />
+        {step !== SUCCESS && (
+          <div className="wizard-progress">
+            Step {step} of {LAST_QUESTION}
+          </div>
+        )}
 
-        <div className="wizard-body">
         {step === 1 && (
           <>
             <div className="wizard-question">Which user is this project for?*</div>
@@ -440,13 +438,11 @@ export function NewProject({
           </>
         )}
 
-        </div>
-
-        {incomplete && <p className="form-error">PLEASE COMPLETE ALL SECTIONS</p>}
+        {incomplete && <p className="form-error mt-4">PLEASE COMPLETE ALL SECTIONS</p>}
         {/* The database's own words when it refuses — "missing the user it is
             for", "Not saved" — are more use than a generic line, so Track's
             "Something went wrong" is only the fallback. */}
-        {create.error && <p className="form-error">{create.error.message}</p>}
+        {create.error && <p className="form-error mt-4">{create.error.message}</p>}
 
         <div className="wizard-buttons">
           {step > 1 && step < SUCCESS && (
@@ -462,15 +458,8 @@ export function NewProject({
             </button>
           )}
 
-          {/* Not filled in until the question has an answer. A dark NEXT sitting
-              there before you have typed anything reads as "this is the thing to
-              press", on a screen where the thing to do is answer. */}
           {step < LAST_QUESTION && (
-            <button
-              type="button"
-              className={`btn btn-mono ${answered(a, step) ? 'btn-dark' : 'btn-outline'}`}
-              onClick={next}
-            >
+            <button type="button" className="btn btn-mono btn-dark" onClick={next}>
               NEXT
             </button>
           )}
@@ -478,7 +467,7 @@ export function NewProject({
           {step === LAST_QUESTION && (
             <button
               type="button"
-              className={`btn btn-mono ${complete(a) ? 'btn-dark' : 'btn-outline'}`}
+              className="btn btn-mono btn-dark"
               disabled={create.isPending}
               onClick={() => void submit()}
             >
@@ -486,13 +475,17 @@ export function NewProject({
             </button>
           )}
 
-          {step === SUCCESS && (
+          {step === SUCCESS ? (
             <button
               type="button"
               className="btn btn-mono btn-dark"
               onClick={() => created && onCreated(created.id)}
             >
               OPEN IT
+            </button>
+          ) : (
+            <button type="button" className="btn btn-mono btn-outline" onClick={onClose}>
+              Cancel
             </button>
           )}
         </div>
