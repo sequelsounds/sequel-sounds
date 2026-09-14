@@ -3316,4 +3316,44 @@
     background-color: transparent;
     color: var(--color-sequel-mid);
   }
+
+  /* The project create band. Nine required fields will not sit on one line, so
+     they reflow: three or four across on a wide window, one across on a narrow
+     one. The supplier band's single row is still the right shape for two
+     fields and is left alone. */
+  .create-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 0.75rem 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .create-field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+  }
+
+  .create-field-label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.8rem;
+    line-height: 0.8rem;
+    font-weight: 500;
+    color: var(--color-sequel-brown);
+  }
+
+  /* Inside the grid the cell decides the width, not the control. */
+  .create-grid .edit-field-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Says where the Sequel number comes from, at the moment somebody would
+     otherwise look for a box to type it into. */
+  .create-band-note {
+    color: var(--color-sequel-mid);
+    font-size: 0.7rem;
+    line-height: 0.8rem;
+  }
 }

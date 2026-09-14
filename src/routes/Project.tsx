@@ -1,8 +1,18 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
+import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
 import { formatBytes, formatMoney } from '../lib/format'
 import {
+  PROJECT_TYPES,
+  useProjectLookups,
+  useProjectPeople,
+  useSaveProject,
+  type Option,
+  type ProjectPatch,
+} from '../lib/projectWrites'
+import {
+  useIsStaff,
   useProject,
   useProjectBriefs,
   useProjectContracts,
@@ -24,11 +34,23 @@ import type { Brief, Contract, CreativeLink, Invoice, ProjectFile, Quote, Song }
  * branch. Where a comment names a class (project_quote_row) or a binding
  * (project_age_in_days), that is the source it came from.
  *
- * It is read-only. Xano is still the only writer, so the controls are marked
- * readonly rather than made to look live, and the add-new buttons are present
- * but disabled — the wizards behind them (11 steps for a quote, 15 for an
- * invoice), the uploads and the inline editing are the bulk of the real page
- * and are not built yet.
+ * The four form tabs — Overview, Client, Terms, Notes — now WRITE. Every field
+ * saves itself on blur, the way Track's supplier pages do, and says so. The
+ * list tabs are still read-only: the wizards behind them (11 steps for a quote,
+ * 15 for an invoice) and the uploads are the bulk of the real page and are not
+ * built yet, so their add buttons stay disabled.
+ *
+ * ⚠️ `project_master_list` is STILL IN Xano's hourly sync as this is written.
+ * Every edit made here is put back on the hour until its two blocks come out of
+ * task 42. See the note at the top of `projectWrites.ts`.
+ *
+ * Staff see boxes; a client user sees the same page read-only. That split is
+ * cosmetic — the real gate is the update policy, which asks `track_is_staff()`
+ * inside the database and hands a client user zero rows.
+ *
+ * Three fields stay read-only for staff too, and each for its own reason:
+ * Region belongs to the agency rather than to the project, and the two Studio
+ * links are minted by Studio when a project gets its upload inbox.
  */
 
 const TABS = [
@@ -122,6 +144,161 @@ function Field({
         <input className="edit-field-input" value={v} readOnly />
       )}
     </div>
+  )
+}
+
+/**
+ * The same field, editable, when the reader is staff.
+ *
+ * A pair rather than one component with a flag inside it, because the read-only
+ * `Field` above is a plain input and `EditField` carries save state, a pending
+ * ref and an auto-growing textarea. Switching between them at the top keeps
+ * both simple.
+ */
+function TextField({
+  label,
+  value,
+  column,
+  textarea,
+  edit,
+  save,
+}: {
+  label: string
+  value: string | null | undefined
+  column: keyof ProjectPatch
+  textarea?: boolean
+  edit: boolean
+  save: (patch: ProjectPatch) => Promise<unknown>
+}) {
+  if (!edit) return <Field label={label} value={value} textarea={textarea} />
+  return (
+    <EditField
+      label={label}
+      value={value}
+      textarea={textarea}
+      onSave={(next) => save({ [column]: next } as ProjectPatch)}
+    />
+  )
+}
+
+/** A foreign key: shows the name, writes the id. */
+function PickField({
+  label,
+  value,
+  label_,
+  column,
+  options,
+  edit,
+  save,
+}: {
+  label: string
+  /** The id, for the select. */
+  value: number | null | undefined
+  /** The name, for the read-only version. */
+  label_: string | null | undefined
+  column: keyof ProjectPatch
+  options: Option[] | undefined
+  edit: boolean
+  save: (patch: ProjectPatch) => Promise<unknown>
+}) {
+  if (!edit) return <Field label={label} value={label_} />
+  return (
+    <EditSelect
+      label={label}
+      value={value}
+      options={options ?? []}
+      onSave={(next) => save({ [column]: next } as ProjectPatch)}
+    />
+  )
+}
+
+/** An enum stored as its own text — project type is the only one on this page. */
+function EnumField({
+  label,
+  value,
+  column,
+  options,
+  edit,
+  save,
+}: {
+  label: string
+  value: string | null | undefined
+  column: keyof ProjectPatch
+  options: readonly string[]
+  edit: boolean
+  save: (patch: ProjectPatch) => Promise<unknown>
+}) {
+  if (!edit) return <Field label={label} value={value} />
+  return (
+    <EditEnum
+      label={label}
+      value={value}
+      options={options}
+      onSave={(next) => save({ [column]: next } as ProjectPatch)}
+    />
+  )
+}
+
+/** Yes / No over a real boolean column, with a blank for "not said". */
+const YES_NO = ['Yes', 'No'] as const
+
+function BoolField({
+  label,
+  value,
+  column,
+  edit,
+  save,
+}: {
+  label: string
+  value: boolean | null | undefined
+  column: keyof ProjectPatch
+  edit: boolean
+  save: (patch: ProjectPatch) => Promise<unknown>
+}) {
+  if (!edit) return <Field label={label} value={yesNo(value)} />
+  return (
+    <EditEnum
+      label={label}
+      value={value === null || value === undefined ? null : value ? 'Yes' : 'No'}
+      options={YES_NO}
+      onSave={(next) => save({ [column]: next === null ? null : next === 'Yes' } as ProjectPatch)}
+    />
+  )
+}
+
+/**
+ * A number typed into a box.
+ *
+ * Track shows the pipeline figure raw — "4000", not "4,000.00" — because it is
+ * a number you type into, not an amount you read, and that is kept. What is
+ * added is a refusal: "4,000" and "£4k" would otherwise reach a numeric column
+ * as NaN and land there as null, which reads exactly like a saved zero.
+ */
+function NumberField({
+  label,
+  value,
+  column,
+  edit,
+  save,
+}: {
+  label: string
+  value: number | null | undefined
+  column: keyof ProjectPatch
+  edit: boolean
+  save: (patch: ProjectPatch) => Promise<unknown>
+}) {
+  if (!edit) return <Field label={label} value={value} />
+  return (
+    <EditField
+      label={label}
+      value={value === null || value === undefined ? '' : String(value)}
+      onSave={(next) => {
+        if (next === null) return save({ [column]: null } as ProjectPatch)
+        const n = Number(next.replace(/[\s,£$]/g, ''))
+        if (!Number.isFinite(n)) throw new Error('Numbers only.')
+        return save({ [column]: n } as ProjectPatch)
+      }}
+    />
   )
 }
 
@@ -241,6 +418,15 @@ export default function Project() {
   const songs = useProjectSongs(projectId)
   const creative = useProjectCreativeLinks(projectId)
 
+  // Staff see boxes, everyone else sees the page as it was. The gate that
+  // counts is the update policy in the database, not this.
+  const staff = useIsStaff()
+  const edit = staff.data === true
+  const lookups = useProjectLookups()
+  const people = useProjectPeople()
+  const saveProject = useSaveProject(projectId)
+  const save = (patch: ProjectPatch) => saveProject.mutateAsync(patch)
+
   if (project.isPending) {
     return (
       <div className="flex justify-center py-16">
@@ -326,15 +512,65 @@ export default function Project() {
           <>
             <PaneBar title="overview" />
             <Form>
-              <Field label="Title" value={p.title} />
-              <Field label="Status" value={p.stage} />
-              <Field label="Campaign Name" value={p.campaign_name} />
-              <Field label="Proposed Start Date" value={p.proposed_start_date} />
-              {/* Track shows this one raw — "4000", not "4,000.00". It is a
-                  number you type into, not an amount you read. */}
-              <Field label="Projected Pipeline GBP" value={p.pipeline_gbp} />
-              <Field label="Supervisor" value={p.supervisor} />
-              <Field label="Service" value={p.service} />
+              <TextField label="Title" value={p.title} column="title" edit={edit} save={save} />
+              <PickField
+                label="Status"
+                value={p.status_id}
+                label_={p.stage}
+                column="projects_status"
+                options={lookups.data?.stages}
+                edit={edit}
+                save={save}
+              />
+              <TextField
+                label="Campaign Name"
+                value={p.campaign_name}
+                column="campaignname"
+                edit={edit}
+                save={save}
+              />
+              {/* Stored as text, not a date — Xano's own choice, and changing
+                  it is a migration rather than a form decision. */}
+              <TextField
+                label="Proposed Start Date"
+                value={p.proposed_start_date}
+                column="proposed_start_date"
+                edit={edit}
+                save={save}
+              />
+              <NumberField
+                label="Projected Pipeline GBP"
+                value={p.pipeline_gbp}
+                column="pipeline_gbp"
+                edit={edit}
+                save={save}
+              />
+              <PickField
+                label="Supervisor"
+                value={p.supervisor_id}
+                label_={p.supervisor}
+                column="music_supervisor"
+                options={people.data?.supervisors}
+                edit={edit}
+                save={save}
+              />
+              <PickField
+                label="Service"
+                value={p.service_id}
+                label_={p.service}
+                column="services_id"
+                options={lookups.data?.services}
+                edit={edit}
+                save={save}
+              />
+              <EnumField
+                label="Project Type"
+                value={p.project_type}
+                column="project_type"
+                options={PROJECT_TYPES}
+                edit={edit}
+                save={save}
+              />
             </Form>
           </>
         )}
@@ -344,16 +580,67 @@ export default function Project() {
             <PaneBar title="client" />
             <Form>
               {/* On Track this first field is a search that picks the user;
-                  here it is the user it found. */}
-              <Field label="User" value={p.client_user} />
-              <Field label="Client" value={p.client_group} />
-              <Field label="Brand" value={p.brand} />
-              <Field label="Product" value={p.product} />
-              <Field label="Brand No." value={p.brand_no} />
-              <Field label="AdPro Lead" value={p.adpro_lead} />
-              <Field label="Brand Category" value={p.brand_category} />
-              <Field label="Agency" value={p.agency} />
-              <Field label="Country" value={p.country} />
+                  here it is a list of the 130 agency, brand and freelance
+                  contacts, which is short enough not to need one. */}
+              <PickField
+                label="User"
+                value={p.client_user_id}
+                label_={p.client_user}
+                column="client_user_id"
+                options={people.data?.clientUsers}
+                edit={edit}
+                save={save}
+              />
+              <PickField
+                label="Client"
+                value={p.client_group_id}
+                label_={p.client_group}
+                column="client"
+                options={lookups.data?.clientGroups}
+                edit={edit}
+                save={save}
+              />
+              {/* Editable, and it does NOT move the Sequel No. The brand code
+                  in "271-KNO-26-II" is fixed the moment the project is created;
+                  renaming the brand afterwards would otherwise silently
+                  renumber a job that has already been quoted. */}
+              <TextField label="Brand" value={p.brand} column="brand" edit={edit} save={save} />
+              <TextField label="Product" value={p.product} column="product" edit={edit} save={save} />
+              <TextField label="Brand No." value={p.brand_no} column="brand_no" edit={edit} save={save} />
+              <PickField
+                label="AdPro Lead"
+                value={p.adpro_user_id}
+                label_={p.adpro_lead}
+                column="adpro_user"
+                options={people.data?.adpros}
+                edit={edit}
+                save={save}
+              />
+              <PickField
+                label="Brand Category"
+                value={p.brand_category_id}
+                label_={p.brand_category}
+                column="brand_category"
+                options={lookups.data?.brandCategories}
+                edit={edit}
+                save={save}
+              />
+              <PickField
+                label="Agency"
+                value={p.agency_id}
+                label_={p.agency}
+                column="client_agency"
+                options={lookups.data?.agencies}
+                edit={edit}
+                save={save}
+              />
+              {/* Free text on the record, and the spellings in use disagree —
+                  "United States" on 17 projects, "United States of America" on
+                  one. A picker would be the fix; `countries_list` is not it,
+                  since it does not hold "United Kingdom" either. */}
+              <TextField label="Country" value={p.country} column="country" edit={edit} save={save} />
+              {/* The agency's region, not the project's. Editing it here would
+                  move every project that agency has. */}
               <Field label="Region" value={p.region} />
             </Form>
           </>
@@ -363,14 +650,39 @@ export default function Project() {
           <>
             <PaneBar title="Terms" />
             <Form>
-              <Field label="Term" value={p.term} />
-              <Field label="Territory" value={p.territory} />
+              <TextField label="Term" value={p.term} column="term" edit={edit} save={save} />
+              <TextField
+                label="Territory"
+                value={p.territory}
+                column="territory"
+                edit={edit}
+                save={save}
+              />
               {/* Media and Scripts are the two textareas on Track. */}
-              <Field label="Media" value={p.media} textarea />
-              <Field label="Scripts" value={p.scripts} textarea />
-              <Field label="Durations" value={p.durations} />
-              <Field label="Cutdowns" value={yesNo(p.cutdowns)} />
-              <Field label="Extension" value={yesNo(p.extension_yn)} />
+              <TextField label="Media" value={p.media} column="media" textarea edit={edit} save={save} />
+              <TextField
+                label="Scripts"
+                value={p.scripts}
+                column="scripts"
+                textarea
+                edit={edit}
+                save={save}
+              />
+              <TextField
+                label="Durations"
+                value={p.durations}
+                column="durations"
+                edit={edit}
+                save={save}
+              />
+              <BoolField label="Cutdowns" value={p.cutdowns} column="cutdowns" edit={edit} save={save} />
+              <BoolField
+                label="Extension"
+                value={p.extension_yn}
+                column="extension_yn"
+                edit={edit}
+                save={save}
+              />
             </Form>
           </>
         )}
@@ -443,6 +755,9 @@ export default function Project() {
         {tab === 'Creative' && (
           <>
             <PaneBar title="Creative" action="+ Creative Link" />
+            {/* Both minted by Studio when a project gets its upload inbox, so
+                neither is ours to type over. A project created in Track now
+                gets that inbox too — see the studio_record trigger. */}
             <Form>
               <Field label="Studio Inbox Link" value={p.studio_inbox_link} />
               <Field label="Sequel Studio" value={p.studio_link} />
@@ -514,8 +829,15 @@ export default function Project() {
           <>
             <PaneBar title="NOTES" />
             <Form>
-              <Field label="Notes" value={p.notes} textarea />
-              <Field label="Notes or Request" value={p.notes_or_request} textarea />
+              <TextField label="Notes" value={p.notes} column="notes" textarea edit={edit} save={save} />
+              <TextField
+                label="Notes or Request"
+                value={p.notes_or_request}
+                column="notesorrequest"
+                textarea
+                edit={edit}
+                save={save}
+              />
             </Form>
           </>
         )}

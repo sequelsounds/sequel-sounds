@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader } from '../components/Loader'
+import { NewProject } from '../components/staff/NewProject'
 import { useMe, useMyProjects, type Project } from '../lib/xanoMirror'
 
 /**
@@ -38,6 +39,7 @@ export default function Projects() {
   const projects = useMyProjects(me.isPending ? undefined : (me.data?.id ?? null))
   const navigate = useNavigate()
   const [q, setQ] = useState('')
+  const [adding, setAdding] = useState(false)
 
   // Track searches the serialised row, so any field matches — an agency, a
   // brand, a job number, a status. Matching the same way here keeps the
@@ -58,12 +60,26 @@ export default function Projects() {
         <div className="page-eyebrow">Let&rsquo;s check in on&hellip;</div>
         <div className="title-row">
           <h1 className="page-title">Your projects</h1>
-          <button type="button" className="btn btn-mono btn-outline" disabled>
-            + New Project
+          <button
+            type="button"
+            className="btn btn-mono btn-outline"
+            onClick={() => setAdding((v) => !v)}
+          >
+            {adding ? 'Close' : '+ New Project'}
           </button>
         </div>
         <div className="page-subtitle">{me.data?.name ?? ' '}</div>
       </div>
+
+      {adding && (
+        <NewProject
+          onCancel={() => setAdding(false)}
+          onCreated={(id) => {
+            setAdding(false)
+            navigate(`/projects/${id}`)
+          }}
+        />
+      )}
 
       <div className="tab-band">
         <div className="tab-band-search">

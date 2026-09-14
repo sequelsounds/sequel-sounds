@@ -81,6 +81,17 @@ export type Project = {
   // the client user's own company. Both are here because Track shows both,
   // under the same word, on two different pages.
   client_user_company: string | null
+  // The ids behind the labels above. The page reads the label and writes the
+  // id, so editing a foreign key needs both — added to `project_list` when the
+  // project page stopped being read-only.
+  client_group_id: number | null
+  agency_id: number | null
+  brand_category_id: number | null
+  service_id: number | null
+  adpro_user_id: number | null
+  sequel_ownership: string | null
+  concept: string | null
+  updated_at: string | null
 }
 
 /**
@@ -129,6 +140,27 @@ export function useIsManagement() {
       const { data, error } = await (supabase as unknown as SupabaseClient).rpc(
         'track_is_management',
       )
+      if (error) throw error
+      return data === true
+    },
+  })
+}
+
+/**
+ * Whether the signed-in person is Sequel staff.
+ *
+ * ⚠️ For SHOWING THE EDIT CONTROLS, nothing more. The project page is one of
+ * the few a client user can legitimately open — track_can_see_project lets in
+ * the client contact, the ad producer and the supervisor — so it has to decide
+ * whether to render boxes or read-only fields. The gate that matters is the
+ * insert and update policies, which ask this same function inside the
+ * database: a client user who forces the controls open gets zero rows back.
+ */
+export function useIsStaff() {
+  return useQuery({
+    queryKey: ['mirror', 'is-staff'],
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await (supabase as unknown as SupabaseClient).rpc('track_is_staff')
       if (error) throw error
       return data === true
     },
