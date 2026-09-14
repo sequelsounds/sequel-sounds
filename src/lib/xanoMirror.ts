@@ -271,14 +271,24 @@ async function rows<T>(view: string, projectId: number, order: string) {
  * RLS is a separate question and stays where it is: it decides what a person
  * is allowed to read. This decides what the page chooses to show them.
  *
- * Including the inner join. Xano reaches the client user with a join that
- * drops the row when there is no match, so a project whose Client_user_id is
- * unset never reaches the page. Three of Andy's live projects are invisible on
- * Track because of it — 224-SUN-26-II, 216-CLE-26-II and 112-CAL-26-II — and
- * they are invisible here too, on purpose: the brief for this pass is to
- * reproduce what Track does, not to improve on it while the two run side by
- * side. Deleting the client_user_id line below is the whole of the fix when
- * that is the decision.
+ * ⚠️ EXCEPT the inner join, which is fixed here. Xano reaches the client user
+ * with a join that drops the row when there is no match, so a project whose
+ * Client_user_id is unset never reaches the page at all. Three of Andy's live
+ * projects are invisible on Track because of it — **224-SUN-26-II** (Sassy -
+ * The Film), **216-CLE-26-II** (PRODUCT) and **112-CAL-26-II** (Original Taste
+ * Speaks Louder), all Active, all at New, all his.
+ *
+ * They were reproduced on purpose while this pass was read-only, on the rule
+ * that the rebuild copies Track rather than improving on it. A list that
+ * silently omits live work is not a rendering difference though — it is the
+ * page failing at the one thing it is for, and the omission is invisible
+ * precisely because there is nothing on screen to count against. So the filter
+ * is gone, and the two lists now differ by those three rows.
+ *
+ * ⚠️ THE VERIFIED COUNT MOVES WITH IT. `/projects` was signed off against
+ * Track at 86 rows; on Andy's account it now reads 89. That is the fix, not a
+ * regression — but it means the 86 in the migration note is Track's number and
+ * no longer this page's.
  */
 export function useMyProjects(supervisorId: number | null | undefined) {
   return useQuery({
@@ -289,9 +299,9 @@ export function useMyProjects(supervisorId: number | null | undefined) {
       if (supervisorId != null) q = q.eq('supervisor_id', supervisorId)
       const { data, error } = await q.order('id', { ascending: false })
       if (error) throw error
-      return ((data ?? []) as Project[]).filter(
-        (p) => p.record_status !== 'Archived' && p.client_user_id != null,
-      )
+      // Archived only. The client_user_id test that used to sit here is what
+      // hid the three projects named above; see the note on this function.
+      return ((data ?? []) as Project[]).filter((p) => p.record_status !== 'Archived')
     },
   })
 }
