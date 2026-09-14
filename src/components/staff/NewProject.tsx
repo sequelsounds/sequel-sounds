@@ -445,7 +445,7 @@ export function NewProject({
           {step > 1 && step < SUCCESS && (
             <button
               type="button"
-              className="btn btn-mono btn-outline"
+              className="wizard-btn"
               onClick={() => {
                 setIncomplete(false)
                 setStep((s) => s - 1)
@@ -459,7 +459,7 @@ export function NewProject({
               reads as "press this", on a screen where the thing to do is
               answer the question. */}
           {step < LAST_QUESTION && (
-            <button type="button" className="btn btn-mono btn-outline" onClick={next}>
+            <button type="button" className="wizard-btn" onClick={next}>
               NEXT
             </button>
           )}
@@ -467,7 +467,7 @@ export function NewProject({
           {step === LAST_QUESTION && (
             <button
               type="button"
-              className="btn btn-mono btn-dark"
+              className="wizard-btn"
               disabled={create.isPending}
               onClick={() => void submit()}
             >
@@ -478,7 +478,7 @@ export function NewProject({
           {step === SUCCESS && (
             <button
               type="button"
-              className="btn btn-mono btn-dark"
+              className="wizard-btn"
               onClick={() => created && onCreated(created.id)}
             >
               OPEN IT
