@@ -898,7 +898,9 @@
      and a transparent ground that fills in on hover over 200ms.
      ⚠️ NOT Azeret Mono, which is the app shell's button and a size smaller. */
   .qw-yesno,
-  .qw-types {
+  .qw-types,
+  .qw-media,
+  .qw-counts {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.75rem;
@@ -906,8 +908,17 @@
     margin-top: 0.75rem;
   }
 
-  .qw-types {
+  /* The eight media buttons sit three across, as the old app's do. They are
+     the same button as the quote type buttons — Andy, 14 Sep — so they share
+     everything below and differ only in being multi-pick. */
+  .qw-types,
+  .qw-media {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* Eleven single digits. Three across would be absurd. */
+  .qw-counts {
+    grid-template-columns: repeat(6, 1fr);
   }
 
   .qw-choice {
@@ -1099,8 +1110,13 @@
       line-height: 1.5rem;
     }
 
-    .qw-types {
+    .qw-types,
+    .qw-media {
       grid-template-columns: 1fr;
+    }
+
+    .qw-counts {
+      grid-template-columns: repeat(4, 1fr);
     }
 
     .qw-fee-head,

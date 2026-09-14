@@ -13,6 +13,19 @@ import {
   type FeeKey,
   type Option,
 } from '../../lib/quoteWrites'
+import {
+  classifyTerritory,
+  DURATION_LONGER,
+  DURATION_SHORTER,
+  MEDIA_BUTTONS,
+  quoteEstimate,
+  SEARCH_COUNTS,
+  useClientRegion,
+  useCreateMcpsQuote,
+  useMcpsReference,
+} from '../../lib/mcpsQuote'
+import { MCPS_SERVICE_ID } from '../../lib/quoteWrites'
+import { ONLINE_INCL_SOCIAL, SOCIAL_ONLY, type TerritoryStructure } from '../../lib/mcpsPricing'
 
 /**
  * The New Quote wizard, rebuilt from the old app's rather than designed here.
@@ -46,9 +59,28 @@ import {
  *     called "Sequel Consultancy", none of which match the name the line is
  *     stored under. Each box is named for what it writes.
  *
- * ⚠️ Library (MCPS) is missing from the type buttons on purpose: that path
- * prices itself in Xano and the engine is not ported. Raising one still means
- * the old app until it is.
+ * ⚠️ Library (MCPS) is the seventh path and it does not look like the other
+ * six. It asks eight questions of its own — media, worldwide, territories,
+ * online worldwide, scripts, duration, cutdowns, searches — because each one
+ * drives a PRICE rather than describing the licence, and it has no terms
+ * screen and no fee screens at all: nobody types an amount on this path. The
+ * engine works the price out (`lib/mcpsPricing.ts`) from the rate card.
+ *
+ *    4  Are you quoting for Sequel searches only?   YES stops after searches
+ *    5  Media                                       eight buttons, multi-pick
+ *    6  Is the Territory Worldwide?
+ *    7  Please list the territories you need to cover:   (only if NO)
+ *    8  Is the online usage worldwide?              (only if online media)
+ *    9  Multiple Scripts?
+ *   10  How long is the longest film?
+ *   11  Cutdowns required?
+ *   12-14  the song gate and track count, shared with the other six
+ *   15  How many searches?
+ *   16  Summary                                     → CREATE ESTIMATE
+ *
+ * The wording is the old app's, read off the live page on 14 September. The
+ * LOOK is this wizard's, not the old page's — Andy's call the same day: seven
+ * paths through one wizard should not look like two products.
  *
  * ⚠️ A quote raised here is DELETED on the hour — `quotes` is still in the sync
  * and on the blocked side of it. See `lib/quoteWrites.ts`.
@@ -88,6 +120,25 @@ type Answers = {
   artistName: string
   tracks: string
   fees: Record<FeeKey, FeeCategory>
+
+  /* ── The MCPS path. Untouched on the other six. ────────────────────────── */
+
+  /** Library (MCPS) and Library (Manual) are BOTH service 3, so the service id
+      cannot tell them apart. This is what picks the flow. */
+  isMcps: boolean
+  searchesOnly: boolean | null
+  /** Rate card media names, NOT the button labels. See MEDIA_BUTTONS. */
+  mcpsMedia: string[]
+  worldwide: boolean | null
+  territories: string
+  /** The classifier's reading of `territories`. Null until it has answered. */
+  structure: TerritoryStructure | null
+  /** Defaults TRUE — online usage is worldwide in the large majority of cases. */
+  onlineWorldwide: boolean | null
+  multipleScripts: boolean | null
+  mcpsDuration: string
+  mcpsCutdowns: boolean | null
+  searchesCount: number | null
 }
 
 /* The step list, built for the answers so far. A key per screen, so a question
@@ -105,9 +156,46 @@ type StepKey =
   | 'artist'
   | 'tracks'
   | 'summary'
+  | 'searches_only'
+  | 'media'
+  | 'worldwide'
+  | 'territories'
+  | 'online_ww'
+  | 'scripts'
+  | 'duration'
+  | 'cutdowns'
+  | 'mcps_searches'
+
+/** Is any online medium selected? Decides whether the online question applies. */
+function hasOnline(media: string[]): boolean {
+  return media.includes(ONLINE_INCL_SOCIAL) || media.includes(SOCIAL_ONLY)
+}
 
 function flowFor(a: Answers): StepKey[] {
-  const steps: StepKey[] = ['description', 'client', 'currency', 'type', 'terms']
+  const steps: StepKey[] = ['description', 'client', 'currency', 'type']
+
+  if (a.isMcps) {
+    steps.push('searches_only')
+    // A searches-only estimate stops here. It buys no licence, so every
+    // question after this one would be asking about something nobody is
+    // paying for — and the old app used to STORE the answers to questions it
+    // never asked, asserting a perpetual worldwide licence on a £750 quote.
+    if (a.searchesOnly === true) {
+      steps.push('mcps_searches', 'summary')
+      return steps
+    }
+    steps.push('media', 'worldwide')
+    if (a.worldwide === false) steps.push('territories')
+    // Only worth asking when there is an online medium to apply it to, and
+    // only when the licence is not worldwide already.
+    if (a.worldwide === false && hasOnline(a.mcpsMedia)) steps.push('online_ww')
+    steps.push('scripts', 'duration', 'cutdowns', 'song_gate')
+    if (a.hasSong === true) steps.push('song', 'artist')
+    steps.push('tracks', 'mcps_searches', 'summary')
+    return steps
+  }
+
+  steps.push('terms')
   for (const screen of FEE_SCREENS) steps.push(`fee:${screen.key}` as StepKey)
   steps.push('song_gate')
   if (a.hasSong === true) steps.push('song', 'artist')
@@ -147,6 +235,44 @@ function YesNo({
       >
         NO
       </button>
+    </div>
+  )
+}
+
+/**
+ * The eight media buttons — multi-pick, unlike every other button group here.
+ *
+ * ⚠️ The label and the value are different strings. What is shown is the old
+ * app's shorthand (VOD, CINEMA DVD); what is stored has to be the rate card's
+ * media name exactly, because the engine looks rows up by it and a near miss
+ * matches nothing, prices the medium at zero and quietly falls the whole quote
+ * back to the All Media cap.
+ */
+function MediaPicker({
+  value,
+  onChange,
+}: {
+  value: string[]
+  onChange: (next: string[]) => void
+}) {
+  return (
+    <div className="qw-media">
+      {MEDIA_BUTTONS.map((m) => {
+        const picked = value.includes(m.value)
+        return (
+          <button
+            key={m.value}
+            type="button"
+            className={`qw-choice${picked ? ' is-picked' : ''}`}
+            aria-pressed={picked}
+            onClick={() =>
+              onChange(picked ? value.filter((v) => v !== m.value) : [...value, m.value])
+            }
+          >
+            {m.label}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -298,9 +424,30 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
     artistName: prefill.artistName,
     tracks: '',
     fees: emptyFees(),
+
+    isMcps: false,
+    searchesOnly: null,
+    mcpsMedia: [],
+    worldwide: null,
+    territories: '',
+    structure: null,
+    // ⚠️ Defaults TRUE, matching the old app's input default. Online usage is
+    // worldwide in the large majority of cases, and online often ends up
+    // worldwide anyway because it is cheaper than three separate countries.
+    onlineWorldwide: true,
+    multipleScripts: null,
+    mcpsDuration: '',
+    mcpsCutdowns: null,
+    searchesCount: null,
   })
   const [step, setStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  /** The classifier is a network call, and NEXT waits for it. */
+  const [classifying, setClassifying] = useState(false)
+
+  const reference = useMcpsReference()
+  const region = useClientRegion(a.isMcps ? a.clientId : null)
+  const createMcps = useCreateMcpsQuote(projectId)
 
   const flow = useMemo(() => flowFor(a), [a])
   const key = flow[Math.min(step, flow.length - 1)]
@@ -308,6 +455,42 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
 
   const tracks = a.tracks.trim() === '' ? null : Number(a.tracks)
   const total = quoteTotal(a.fees, tracks)
+
+  const currencyLabel =
+    (lookups.data?.currencies ?? []).find((c: Option) => c.id === a.currencyId)?.label ?? ''
+
+  /**
+   * The answers the engine takes. Assembled here rather than held in state so
+   * there is one shape, not two that can drift.
+   *
+   * ⚠️ `worldwideAnswer` is the BUTTON, and it replaces the typed territory
+   * rather than sitting beside it — the old app stores "Worldwide" as the
+   * requested territory in that case, not an empty string.
+   */
+  const mcpsAnswers = {
+    media: a.mcpsMedia,
+    territoryText: a.territories.trim(),
+    worldwideAnswer: a.worldwide === true,
+    territory:
+      a.structure ??
+      ({
+        is_worldwide: a.worldwide === true,
+        whole_continents: [],
+        countries: [],
+        distinct_continents: [],
+      } as TerritoryStructure),
+    multipleScripts: a.multipleScripts === true,
+    duration: a.mcpsDuration,
+    cutdowns: a.mcpsCutdowns === true,
+    onlineWorldwide: a.onlineWorldwide !== false,
+    tracks: tracks !== null && Number.isFinite(tracks) ? Math.trunc(tracks) : null,
+    searchesCount: a.searchesCount ?? 0,
+    searchesOnly: a.searchesOnly === true,
+  }
+
+  const estimate = a.isMcps
+    ? quoteEstimate(mcpsAnswers, reference.data, region.data, currencyLabel)
+    : null
 
   /**
    * The running total carries its CURRENCY CODE, because a quote can be raised
@@ -323,9 +506,8 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
    * this bar appears it is always set. The fallback covers the lookup not
    * having landed yet.
    */
-  const currencyCode =
-    (lookups.data?.currencies ?? []).find((c: Option) => c.id === a.currencyId)?.label ?? ''
-  const totalText = [currencyCode, amount.format(total)].filter(Boolean).join(' ')
+  const shownTotal = a.isMcps ? (estimate ? estimate.grandTotal / 100 : 0) : total
+  const totalText = [currencyLabel, amount.format(shownTotal)].filter(Boolean).join(' ')
 
   /**
    * NEXT is hidden until the question is answered, rather than shown and then
@@ -347,16 +529,58 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
         return a.serviceId !== null
       case 'song_gate':
         return a.hasSong !== null
+      case 'media':
+        return a.mcpsMedia.length > 0
+      case 'territories':
+        return a.territories.trim() !== ''
       default:
         return true
     }
   }
 
-  const showNext = key !== 'type' && key !== 'song_gate' && key !== 'summary' && answered()
-  const canCreate = a.clientId !== null && a.currencyId !== null && a.serviceId !== null
+  /* Steps carrying their own action buttons, so the footer shows no NEXT. */
+  const selfDriven: StepKey[] = [
+    'type',
+    'song_gate',
+    'summary',
+    'searches_only',
+    'worldwide',
+    'online_ww',
+    'scripts',
+    'duration',
+    'cutdowns',
+    'mcps_searches',
+  ]
+  const showNext = !selfDriven.includes(key) && answered()
 
-  const next = () => {
+  const canCreate =
+    a.clientId !== null &&
+    a.currencyId !== null &&
+    a.serviceId !== null &&
+    (!a.isMcps || estimate !== null)
+
+  /**
+   * Leaving the territories step is the one move that waits on the network.
+   *
+   * ⚠️ If the classifier refuses, the wizard STOPS here. It does not fall back
+   * to Worldwide the way the old app does — silently pricing at the dearest
+   * cell on the card when it could not read the text. Andy's call, 14 Sep.
+   */
+  const next = async () => {
     setError(null)
+    if (key === 'territories') {
+      setClassifying(true)
+      try {
+        const result = await classifyTerritory(a.territories.trim())
+        if (!result.ok) {
+          setError(result.error)
+          return
+        }
+        patch({ structure: result.territory })
+      } finally {
+        setClassifying(false)
+      }
+    }
     setStep((s) => Math.min(s + 1, flow.length - 1))
   }
   const back = () => {
@@ -367,6 +591,30 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
   async function submit() {
     if (!canCreate) return
     setError(null)
+
+    // The MCPS path writes a different row: Status "Submitted" rather than
+    // "Draft", the prices the engine worked out, and three line items instead
+    // of seven categories. Nobody typed an amount anywhere on this path.
+    if (a.isMcps) {
+      if (!estimate) return
+      try {
+        const row = await createMcps.mutateAsync({
+          projectId,
+          clientId: a.clientId!,
+          currencyId: a.currencyId!,
+          description: a.description.trim(),
+          songName: a.hasSong ? a.songName.trim() : '',
+          artistName: a.hasSong ? a.artistName.trim() : '',
+          answers: mcpsAnswers,
+          price: estimate,
+        })
+        onCreated(row.uuid)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not raise that estimate.')
+      }
+      return
+    }
+
     try {
       const row = await create.mutateAsync({
         projectId,
@@ -418,7 +666,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
               value={a.description}
               onChange={(e) => patch({ description: e.target.value })}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && a.description.trim() !== '') next()
+                if (e.key === 'Enter' && a.description.trim() !== '') void next()
               }}
             />
           </Question>
@@ -450,7 +698,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
               onChange={(e) => {
                 if (e.target.value === '') return
                 patch({ currencyId: Number(e.target.value) })
-                next()
+                void next()
               }}
             >
               <option value="">Please Select</option>
@@ -472,22 +720,27 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
                   type="button"
                   className={`qw-choice${a.serviceId === t.id && t.label !== 'Library (Manual)' ? ' is-picked' : ''}`}
                   onClick={() => {
-                    patch({ serviceId: t.id })
-                    next()
+                    patch({ serviceId: t.id, isMcps: false })
+                    void next()
                   }}
                 >
                   {t.label.toUpperCase()}
                 </button>
               ))}
-              {/* ⚠️ Present and unusable rather than absent, so nobody hunts for
-                  it. The MCPS path prices itself and the engine is not ported. */}
-              <button type="button" className="qw-choice" disabled title="Raise MCPS library quotes in the old app until the pricing engine is ported">
+              {/* ⚠️ Service 3, the SAME id as Library (Manual). What separates
+                  them is `isMcps`, which picks the flow and the engine. */}
+              <button
+                type="button"
+                className={`qw-choice${a.isMcps ? ' is-picked' : ''}`}
+                onClick={() => {
+                  patch({ serviceId: MCPS_SERVICE_ID, isMcps: true })
+                  void next()
+                }}
+              >
                 LIBRARY (MCPS)
               </button>
             </div>
-            <p className="qw-note">
-              Library (MCPS) prices itself. Until that engine is rebuilt, raise those in the old app.
-            </p>
+            <p className="qw-note">Library (MCPS) prices itself from the MCPS rate card.</p>
           </Question>
         )}
 
@@ -529,7 +782,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
                 // ⚠️ NO blanks the track, so a late change of mind cannot leave
                 // a stale song on the quote.
                 patch(v ? { hasSong: true } : { hasSong: false, songName: '', artistName: '' })
-                next()
+                void next()
               }}
             />
           </Question>
@@ -542,7 +795,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
               autoFocus
               value={a.songName}
               onChange={(e) => patch({ songName: e.target.value })}
-              onKeyDown={(e) => e.key === 'Enter' && next()}
+              onKeyDown={(e) => e.key === 'Enter' && void next()}
             />
           </Question>
         )}
@@ -554,7 +807,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
               autoFocus
               value={a.artistName}
               onChange={(e) => patch({ artistName: e.target.value })}
-              onKeyDown={(e) => e.key === 'Enter' && next()}
+              onKeyDown={(e) => e.key === 'Enter' && void next()}
             />
           </Question>
         )}
@@ -570,12 +823,221 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
               inputMode="numeric"
               value={a.tracks}
               onChange={(e) => patch({ tracks: e.target.value.replace(/[^\d]/g, '') })}
-              onKeyDown={(e) => e.key === 'Enter' && next()}
+              onKeyDown={(e) => e.key === 'Enter' && void next()}
             />
           </Question>
         )}
 
-        {key === 'summary' && (
+        {key === 'searches_only' && (
+          <Question title="Are you quoting for Sequel searches only?">
+            {/* YES stops the flow after the search count. A searches-only
+                estimate buys no licence, and the old app used to store answers
+                to questions it never asked — a £750 quote asserting a
+                perpetual worldwide licence nobody had paid for. */}
+            <YesNo
+              value={a.searchesOnly}
+              onPick={(v) => {
+                patch({ searchesOnly: v })
+                void next()
+              }}
+            />
+          </Question>
+        )}
+
+        {key === 'media' && (
+          <div className="qw-question is-wide">
+            <h2 className="qw-title">Media</h2>
+            <MediaPicker value={a.mcpsMedia} onChange={(mcpsMedia) => patch({ mcpsMedia })} />
+            {/* Worth saying on the screen, because the price often comes back
+                lower than the sum of the parts and it looks like a mistake. */}
+            <p className="qw-note">
+              Every lawful way of buying these is priced and the cheapest is taken, then capped
+              against All Media.
+            </p>
+          </div>
+        )}
+
+        {key === 'worldwide' && (
+          <Question title="Is the Territory Worldwide?">
+            <YesNo
+              value={a.worldwide}
+              onPick={(v) => {
+                // ⚠️ YES also settles the online question, which is skipped
+                // from here on. Leaving it null would be read as NO and record
+                // the wrong answer on a quote that is worldwide anyway.
+                patch(
+                  v
+                    ? { worldwide: true, onlineWorldwide: true, territories: '', structure: null }
+                    : { worldwide: false, structure: null },
+                )
+                void next()
+              }}
+            />
+          </Question>
+        )}
+
+        {key === 'territories' && (
+          <Question title="Please list the territories you need to cover:">
+            <input
+              className="qw-input"
+              autoFocus
+              placeholder="Example: Spain, France"
+              value={a.territories}
+              onChange={(e) => patch({ territories: e.target.value, structure: null })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && a.territories.trim() !== '' && !classifying) void next()
+              }}
+            />
+            {error && <p className="form-error">{error}</p>}
+          </Question>
+        )}
+
+        {key === 'online_ww' && (
+          <Question title="Is the online usage worldwide?">
+            <YesNo
+              value={a.onlineWorldwide}
+              onPick={(v) => {
+                patch({ onlineWorldwide: v })
+                void next()
+              }}
+            />
+            {/* Answering NO does not guarantee a narrower online licence: up to
+                two countries it is cheaper to restrict, at three it is not, and
+                the engine buys whichever is cheaper. */}
+            <p className="qw-note">
+              Online is often worldwide anyway, because above two countries it costs less than
+              buying them separately.
+            </p>
+          </Question>
+        )}
+
+        {key === 'scripts' && (
+          <Question title="Multiple Scripts?">
+            <YesNo
+              value={a.multipleScripts}
+              onPick={(v) => {
+                patch({ multipleScripts: v })
+                void next()
+              }}
+            />
+          </Question>
+        )}
+
+        {key === 'duration' && (
+          <Question title="How long is the longest film?">
+            <div className="qw-yesno">
+              {[DURATION_LONGER, DURATION_SHORTER].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  className={`qw-choice${a.mcpsDuration === d ? ' is-picked' : ''}`}
+                  onClick={() => {
+                    patch({ mcpsDuration: d })
+                    void next()
+                  }}
+                >
+                  {d.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </Question>
+        )}
+
+        {key === 'cutdowns' && (
+          <Question title="Cutdowns required?">
+            <YesNo
+              value={a.mcpsCutdowns}
+              onPick={(v) => {
+                patch({ mcpsCutdowns: v })
+                void next()
+              }}
+            />
+          </Question>
+        )}
+
+        {key === 'mcps_searches' && (
+          <Question title="How many searches?">
+            <div className="qw-counts">
+              {SEARCH_COUNTS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={`qw-choice${a.searchesCount === n ? ' is-picked' : ''}`}
+                  onClick={() => {
+                    patch({ searchesCount: n })
+                    void next()
+                  }}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </Question>
+        )}
+
+        {key === 'summary' && a.isMcps && (
+          <div className="qw-question is-wide">
+            <h2 className="qw-title">Summary</h2>
+            {estimate ? (
+              <>
+                {/* The terms the ENGINE settled, not the answers given — they
+                    are not the same thing, and this is the last chance to spot
+                    a Territory or a Media list that reads wrong. */}
+                <div className="qw-summary-row">
+                  <span>Territory</span>
+                  <span className="qw-summary-amount">{estimate.territory || '—'}</span>
+                </div>
+                <div className="qw-summary-row">
+                  <span>Media</span>
+                  <span className="qw-summary-amount">
+                    {estimate.mediaBought.length > 0 ? estimate.mediaBought.join(', ') : '—'}
+                  </span>
+                </div>
+                {estimate.capped && (
+                  <p className="qw-note">
+                    All Media works out cheaper than the media chosen, so that is what is being
+                    bought. The territory is unchanged.
+                  </p>
+                )}
+                {estimate.licenceFeeLocal > 0 && (
+                  <div className="qw-summary-row">
+                    <span>MCPS licence fee{estimate.tracks > 1 ? ` (${estimate.tracks} tracks)` : ''}</span>
+                    <span className="qw-summary-amount">
+                      {amount.format(estimate.licenceFeeLocal / 100)}
+                    </span>
+                  </div>
+                )}
+                {estimate.sequelLicensingFee > 0 && (
+                  <div className="qw-summary-row">
+                    <span>Sequel licensing fee</span>
+                    <span className="qw-summary-amount">
+                      {amount.format(estimate.sequelLicensingFee / 100)}
+                    </span>
+                  </div>
+                )}
+                {estimate.searchFee > 0 && (
+                  <div className="qw-summary-row">
+                    <span>Library search fee</span>
+                    <span className="qw-summary-amount">{amount.format(estimate.searchFee / 100)}</span>
+                  </div>
+                )}
+                <div className="qw-summary-row is-total">
+                  <span>QUOTE TOTAL</span>
+                  <span className="qw-summary-amount">{totalText}</span>
+                </div>
+              </>
+            ) : (
+              <p className="qw-note">
+                {region.data === null && !region.isPending
+                  ? 'That client has no region set, so the uplift and the minimum fee cannot be worked out. Set it on the client first.'
+                  : 'Working out the price…'}
+              </p>
+            )}
+            {error && <p className="form-error">{error}</p>}
+          </div>
+        )}
+
+        {key === 'summary' && !a.isMcps && (
           <div className="qw-question is-wide">
             <h2 className="qw-title">Summary</h2>
             {FEE_SCREENS.map((s) => {
@@ -610,7 +1072,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
 
         {/* The middle cell is always rendered, empty or not: the footer is a
             three-column grid, and leaving it out slides NEXT into the middle. */}
-        {feeKey || key === 'summary' ? (
+        {feeKey || (key === 'summary' && !a.isMcps) ? (
           <span className="qw-total">
             TOTAL <strong>{totalText}</strong>
           </span>
@@ -622,14 +1084,23 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
           <button
             type="button"
             className="qw-step-button"
-            disabled={!canCreate || create.isPending}
+            disabled={!canCreate || create.isPending || createMcps.isPending}
             onClick={() => void submit()}
           >
-            {create.isPending ? 'CREATING…' : 'CREATE QUOTE'}
+            {create.isPending || createMcps.isPending
+              ? 'CREATING…'
+              : a.isMcps
+                ? 'CREATE ESTIMATE'
+                : 'CREATE QUOTE'}
           </button>
         ) : showNext ? (
-          <button type="button" className="qw-step-button" onClick={next}>
-            NEXT
+          <button
+            type="button"
+            className="qw-step-button"
+            disabled={classifying}
+            onClick={() => void next()}
+          >
+            {classifying ? 'READING…' : 'NEXT'}
           </button>
         ) : (
           <span />
