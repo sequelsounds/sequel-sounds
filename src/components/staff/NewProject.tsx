@@ -285,7 +285,7 @@ export function NewProject({
         role="dialog"
         aria-modal="true"
         aria-label="New project"
-        className="surface-light relative w-full max-w-[34rem] border border-sequel-line p-10 shadow-[0_10px_40px_rgba(55,43,41,0.25)]"
+        className="surface-light relative w-full max-w-[34rem] border border-sequel-brown p-10 shadow-[0_10px_40px_rgba(55,43,41,0.25)]"
       >
         {/* Closing is the X, as it is on Track's own modals — they carry it in
             the header rather than a button in the footer. */}
