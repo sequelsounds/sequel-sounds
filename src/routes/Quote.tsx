@@ -61,27 +61,19 @@ function money(minor: number | null | undefined): string {
 }
 
 /**
- * The Quantity cell.
+ * The Quantity cell — the bare count, as the old app has it.
  *
- * ⚠️ The cost stored beside it is ALREADY multiplied, so "2" against "50,397"
- * invites a client to multiply two numbers that are not meant to be multiplied.
- * Andy's decision, 14 Sep: show `2 @ 25,198` so the row adds up on the page.
+ * ⚠️ A `2 @ 25,198` form was built here and taken out again — Andy's call,
+ * 14 Sep: it does not work. The thing it was meant to solve is real and is
+ * still here: the `cost` beside a count is ALREADY multiplied, so a client
+ * checking the arithmetic on a two-track row will not be able to make 2 and
+ * 50,397 agree. Live with it rather than reinventing the cell.
  *
- * ⚠️ Divide only when it divides EXACTLY. A search fee is typed as a free
- * total, not a rate — six searches for 6,000 is a figure somebody entered, not
- * 1,000 each — so a total that will not divide cleanly (2,500 across 3) would
- * print 833.33 against a subtotal of 2,500 and read as an error. Every one of
- * the 25 search rows on file divides exactly; this guards what comes later.
+ * ⚠️ Whatever else changes, never render `quantity × cost` as the subtotal.
+ * It would double.
  */
-function quantityCell(qty: number | null, costMinor: number | null): string {
-  if (!qty || qty <= 1) return qty ? String(qty) : ''
-  if (costMinor === null || costMinor === undefined) return String(qty)
-  const each = Number(costMinor) / qty
-  if (!Number.isFinite(each)) return String(qty)
-  // Exact to the penny, and the printed per-unit figure must multiply back.
-  const rounded = Math.round(each)
-  if (rounded * qty !== Number(costMinor)) return String(qty)
-  return `${qty} @ ${money(rounded)}`
+function quantityCell(qty: number | null): string {
+  return qty ? String(qty) : ''
 }
 
 function fold(lines: QuoteLine[]): Section[] {
@@ -471,14 +463,14 @@ export default function Quote() {
               <Row
                 key={l.id}
                 desc={l.fee_description ?? ''}
-                qty={quantityCell(l.quantity, l.cost)}
+                qty={quantityCell(l.quantity)}
                 subtotal={money(l.cost)}
               />
             ))}
             {s.sequelSum > 0 && (
               <Row
                 desc={SEQUEL_ROW_LABEL[s.name] ?? 'Sequel Fee'}
-                qty={quantityCell(s.sequelQty, s.sequelSum)}
+                qty={quantityCell(s.sequelQty)}
                 subtotal={money(s.sequelSum)}
               />
             )}
