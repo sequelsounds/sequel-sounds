@@ -3294,4 +3294,26 @@
   .create-band-row .btn {
     flex: 0 0 auto;
   }
+
+  /* The supplier's invoices: project, invoice no., date, status, their fee. */
+  .project-row-supplier-invoice {
+    grid-template-columns: 0.9fr 0.4fr 0.35fr 0.4fr 0.35fr;
+    gap: 16px;
+  }
+
+  /* A column header row. The lists elsewhere in the app have none, because
+     their columns are self-evident; this one carries two different money-ish
+     columns and a date, so it says which is which. Not a row: no hover, no
+     link, and it does not pretend to be clickable. */
+  .project-row.is-head {
+    min-height: 2rem;
+    color: var(--color-sequel-mid);
+    font-weight: 500;
+    pointer-events: none;
+  }
+
+  .project-row.is-head:hover {
+    background-color: transparent;
+    color: var(--color-sequel-mid);
+  }
 }

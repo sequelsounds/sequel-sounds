@@ -5,6 +5,7 @@ import { EditEnum, EditField, EditSelect, ReadOnlyField } from '../components/st
 // The house format for a GBP figure on a stats band: rounded to the pound, the
 // same as /management and /dashboard. Pennies belong on an invoice, not a tile.
 import { money } from '../components/staff/reporting'
+import { SupplierInvoices } from '../components/staff/SupplierInvoices'
 import { usePartner, useSupplierStats } from '../lib/xanoMirror'
 import {
   BRIEFING_LISTS,
@@ -47,7 +48,7 @@ import {
  *     on a page people now actually edit is not faithfulness, it is a bug.
  */
 
-const TABS = ['Overview', 'Contact', 'Projects', 'Finance'] as const
+const TABS = ['Overview', 'Contact', 'Invoices', 'Finance'] as const
 type Tab = (typeof TABS)[number]
 
 function Stat({
@@ -239,9 +240,11 @@ export default function Partner() {
           </div>
         )}
 
-        {/* Empty on Track — no markup in the pane at all, not an empty state.
-            Kept empty so the two pages agree. */}
-        {tab === 'Projects' && null}
+        {/* ⚠️ This tab has NO MARKUP AT ALL on Track — not an empty state, not a
+            heading, nothing was ever built. So there is nothing to reproduce,
+            and it is invoices rather than projects because an invoice line is
+            the only place a supplier is actually named. Andy's call. */}
+        {tab === 'Invoices' && <SupplierInvoices supplierId={p.id} />}
 
         {tab === 'Finance' && (
           <div className="edit-form">

@@ -1324,3 +1324,62 @@ export function useSupplierStats(supplierId: number | undefined) {
     },
   })
 }
+
+/**
+ * One invoice a supplier appears on — the rows behind the Demos / Wins / Fees
+ * tiles, listed out.
+ *
+ * The tab these fill said "Projects" and had no markup at all on Track — not
+ * an empty state, nothing. Andy's call, 14 September 2026: invoices rather
+ * than projects, because an invoice line is the only place a supplier is
+ * actually named.
+ *
+ * ⚠️ `supplier_amount` IS IN THE INVOICE'S OWN CURRENCY and is shown with its
+ * symbol, the way every other invoice row in the app shows money. The Fees
+ * tile above the tab is sterling, because that one sums across invoices and
+ * cannot be anything else. Both are right, and the tile says "(GBP)" so the
+ * difference is on screen rather than assumed.
+ */
+export type SupplierInvoice = {
+  supplier_id: number
+  invoice_id: number
+  invoice_uuid: string | null
+  invoice_number: string | null
+  status: string | null
+  invoice_date: string | null
+  created_at: string | null
+  description: string | null
+  currency_symbol: string | null
+  currency: string | null
+  project_master_list_id: number | null
+  project_title: string | null
+  project_sequel_no: string | null
+  /** What THIS supplier is owed on THIS invoice, not the invoice total. */
+  supplier_amount: number | null
+  supplier_amount_gbp: number | null
+  line_count: number
+  demo_lines: number
+  /** Counted as a win by the same test the tile uses: a master or publishing line. */
+  is_win: boolean | null
+  any_paythrough: boolean | null
+}
+
+export function useSupplierInvoices(supplierId: number | undefined) {
+  return useQuery({
+    enabled: Number.isFinite(supplierId),
+    queryKey: ['mirror', 'supplier-invoices', supplierId],
+    queryFn: async (): Promise<SupplierInvoice[]> => {
+      const { data, error } = await mirror
+        .from('supplier_invoices')
+        .select('*')
+        .eq('supplier_id', supplierId!)
+      if (error) throw error
+      // Newest first, and an invoice with no date sorts last rather than
+      // first: 148 of 150 imported invoices have no due date and some have no
+      // invoice date either, and a null must not lead the list.
+      return ((data ?? []) as SupplierInvoice[]).sort((a, b) =>
+        (b.invoice_date ?? '').localeCompare(a.invoice_date ?? ''),
+      )
+    },
+  })
+}
