@@ -845,8 +845,11 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
         )}
 
         {key === 'media' && (
-          <div className="qw-question is-wide">
-            <h2 className="qw-title">Media</h2>
+          /* ⚠️ The narrow, centred Question, NOT the wide container the fee
+             screens use. These are the quote type buttons and they have to sit
+             where the quote type buttons sit — same width, same centre line.
+             is-wide left-aligns them and stretches them half the screen. */
+          <Question title="Media">
             <MediaPicker value={a.mcpsMedia} onChange={(mcpsMedia) => patch({ mcpsMedia })} />
             {/* Worth saying on the screen, because the price often comes back
                 lower than the sum of the parts and it looks like a mistake. */}
@@ -854,7 +857,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
               Every lawful way of buying these is priced and the cheapest is taken, then capped
               against All Media.
             </p>
-          </div>
+          </Question>
         )}
 
         {key === 'worldwide' && (

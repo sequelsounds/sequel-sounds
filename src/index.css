@@ -921,6 +921,15 @@
     grid-template-columns: repeat(6, 1fr);
   }
 
+  /* One media label is too long for a single line and breaks inside its own
+     bracket. It carries a newline, which needs pre-line to render — and every
+     media button is then given the two-line height so the grid rows stay
+     level rather than the middle one standing taller. */
+  .qw-media .qw-choice {
+    white-space: pre-line;
+    min-height: 3.75rem;
+  }
+
   .qw-choice {
     display: flex;
     align-items: center;

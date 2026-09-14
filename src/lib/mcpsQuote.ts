@@ -30,7 +30,12 @@ export const MEDIA_BUTTONS: { label: string; value: string }[] = [
   { label: 'ALL MEDIA', value: 'All Media' },
   { label: 'LINEAR TV (EXC VOD)', value: 'Linear TV (Excluding VOD)' },
   { label: 'VOD', value: 'Video On Demand' },
-  { label: 'ONLINE INCL. SOCIAL (EXC VOD)', value: 'Online incl. Social (Excluding VOD)' },
+  // ⚠️ The newline is deliberate: unbroken, this label wraps mid-bracket and
+  // reads "(EXC" then "VOD)". `.qw-media .qw-choice` sets white-space: pre-line
+  // so it renders, and every media button carries the two-line height whether
+  // it uses it or not — otherwise the middle row of the grid stands taller
+  // than the two either side.
+  { label: 'ONLINE INCL. SOCIAL\n(EXC VOD)', value: 'Online incl. Social (Excluding VOD)' },
   { label: 'SOCIAL MEDIA (ONLY)', value: 'Social Media (Only)' },
   { label: 'RADIO', value: 'Radio' },
   { label: 'PUBLIC LOCATION', value: 'Public Location' },

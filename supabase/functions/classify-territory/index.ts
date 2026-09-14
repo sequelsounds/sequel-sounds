@@ -123,10 +123,23 @@ type Structure = {
   distinct_continents: string[]
 }
 
+/**
+ * ⚠️ CORS, and it is not optional. The browser sends a preflight OPTIONS before
+ * any POST carrying an Authorization header, so without these the call never
+ * reaches the handler and the wizard reports that the territory could not be
+ * read — which looks exactly like the classifier refusing. Tested with curl it
+ * works fine, because curl does not preflight. Cost half an hour on 14 Sep.
+ */
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...CORS, 'Content-Type': 'application/json' },
   })
 
 /**
@@ -224,6 +237,7 @@ async function askGemini(key: string, text: string): Promise<Attempt> {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405)
 
   const key = Deno.env.get('GEMINI_API_KEY')
