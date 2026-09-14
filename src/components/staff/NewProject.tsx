@@ -124,30 +124,26 @@ function Typeahead({
   const [term, setTerm] = useState(picked?.label ?? '')
   const [open, setOpen] = useState(false)
 
-  // ⚠️ Nothing until something is typed. Showing the first eight on open put a
-  // list of strangers under the question before anyone had asked for one, and
-  // Track's own search returns nothing until you search.
   const matches = useMemo(() => {
     const t = term.trim().toLowerCase()
-    if (!t) return []
+    if (!t) return (options ?? []).slice(0, 8)
     return (options ?? []).filter((o) => o.label.toLowerCase().includes(t)).slice(0, 8)
   }, [options, term])
-
-  const searching = term.trim() !== '' && term.trim() !== picked?.label
 
   return (
     <div className="wizard-search">
       <input
-        className="wizard-field"
+        className="edit-field-input"
         value={term}
         autoFocus
         placeholder={placeholder}
+        onFocus={() => setOpen(true)}
         onChange={(e) => {
           setTerm(e.target.value)
           setOpen(true)
         }}
       />
-      {open && searching && (
+      {open && (
         <div className="wizard-results">
           {matches.length === 0 && <div className="wizard-result-empty">{emptyNote}</div>}
           {matches.map((o) => (
@@ -186,7 +182,7 @@ function Select({
 }) {
   return (
     <select
-      className="wizard-field wizard-select"
+      className="edit-field-input edit-field-select"
       value={value ?? ''}
       autoFocus
       onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
@@ -289,11 +285,14 @@ export function NewProject({
         role="dialog"
         aria-modal="true"
         aria-label="New project"
-        className="wizard-modal"
+        className="surface-light w-full max-w-[34rem] border border-sequel-line p-7 shadow-[0_10px_40px_rgba(55,43,41,0.25)]"
       >
-        {/* Closing is the X, as it is on Track's own modals — they carry it in
-            the header rather than a button in the footer. */}
-        <button type="button" className="wizard-close" aria-label="Close" onClick={onClose} />
+        {step !== SUCCESS && (
+          <div className="wizard-progress">
+            Step {step} of {LAST_QUESTION}
+          </div>
+        )}
+
         {step === 1 && (
           <>
             <div className="wizard-question">Which user is this project for?*</div>
@@ -312,7 +311,7 @@ export function NewProject({
           <>
             <div className="wizard-question">And which Brand?*</div>
             <input
-              className="wizard-field"
+              className="edit-field-input"
               value={a.brand}
               autoFocus
               onChange={(e) => set('brand', e.target.value)}
@@ -324,7 +323,7 @@ export function NewProject({
           <>
             <div className="wizard-question">The project title?*</div>
             <input
-              className="wizard-field"
+              className="edit-field-input"
               value={a.title}
               autoFocus
               onChange={(e) => set('title', e.target.value)}
@@ -350,7 +349,7 @@ export function NewProject({
           <>
             <div className="wizard-question">Client Job No</div>
             <input
-              className="wizard-field"
+              className="edit-field-input"
               value={a.brand_no}
               autoFocus
               onChange={(e) => set('brand_no', e.target.value)}
@@ -374,15 +373,12 @@ export function NewProject({
           <>
             <div className="wizard-question">Projected Pipeline in GBP*</div>
             <input
-              className="wizard-field"
+              className="edit-field-input"
               value={a.pipeline_gbp}
               autoFocus
               inputMode="decimal"
               onChange={(e) => set('pipeline_gbp', e.target.value)}
             />
-            {a.pipeline_gbp.trim() !== '' && !Number.isFinite(Number(a.pipeline_gbp)) && (
-              <p className="wizard-note">Numbers only — no commas, no £.</p>
-            )}
           </>
         )}
 
@@ -390,7 +386,7 @@ export function NewProject({
           <>
             <div className="wizard-question">Proposed start date*</div>
             <input
-              className="wizard-field"
+              className="edit-field-input"
               type="date"
               value={a.proposed_start_date}
               autoFocus
@@ -452,7 +448,7 @@ export function NewProject({
           {step > 1 && step < SUCCESS && (
             <button
               type="button"
-              className="wizard-btn"
+              className="btn btn-mono btn-outline"
               onClick={() => {
                 setIncomplete(false)
                 setStep((s) => s - 1)
@@ -463,7 +459,7 @@ export function NewProject({
           )}
 
           {step < LAST_QUESTION && (
-            <button type="button" className="wizard-btn" onClick={next}>
+            <button type="button" className="btn btn-mono btn-dark" onClick={next}>
               NEXT
             </button>
           )}
@@ -471,7 +467,7 @@ export function NewProject({
           {step === LAST_QUESTION && (
             <button
               type="button"
-              className="wizard-btn"
+              className="btn btn-mono btn-dark"
               disabled={create.isPending}
               onClick={() => void submit()}
             >
@@ -479,13 +475,17 @@ export function NewProject({
             </button>
           )}
 
-          {step === SUCCESS && (
+          {step === SUCCESS ? (
             <button
               type="button"
-              className="wizard-btn"
+              className="btn btn-mono btn-dark"
               onClick={() => created && onCreated(created.id)}
             >
               OPEN IT
+            </button>
+          ) : (
+            <button type="button" className="btn btn-mono btn-outline" onClick={onClose}>
+              Cancel
             </button>
           )}
         </div>
