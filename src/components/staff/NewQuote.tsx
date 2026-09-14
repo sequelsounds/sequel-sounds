@@ -310,6 +310,28 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
   const total = quoteTotal(a.fees, tracks)
 
   /**
+   * What the running total says, beyond the number.
+   *
+   * ⚠️ A bare figure is ambiguous twice over. The CODE, because the quote can
+   * be raised in any of the currencies in table 48 and `$` is stored for both
+   * USD and SGD — the same reason the document shows codes rather than
+   * symbols. And the TRACK COUNT, because the licensing and master screens
+   * multiply by it, so a total can double between two screens with nothing on
+   * the bar to say why.
+   *
+   * Currency is chosen at step three, before any fee screen, so by the time
+   * this bar appears it is always set. The fallback is there for the case
+   * where the lookup has not landed yet.
+   */
+  const currencyCode =
+    (lookups.data?.currencies ?? []).find((c: Option) => c.id === a.currencyId)?.label ?? ''
+  const trackNote =
+    flow.includes('tracks') && tracks !== null && tracks > 0
+      ? `${tracks} ${tracks === 1 ? 'track' : 'tracks'}`
+      : ''
+  const totalText = [currencyCode, amount.format(total)].filter(Boolean).join(' ')
+
+  /**
    * NEXT is hidden until the question is answered, rather than shown and then
    * refused — the same call Andy made on the New Project wizard. The old app
    * shows "PLEASE COMPLETE ALL SECTIONS" after the fact instead.
@@ -573,8 +595,11 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
               )
             })}
             <div className="qw-summary-row is-total">
-              <span>QUOTE TOTAL</span>
-              <span className="qw-summary-amount">{amount.format(total)}</span>
+              <span>
+                QUOTE TOTAL
+                {trackNote && <span className="qw-total-note"> · {trackNote}</span>}
+              </span>
+              <span className="qw-summary-amount">{totalText}</span>
             </div>
             {error && <p className="form-error">{error}</p>}
           </div>
@@ -594,7 +619,8 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
             three-column grid, and leaving it out slides NEXT into the middle. */}
         {feeKey || key === 'summary' ? (
           <span className="qw-total">
-            TOTAL <strong>{amount.format(total)}</strong>
+            TOTAL <strong>{totalText}</strong>
+            {trackNote && <span className="qw-total-note"> · {trackNote}</span>}
           </span>
         ) : (
           <span />
