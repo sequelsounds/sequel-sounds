@@ -1,9 +1,16 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
-import { EditField, EditSelect, ReadOnlyField } from '../components/staff/EditField'
+import { EditEnum, EditField, EditSelect, ReadOnlyField } from '../components/staff/EditField'
 import { useRosterMember } from '../lib/xanoMirror'
-import { useCountries, useSaveSupplier, type SupplierPatch } from '../lib/supplierWrites'
+import {
+  BRIEFING_LISTS,
+  CA_STATUSES,
+  SUPPLIER_TYPES,
+  useCountries,
+  useSaveSupplier,
+  type SupplierPatch,
+} from '../lib/supplierWrites'
 
 /**
  * One composition team — Sequel Track's `/roster-edit`, rebuilt, and editable.
@@ -115,6 +122,30 @@ export default function RosterMember() {
             <EditField label="Bio" value={m.bio} textarea onSave={text('bio')} />
             <EditField label="Studio" value={m.studio_setup} onSave={text('studio_setup')} />
             <EditField label="Strengths" value={m.strengths} onSave={text('strengths')} />
+            {/* ⚠️ Changing the type off Composition Team moves this record to
+                /partners and it disappears from the roster — correct, and
+                surprising the first time. The two lists are exactly this
+                column. */}
+            <EditEnum
+              label="Supplier Type"
+              value={m.supplier_type}
+              options={SUPPLIER_TYPES}
+              note="anything but Composition Team leaves the Roster"
+              onSave={(next) => put({ supplier_type: next })}
+            />
+            <EditEnum
+              label="Briefing List"
+              value={m.briefing_list}
+              options={BRIEFING_LISTS}
+              onSave={(next) => put({ briefing_list: next })}
+            />
+            <EditEnum
+              label="Composer Agreement"
+              value={m.ca_status}
+              options={CA_STATUSES}
+              note="blank reads as Not Sent"
+              onSave={(next) => put({ ca_status: next })}
+            />
           </div>
         )}
 

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { usePartners, type Partner } from '../lib/xanoMirror'
+import { NewSupplier } from '../components/staff/NewSupplier'
 
 /**
  * Sequel Track's `/partners`, rebuilt from the page rather than from the data.
@@ -28,7 +29,8 @@ import { usePartners, type Partner } from '../lib/xanoMirror'
  * 0, which is Xano's way of saying unset — so it is one of the 93 and in none
  * of the five tabs. 53 + 2 + 25 + 12 + 0 = 92.
  *
- * Read-only. The mail and archive marks are drawn and inert.
+ * The mail and archive marks are still drawn and inert. What is live is
+ * **Add partner** — the first create on either stack; see `NewSupplier`.
  */
 
 const TABS: { region: number | null; label: string }[] = [
@@ -72,6 +74,7 @@ export default function Partners() {
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [region, setRegion] = useState<number | null>(null)
+  const [adding, setAdding] = useState(false)
 
   const all = useMemo(() => partners.data ?? [], [partners.data])
 
@@ -106,9 +109,25 @@ export default function Partners() {
         <div className="page-eyebrow">Our</div>
         {/* Webflow's source text is "PartNers", capital N, which nobody sees
             because the class uppercases it. */}
-        <h1 className="page-title">Partners</h1>
+        <div className="title-row">
+          <h1 className="page-title">Partners</h1>
+          <button
+            type="button"
+            className="btn btn-mono btn-outline"
+            onClick={() => setAdding((v) => !v)}
+          >
+            {adding ? 'Close' : '+ Add partner'}
+          </button>
+        </div>
         <div className="page-subtitle">Manage our music suppliers...</div>
       </div>
+
+      {adding && (
+        <NewSupplier
+          onCancel={() => setAdding(false)}
+          onCreated={(uuid) => navigate(`/partners/${uuid}`)}
+        />
+      )}
 
       <div className="tab-band">
         <div className="tab-band-search is-narrow">

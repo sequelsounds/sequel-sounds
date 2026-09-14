@@ -3231,4 +3231,36 @@
     grid-template-columns: 0.75fr 0.4fr 0.3fr 0.3fr 0.25fr;
     gap: 16px;
   }
+
+  /* --------------------------------------------------------- adding a record
+   * A band under the header, not a modal. A modal needs a focus trap, an
+   * escape route and a scrim to be done properly, and this asks two questions.
+   */
+  .create-band {
+    width: 100%;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--color-sequel-line);
+  }
+
+  .create-band-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* The name takes the room; the type sits at its own width beside it. */
+  .create-band-row .edit-field-input {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .create-band-row .edit-field-select {
+    flex: 0 0 auto;
+    width: 12rem;
+  }
+
+  .create-band-row .btn {
+    flex: 0 0 auto;
+  }
 }

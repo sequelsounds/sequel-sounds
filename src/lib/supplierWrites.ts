@@ -53,6 +53,9 @@ import { mirror } from './xanoMirror'
  */
 export type SupplierPatch = {
   title?: string | null
+  supplier_type?: string | null
+  briefing_list?: string | null
+  ca_status?: string | null
   bio?: string | null
   strengths?: string | null
   brief_email?: string | null
@@ -126,6 +129,97 @@ export function useSaveSupplier(uuid: string | undefined) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['mirror', 'partner', uuid] })
       void qc.invalidateQueries({ queryKey: ['mirror', 'roster-member', uuid] })
+      void qc.invalidateQueries({ queryKey: ['mirror', 'partners'] })
+      void qc.invalidateQueries({ queryKey: ['mirror', 'roster'] })
+    },
+  })
+}
+
+/**
+ * The three enums on `Supplier List`, read from the Xano table schema (table
+ * 45) rather than from the endpoint.
+ *
+ * ⚠️ THE TABLE IS AUTHORITATIVE, NOT THE ENDPOINT. `Patch_supplier`'s own input
+ * definitions had drifted from the column on all three of these: it declared
+ * Music Supervisor / Record Label / Music Publisher / Music Library / Other for
+ * the type, Standard / High-End / Bespoke for the briefing list, and
+ * Pending / Approved / Rejected for the CA status. Every real value would have
+ * failed input validation before reaching the database, and it never surfaced
+ * because no page exposed those three fields. They were corrected on 23 August;
+ * the lists below are the columns as they stand.
+ *
+ * ⚠️ There are TEN supplier types, not the nine the August note counts —
+ * `Partner Library` was added the same day and the count was not updated.
+ */
+export const SUPPLIER_TYPES = [
+  'Agent',
+  'Manager',
+  'Publisher',
+  'Label',
+  'MCPS Library',
+  'Non-MCPS Library',
+  'Sync Rep',
+  'Composition Team',
+  'Partner Library',
+  'Musicologist',
+] as const
+
+/**
+ * ⚠️ `Composition Team` is what splits the two pages: `/roster` is exactly the
+ * composition teams and `/partners` is exactly everything else. Changing a
+ * supplier's type to or from it MOVES THE RECORD between the two lists, which
+ * is correct and still surprising the first time it happens.
+ */
+export const COMPOSITION_TEAM = 'Composition Team'
+
+export const BRIEFING_LISTS = ['UK', 'Argentina', 'Singapore', 'Global', 'North America'] as const
+
+/** Composer agreement status. A blank reads as Not Sent on about 55 rows. */
+export const CA_STATUSES = ['Not Sent', 'Pending', 'Complete', 'NA'] as const
+
+/**
+ * Creating a supplier.
+ *
+ * There has never been a way to do this on either stack — Xano's supplier group
+ * is four reads and one patch, and Track has no create form. Row 111 was made
+ * by hand in the Xano table as a result, and made without a uuid, which makes
+ * it unreachable from every edit page in both apps.
+ *
+ * Three things in the database make this safe rather than a second row 111:
+ *
+ *   - `uuid` now defaults to `gen_random_uuid()`, so a supplier cannot be
+ *     created without one by ANY route, including a hand-typed row
+ *   - `id` now comes from a sequence starting at 1000, clear of every id Xano
+ *     ever issued, so a new supplier cannot collide with a historic one
+ *   - the three FK columns no longer default to `0`. Xano uses 0 for an unset
+ *     integer FK; this table has real foreign keys and no lookup row is 0, so
+ *     that default made every insert fail until it was dropped
+ *
+ * Only the name and the type are asked for. Everything else on the record is
+ * editable the moment the page opens, so a create form that asked for twenty
+ * fields would be a worse version of the page it hands you to.
+ */
+export function useCreateSupplier() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ title, supplierType }: { title: string; supplierType: string }) => {
+      const { data, error } = await mirror
+        .from('supplier_list')
+        .insert({ title, supplier_type: supplierType })
+        .select('id, uuid')
+        .single()
+
+      if (error) throw writeError(error)
+      const row = data as { id: number; uuid: string | null }
+      // The default should make this impossible. If it ever happens the record
+      // is unreachable by URL, which is worth saying out loud rather than
+      // navigating to `/partners/null`.
+      if (!row?.uuid) throw new Error('The supplier was created but has no link. Tell Andy.')
+      return row
+    },
+
+    onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['mirror', 'partners'] })
       void qc.invalidateQueries({ queryKey: ['mirror', 'roster'] })
     },

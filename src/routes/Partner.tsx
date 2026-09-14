@@ -1,9 +1,16 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
-import { EditField, EditSelect, ReadOnlyField } from '../components/staff/EditField'
+import { EditEnum, EditField, EditSelect, ReadOnlyField } from '../components/staff/EditField'
 import { usePartner } from '../lib/xanoMirror'
-import { useCountries, useSaveSupplier, type SupplierPatch } from '../lib/supplierWrites'
+import {
+  BRIEFING_LISTS,
+  CA_STATUSES,
+  SUPPLIER_TYPES,
+  useCountries,
+  useSaveSupplier,
+  type SupplierPatch,
+} from '../lib/supplierWrites'
 
 /**
  * One supplier — Sequel Track's `/partner-edit`, rebuilt, and the first page
@@ -120,6 +127,31 @@ export default function Partner() {
             <EditField label="Partner Name" value={p.title} onSave={text('title')} />
             <EditField label="Bio" value={p.bio} textarea onSave={text('bio')} />
             <EditField label="Strengths" value={p.strengths} onSave={text('strengths')} />
+            {/* The three enum columns Track never exposed. Its own
+                `Patch_supplier` had drifted from all three — every real value
+                would have failed input validation — and it went unnoticed
+                precisely because no page offered them. The lists come from the
+                table, not the endpoint. */}
+            <EditEnum
+              label="Supplier Type"
+              value={p.supplier_type}
+              options={SUPPLIER_TYPES}
+              note="Composition Team moves this to the Roster"
+              onSave={(next) => put({ supplier_type: next })}
+            />
+            <EditEnum
+              label="Briefing List"
+              value={p.briefing_list}
+              options={BRIEFING_LISTS}
+              onSave={(next) => put({ briefing_list: next })}
+            />
+            <EditEnum
+              label="Composer Agreement"
+              value={p.ca_status}
+              options={CA_STATUSES}
+              note="blank reads as Not Sent"
+              onSave={(next) => put({ ca_status: next })}
+            />
           </div>
         )}
 

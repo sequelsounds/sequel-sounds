@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { useRoster, type RosterMember } from '../lib/xanoMirror'
+import { NewSupplier } from '../components/staff/NewSupplier'
+import { COMPOSITION_TEAM } from '../lib/supplierWrites'
 
 /**
  * Sequel Track's `/roster`, rebuilt — and this one does not reproduce what
@@ -65,6 +67,7 @@ export default function Roster() {
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [region, setRegion] = useState<number | null>(null)
+  const [adding, setAdding] = useState(false)
 
   const all = useMemo(() => roster.data ?? [], [roster.data])
 
@@ -91,9 +94,26 @@ export default function Roster() {
         <div className="page-eyebrow">Composition</div>
         <div className="title-row">
           <h1 className="page-title">Roster</h1>
+          <button
+            type="button"
+            className="btn btn-mono btn-outline"
+            onClick={() => setAdding((v) => !v)}
+          >
+            {adding ? 'Close' : '+ Add team'}
+          </button>
         </div>
         <div className="page-subtitle">Manage our partners...</div>
       </div>
+
+      {/* The type is not asked for here: /roster IS the composition teams, so
+          anything added from this page is one. */}
+      {adding && (
+        <NewSupplier
+          fixedType={COMPOSITION_TEAM}
+          onCancel={() => setAdding(false)}
+          onCreated={(uuid) => navigate(`/roster/${uuid}`)}
+        />
+      )}
 
       {/* Two tiles, not six. Signed is CA Status "Complete" — the composer
           agreement is back. Both are the whole roster whatever is filtered,

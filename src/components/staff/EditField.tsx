@@ -227,6 +227,63 @@ export function EditSelect({
 }
 
 /**
+ * The same select, for an enum column rather than a foreign key.
+ *
+ * A separate component rather than a generic one because the two differ in the
+ * only place that matters: an FK writes a number and an enum writes the string
+ * itself, and a select's value is always a string, so one component would spend
+ * its whole life casting. The blank option is real — all three of these columns
+ * are blank on live rows.
+ */
+export function EditEnum({
+  label,
+  value,
+  options,
+  placeholder = '\u2014',
+  note,
+  onSave,
+}: {
+  label: string
+  value: string | null | undefined
+  options: readonly string[]
+  placeholder?: string
+  note?: string
+  onSave: (next: string | null) => Promise<unknown>
+}) {
+  const { status, error, run } = useSaveState('')
+
+  return (
+    <div className="edit-field">
+      <div className="edit-field-head">
+        <label className="edit-field-label">{label}</label>
+        {status === 'idle' && note ? (
+          <span className="edit-field-status">{note}</span>
+        ) : (
+          <Status status={status} error={error} />
+        )}
+      </div>
+      <select
+        className="edit-field-input edit-field-select"
+        value={value ?? ''}
+        disabled={status === 'saving'}
+        onChange={(e) => {
+          const next = e.target.value === '' ? null : e.target.value
+          if (next === (value ?? null)) return
+          void run(() => onSave(next))
+        }}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+/**
  * A field that is not editable, and says so.
  *
  * `note` is why — a blank disabled box invites someone to "fix" it. The two
