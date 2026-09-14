@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
-import { useTrackUser, useUserProjects, type ClientProject } from '../lib/xanoMirror'
+import { EditField, EditSelect, ReadOnlyField } from '../components/staff/EditField'
+import {
+  useIsStaff,
+  useTrackUser,
+  useUserProjects,
+  type ClientProject,
+} from '../lib/xanoMirror'
+import { useSaveUser, useUserLookups, type Option, type UserPatch } from '../lib/userWrites'
 
 /**
  * One person — Sequel Track's `/view-user`, rebuilt.
@@ -20,7 +27,15 @@ import { useTrackUser, useUserProjects, type ClientProject } from '../lib/xanoMi
  * is dead: its values include Invoicing and Closed, which the status dropdown
  * has no equivalent for. This shows the FK, like every other page.
  *
- * Read-only. Track edits the name, type, status, company and notes here.
+ * **Editable since 14 Sep**, in the five fields Track edits and no more: Name,
+ * User Type, Status, Company and Notes, each saving on its own as Track's do.
+ * The set is Xano's `user_edit` (413), not a guess from the table. Email is
+ * read-only on both stacks because it is the login.
+ *
+ * ⚠️ Two things about these edits, both in `userWrites.ts` at length: `user` is
+ * still in the hourly sync, so every edit is overwritten on the hour until
+ * cutover; and User Type and Status move the DIRECTORY, not the person's
+ * ACCESS, which is decided by `public.track_users` and kept in step by nothing.
  */
 
 const TABS = ['Overview', 'Projects', 'Stats', 'Notes'] as const
@@ -88,12 +103,82 @@ function Field({
   )
 }
 
+/**
+ * The same field, editable, when the reader is staff — the pair the project
+ * page uses, for the same reason: the read-only `Field` is a plain input and
+ * `EditField` carries save state, a pending ref and an auto-growing textarea.
+ */
+function TextField({
+  label,
+  value,
+  column,
+  textarea,
+  edit,
+  save,
+}: {
+  label: string
+  value: string | null | undefined
+  column: keyof UserPatch
+  textarea?: boolean
+  edit: boolean
+  save: (patch: UserPatch) => Promise<unknown>
+}) {
+  if (!edit) return <Field label={label} value={value} textarea={textarea} />
+  return (
+    <EditField
+      label={label}
+      value={value}
+      textarea={textarea}
+      onSave={(next) => save({ [column]: next } as UserPatch)}
+    />
+  )
+}
+
+/** A foreign key: shows the name, writes the id. */
+function PickField({
+  label,
+  value,
+  label_,
+  column,
+  options,
+  edit,
+  save,
+}: {
+  label: string
+  /** The id, for the select. */
+  value: number | null | undefined
+  /** The name, for the read-only version. */
+  label_: string | null | undefined
+  column: keyof UserPatch
+  options: Option[] | undefined
+  edit: boolean
+  save: (patch: UserPatch) => Promise<unknown>
+}) {
+  if (!edit) return <Field label={label} value={label_} />
+  return (
+    <EditSelect
+      label={label}
+      value={value}
+      options={options ?? []}
+      onSave={(next) => save({ [column]: next } as UserPatch)}
+    />
+  )
+}
+
 export default function User() {
   const { uuid } = useParams()
   const navigate = useNavigate()
   const user = useTrackUser(uuid)
   const projects = useUserProjects(user.data?.id)
   const [tab, setTab] = useState<Tab>('Overview')
+
+  // Staff see boxes, everyone else sees the page as it was. The gate that
+  // counts is the update policy in the database, not this.
+  const staff = useIsStaff()
+  const edit = staff.data === true
+  const lookups = useUserLookups()
+  const saveUser = useSaveUser(uuid)
+  const userId = user.data?.id
 
   if (user.isPending) {
     return (
@@ -107,6 +192,7 @@ export default function User() {
 
   const u = user.data
   const rows = projects.data ?? []
+  const save = (patch: UserPatch) => saveUser.mutateAsync({ id: userId!, patch })
 
   return (
     <>
@@ -155,12 +241,41 @@ export default function User() {
       <div className="min-h-0 flex-1 overflow-auto pt-8">
         {tab === 'Overview' && (
           <div className="edit-form">
-            <Field label="Name" value={u.name} />
-            {/* Read-only on Track too: the email is the login. */}
-            <Field label="Email" value={u.email} />
-            <Field label="User Type" value={u.user_type_title} />
-            <Field label="Status" value={u.status_title} />
-            <Field label="Company" value={u.company_name} />
+            <TextField label="Name" value={u.name} column="name" edit={edit} save={save} />
+            {/* Read-only on Track too, and refused by the column grants here:
+                the email address is the account's login. */}
+            {edit ? (
+              <ReadOnlyField label="Email" value={u.email} note="the login" />
+            ) : (
+              <Field label="Email" value={u.email} />
+            )}
+            <PickField
+              label="User Type"
+              value={u.user_type}
+              label_={u.user_type_title}
+              column="user_type"
+              options={lookups.data?.userTypes}
+              edit={edit}
+              save={save}
+            />
+            <PickField
+              label="Status"
+              value={u.status}
+              label_={u.status_title}
+              column="status"
+              options={lookups.data?.statuses}
+              edit={edit}
+              save={save}
+            />
+            <PickField
+              label="Company"
+              value={u.company}
+              label_={u.company_name}
+              column="company"
+              options={lookups.data?.companies}
+              edit={edit}
+              save={save}
+            />
           </div>
         )}
 
@@ -209,7 +324,7 @@ export default function User() {
 
         {tab === 'Notes' && (
           <div className="edit-form">
-            <Field label="Notes" value={u.notes} textarea />
+            <TextField label="Notes" value={u.notes} column="notes" textarea edit={edit} save={save} />
           </div>
         )}
       </div>
