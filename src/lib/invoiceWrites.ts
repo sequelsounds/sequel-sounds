@@ -271,7 +271,30 @@ export async function uploadPo(file: File): Promise<{ key: string; filename: str
   const signed = await callSignDocument({ filename: file.name, size_bytes: file.size })
   const uploadUrl = signed.upload_url as string
   const put = await fetch(uploadUrl, { method: 'PUT', body: file })
-  if (!put.ok) throw new Error('The PO could not be uploaded. Try again.')
+
+  if (!put.ok) {
+    // ⚠️ Keep the body. S3 explains itself in the XML and nowhere else, and a
+    // signed URL that is refused looks identical to a network failure from the
+    // outside — which is how "try again" became the message for a condition
+    // retrying cannot fix.
+    const detail = await put.text().catch(() => '')
+    console.error('sign-document: S3 refused the PUT', put.status, detail.slice(0, 500))
+
+    /**
+     * ⚠️ 403 HERE IS AN IAM POLICY, NOT A BUG. The signing user
+     * (`sequel-sounds-signer`) is scoped to the track prefixes, so it cannot
+     * write `invoices/po/*` until one statement is added allowing
+     * `s3:PutObject` and `s3:GetObject` on that prefix. Found 14 Sep 2026;
+     * everything either side of it works.
+     */
+    if (put.status === 403) {
+      throw new Error(
+        'Storage will not accept POs yet — the upload key has no permission for the invoice folder. Everything else on this form still works.',
+      )
+    }
+    throw new Error(`The PO could not be uploaded (${put.status}).`)
+  }
+
   return { key: signed.key as string, filename: file.name }
 }
 
