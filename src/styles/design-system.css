@@ -3366,10 +3366,22 @@
     color: var(--color-sequel-brown);
   }
 
+  /* Creato Display Light. It was Azeret Mono, which made the Sequel No. read
+     like a code rather than like the number the job is now called. */
   .wizard-created {
-    font-family: var(--font-mono, monospace);
+    font-family: var(--font-sans);
     font-size: 0.9rem;
+    font-weight: 300;
     color: var(--color-sequel-mid);
+  }
+
+  /* The one that shows if the create is refused — the database's own words,
+     in the same voice as the number above it. */
+  .wizard-modal .form-error {
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: var(--color-sequel-error-ink);
   }
 
   /* .modal-button + .modal-button-text, measured off the published site.
@@ -3425,6 +3437,16 @@
      modal is one stacking context too many. */
   .wizard-search {
     position: relative;
+  }
+
+  /* ⚠️ `.edit-field-input` is a 2rem box with 0.5rem of padding and a 1px
+     border, which leaves a 14px content box for its 16px line — so the bottom
+     two pixels of every descender are cut off. It is capped by `max-height`,
+     so the box cannot grow to fix itself. Inside the wizard there is room to
+     give it, and a "p" should not lose its tail. */
+  .wizard-modal .edit-field-input {
+    min-height: 2.25rem;
+    max-height: none;
   }
 
   /* ⚠️ ABSOLUTE, like any other dropdown. In flow it pushed the buttons down
