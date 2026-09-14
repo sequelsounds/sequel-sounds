@@ -3408,9 +3408,16 @@
 
   .wizard-buttons {
     display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
+    align-items: center;
+    justify-content: flex-start;
     margin-top: 1.75rem;
+  }
+
+  /* BACK on the left, the forward button on the right — and pushed there by its
+     own margin rather than by space-between, so that on step 1, where there is
+     no BACK, NEXT still sits on the right instead of sliding across. */
+  .wizard-btn-right {
+    margin-left: auto;
   }
 
   /* The two typeaheads, steps 1 and 4. The results sit under the box rather

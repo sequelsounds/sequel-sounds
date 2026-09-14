@@ -459,7 +459,7 @@ export function NewProject({
               reads as "press this", on a screen where the thing to do is
               answer the question. */}
           {step < LAST_QUESTION && (
-            <button type="button" className="wizard-btn" onClick={next}>
+            <button type="button" className="wizard-btn wizard-btn-right" onClick={next}>
               NEXT
             </button>
           )}
@@ -467,7 +467,7 @@ export function NewProject({
           {step === LAST_QUESTION && (
             <button
               type="button"
-              className="wizard-btn"
+              className="wizard-btn wizard-btn-right"
               disabled={create.isPending}
               onClick={() => void submit()}
             >
@@ -478,7 +478,7 @@ export function NewProject({
           {step === SUCCESS && (
             <button
               type="button"
-              className="wizard-btn"
+              className="wizard-btn wizard-btn-right"
               onClick={() => created && onCreated(created.id)}
             >
               OPEN IT
