@@ -99,7 +99,7 @@ export default function Partner() {
           empty rather than filled with something plausible — a number invented
           here would be worse than the blank. */}
       <div className="tab-band">
-        <Stat label="Demos" value="" className="mx-0" />
+        <Stat label="Demos" value="" />
         <div className="tab-band-divider" />
         <Stat label="Wins" value="" />
         <div className="tab-band-divider" />

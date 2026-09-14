@@ -161,7 +161,7 @@ export default function Invoice() {
           every row was a paythrough, so the client paid for everything through
           Sequel. */}
       <div className="tab-band">
-        <Stat label="Total to invoice" value={amt(v.total_to_invoice)} className="mx-0" />
+        <Stat label="Total to invoice" value={amt(v.total_to_invoice)} />
         <div className="tab-band-divider" />
         <Stat label="Total spend" value={amt(v.gross_spend)} />
         <div className="tab-band-divider" />

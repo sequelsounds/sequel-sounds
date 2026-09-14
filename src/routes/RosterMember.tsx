@@ -76,7 +76,7 @@ export default function RosterMember() {
           labels belong to a project. A number invented on this side would be
           worse than the blank. */}
       <div className="tab-band">
-        <Stat label="Demos" className="mx-0" />
+        <Stat label="Demos" />
         <div className="tab-band-divider" />
         <Stat label="Wins" />
         <div className="tab-band-divider" />
@@ -120,7 +120,12 @@ export default function RosterMember() {
               onSave={text('library_link')}
             />
             <EditField label="Bio" value={m.bio} textarea onSave={text('bio')} />
-            <EditField label="Studio" value={m.studio_setup} onSave={text('studio_setup')} />
+            <EditField
+              label="Studio"
+              value={m.studio_setup}
+              textarea
+              onSave={text('studio_setup')}
+            />
             <EditField label="Strengths" value={m.strengths} onSave={text('strengths')} />
             {/* ⚠️ Changing the type off Composition Team moves this record to
                 /partners and it disappears from the roster — correct, and
