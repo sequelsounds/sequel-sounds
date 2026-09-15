@@ -4000,7 +4000,7 @@
     gap: 16px;
   }
 
-  /* download_asset_button_new: the app's own 11 x 2rem outline button. */
+  /* The download link wears the brief page's .bp-button (Andy); this only drops the underline. */
   .sf-download {
     text-decoration: none;
   }
