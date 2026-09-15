@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatDuration } from '../../lib/format'
 import { peaksFromUrl } from '../../lib/peaks'
-import { PauseIcon, PlayIcon, VolumeIcon, VolumeMuteIcon } from '../staff/icons'
+import { PauseIcon, PlayIcon } from '../staff/icons'
 import VolumeSlider from '../staff/VolumeSlider'
 import Waveform from '../staff/Waveform'
 
@@ -15,6 +15,30 @@ import Waveform from '../staff/Waveform'
  * in the background, and saves them for the next visitor — the bar draws
  * flat until then.
  */
+/**
+ * A lighter speaker than the staff bar's — Andy, 16 Sep: a thin open cone and
+ * one short arc; a slash through it when muted. Local to this page, so the
+ * staff player keeps its own.
+ */
+function Speaker({ muted }: { muted: boolean }) {
+  return (
+    <svg
+      width="1rem"
+      height="1rem"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 10h3l4-3.5v11L8 14H5z" />
+      {muted ? <path d="m16 10 4 4m0-4-4 4" /> : <path d="M16 9.5a3.5 3.5 0 0 1 0 5" />}
+    </svg>
+  )
+}
+
 export default function SharedAudio({
   src,
   onReady,
@@ -68,7 +92,17 @@ export default function SharedAudio({
   }
 
   return (
-    <div className="sa-bar">
+    <div
+      className="sa-bar"
+      // The time column is as wide as this file's longest reading and no
+      // wider, so the gaps either side of it match the rest of the bar; and
+      // fixed for the file, so the waveform never changes width as it plays.
+      style={
+        {
+          '--sa-time': duration >= 3600 ? '6.5rem' : duration >= 600 ? '4.75rem' : '3.8rem',
+        } as React.CSSProperties
+      }
+    >
       <audio
         ref={audio}
         src={src}
@@ -119,7 +153,7 @@ export default function SharedAudio({
           aria-label={muted ? 'Unmute' : 'Mute'}
           title={muted ? 'Unmute' : 'Mute'}
         >
-          {muted || volume === 0 ? <VolumeMuteIcon size="1.1rem" /> : <VolumeIcon size="1.1rem" />}
+          <Speaker muted={muted || volume === 0} />
         </button>
         <VolumeSlider
           value={muted ? 0 : volume}

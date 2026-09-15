@@ -3896,7 +3896,7 @@
        waveform's width change on every tick, the bar count changed with it,
        and the whole shape re-bucketed and jumped each time the song was
        clicked through — Andy, 16 Sep. */
-    grid-template-columns: 34px minmax(0, 1fr) 6.5rem auto;
+    grid-template-columns: 34px minmax(0, 1fr) var(--sa-time, 3.8rem) auto;
     align-items: center;
     gap: 18px;
     height: 78px;
@@ -3926,12 +3926,27 @@
     background-color: var(--color-sequel-brown);
   }
 
+  /* No handle at all, and a thicker track: the fill is the marker — Andy,
+     16 Sep (after trying a square, then an upright hairline). */
+  .sa-bar .volume-thumb {
+    display: none;
+  }
+
+  .sa-bar .volume-line,
+  .sa-bar .volume-fill {
+    height: 4px;
+    margin-top: -2px;
+  }
+
+  /* Centred in a column sized to the file's duration (set inline by
+     SharedAudio), so the space either side of the time matches the 18px gaps
+     everywhere else — Andy, 16 Sep. */
   .sa-time {
     font-family: 'Creato Display', Arial, sans-serif;
     font-size: 0.8rem;
     font-weight: 300;
     font-variant-numeric: tabular-nums;
-    text-align: right;
+    text-align: center;
     white-space: nowrap;
   }
 
@@ -3958,7 +3973,7 @@
 
   @media (max-width: 40rem) {
     .sa-bar {
-      grid-template-columns: 34px minmax(0, 1fr) 6.5rem;
+      grid-template-columns: 34px minmax(0, 1fr) var(--sa-time, 3.8rem);
     }
 
     .sa-volume {
