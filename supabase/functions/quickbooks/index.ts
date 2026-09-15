@@ -4,6 +4,7 @@
 //   { action: "vendors" }             -> { connected, vendors?, error? }
 //   { action: "disconnect" }          -> { ok, revoked }
 //   { action: "payment_times" }       -> { connected, clients?, overall? }
+//   { action: "bills" }               -> { connected, bills? }
 //
 // Talks to QuickBooks through the Intuit app "Sequel App New", a separate
 // connection from the old app's (Xano table 65), so nothing here can rotate or
@@ -379,6 +380,52 @@ async function paymentTimes(admin: SupabaseClient) {
   }
 }
 
+/**
+ * Every supplier bill in QuickBooks, with whether the supplier's own invoice
+ * is attached to it yet.
+ *
+ * Read from QuickBooks rather than the mirror: only bills raised since 8 Sep
+ * carry a qbo_bill_id on their invoice lines, and QuickBooks holds every bill
+ * back to the start. The page joins the linked ones to their invoice itself.
+ *
+ * "Has supplier invoice" means an Attachable points at the bill. A bill the
+ * old app raised carries no attachment of its own, so any file on it is the
+ * supplier's paperwork.
+ */
+async function listBills(admin: SupabaseClient) {
+  const { token, realm } = await accessToken(admin)
+  const [bills, attachables] = await Promise.all([
+    queryAll(token, realm, admin, 'select * from Bill', 'Bill'),
+    queryAll(token, realm, admin, 'select * from Attachable', 'Attachable'),
+  ])
+
+  const withFile = new Set<string>()
+  for (const a of attachables) {
+    for (const ref of (a.AttachableRef as { EntityRef?: { type?: string; value?: string } }[] | undefined) ?? []) {
+      if (ref.EntityRef?.type === 'Bill' && ref.EntityRef.value) withFile.add(ref.EntityRef.value)
+    }
+  }
+
+  return bills
+    .map((b) => {
+      const vendor = b.VendorRef as { value?: string; name?: string } | undefined
+      const currency = b.CurrencyRef as { value?: string } | undefined
+      return {
+        id: String(b.Id),
+        doc_number: (b.DocNumber as string | undefined) ?? null,
+        txn_date: (b.TxnDate as string | undefined) ?? null,
+        due_date: (b.DueDate as string | undefined) ?? null,
+        vendor_id: vendor?.value ?? null,
+        vendor_name: vendor?.name ?? '',
+        currency: currency?.value ?? null,
+        total: Number(b.TotalAmt ?? 0),
+        balance: Number(b.Balance ?? 0),
+        has_supplier_invoice: withFile.has(String(b.Id)),
+      }
+    })
+    .sort((a, b) => (b.txn_date ?? '').localeCompare(a.txn_date ?? '') || Number(b.id) - Number(a.id))
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(origin) })
@@ -432,6 +479,15 @@ Deno.serve(async (req) => {
   if (body.action === 'payment_times') {
     try {
       return json({ connected: true, ...(await paymentTimes(admin)) }, 200, origin)
+    } catch (e) {
+      if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
+      return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
+    }
+  }
+
+  if (body.action === 'bills') {
+    try {
+      return json({ connected: true, bills: await listBills(admin) }, 200, origin)
     } catch (e) {
       if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
       return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)

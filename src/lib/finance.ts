@@ -96,3 +96,59 @@ export function stageOf(i: FinanceInvoice): Stage {
   if (i.status === 'Overdue' || (i.due_date && i.due_date < today())) return 'Overdue'
   return 'Awaiting payment'
 }
+
+export type QboBill = {
+  id: string
+  doc_number: string | null
+  txn_date: string | null
+  due_date: string | null
+  vendor_id: string | null
+  vendor_name: string
+  currency: string | null
+  total: number
+  balance: number
+  has_supplier_invoice: boolean
+}
+
+/** Every supplier bill in QuickBooks. Finance only. */
+export function useQboBills(enabled: boolean) {
+  return useQuery({
+    queryKey: ['qbo', 'bills'],
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: false,
+    queryFn: () => callQuickBooks<{ connected: boolean; error?: string; bills?: QboBill[] }>({ action: 'bills' }),
+  })
+}
+
+/**
+ * Which of our invoices each bill belongs to, where the app raised it: the
+ * old app's raise writes the bill id onto the invoice's lines. Bills from
+ * before 8 Sep carry no link and show without one.
+ */
+export function useBillLinks() {
+  return useQuery({
+    queryKey: ['mirror', 'bill-links'],
+    queryFn: async (): Promise<Map<string, number>> => {
+      const { data, error } = await mirror
+        .from('invoice_line_items')
+        .select('invoice_id, qbo_bill_id')
+        .not('qbo_bill_id', 'is', null)
+        .neq('qbo_bill_id', '')
+      if (error) throw error
+      const map = new Map<string, number>()
+      for (const r of (data ?? []) as { invoice_id: number | null; qbo_bill_id: string }[]) {
+        if (r.invoice_id != null) map.set(String(r.qbo_bill_id), r.invoice_id)
+      }
+      return map
+    },
+  })
+}
+
+export type BillStage = 'Paid' | 'Overdue' | 'Unpaid'
+
+export function billStageOf(b: QboBill): BillStage {
+  if (b.balance <= 0) return 'Paid'
+  if (b.due_date && b.due_date < today()) return 'Overdue'
+  return 'Unpaid'
+}

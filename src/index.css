@@ -303,6 +303,19 @@
     outline: none;
   }
 
+  /* No browser clear-button (the blue X) on search boxes, anywhere — Andy,
+     15 Sep. Chrome and Safari draw it; Firefox and Edge have their own. */
+  input[type='search']::-webkit-search-cancel-button,
+  input[type='search']::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+    display: none;
+  }
+
+  input[type='search']::-ms-clear {
+    display: none;
+  }
+
   /* Firefox draws its own dotted inner border on focused buttons, on top of
      the outline above. */
   ::-moz-focus-inner {
@@ -1584,6 +1597,10 @@
 
   .finance-head .project-list-head-cell {
     font-size: 0.7rem;
+  }
+
+  .finance-bill-grid {
+    grid-template-columns: 0.6fr 0.6fr 1.3fr 0.6fr 1.3fr 1fr 0.6fr 0.6fr 0.8fr;
   }
 
   .finance-pay-grid {
