@@ -157,11 +157,20 @@ function MoneyField({
   )
 }
 
+/**
+ * A value that is not edited here, drawn as the same labelled box as the
+ * fields around it so the Details tab has one rhythm. A ruled row between two
+ * boxes put the next label hard against the rule — Andy, 15 Sep.
+ */
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="money-row has-rule">
-      <span className="money-row-label">{label}</span>
-      <span className="money-row-value">{value}</span>
+    <div className="money-row is-editable">
+      <div className="edit-field">
+        <div className="edit-field-head">
+          <span className="edit-field-label">{label}</span>
+        </div>
+        <div className="edit-field-input is-static">{value}</div>
+      </div>
     </div>
   )
 }

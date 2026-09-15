@@ -3215,11 +3215,6 @@
     line-height: 20px;
   }
 
-  /* The Details tab keeps its rules: label and value pairs, not fields. */
-  .money-row.has-rule {
-    border-bottom: 1px solid rgb(55 43 41 / 15%);
-  }
-
   .money-row-label {
     font-size: 0.8rem;
     font-weight: 500;

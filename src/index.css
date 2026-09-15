@@ -944,6 +944,15 @@
 
   /* A money row holding an editable field rather than a value: the field
      brings its own label, so the row is a single full-width cell. */
+  /* A read-only value in a field's box: one line, cut short rather than
+     spilling past the box's fixed height. */
+  .edit-field-input.is-static {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .money-row.is-editable {
     display: block;
     /* The field brings its own 1rem below; the row's padding and min-height
