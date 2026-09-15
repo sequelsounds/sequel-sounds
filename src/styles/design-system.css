@@ -3913,6 +3913,18 @@
   /* Full width at the video's own shape; the page scrolls if the window is
      short — Andy, 16 Sep, after a cap to the space left made it far too
      thin. The 80vh ceiling only matters for portrait video. */
+  /* Under a video the bar is only as tall as its contents, with 24px above
+     it and 24px under it to DOWNLOAD — the 78px audio bar left 22 above and
+     46 below (Andy). The audio page keeps its 78px bar: its gaps are already
+     even, 46 either side. */
+  .sv .sa-bar {
+    height: auto;
+    /* The row is 36px (the waveform canvas) round a 34px square: 23 + 1 and
+       1 − 1 + 24 put exactly 24 either side of the square. */
+    margin-top: 23px;
+    margin-bottom: -1px;
+  }
+
   .sv-video {
     display: block;
     width: 100%;
