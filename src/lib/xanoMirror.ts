@@ -1534,20 +1534,29 @@ export type QuoteLine = {
   service_name: string | null
 }
 
-export function useQuote(uuid: string | undefined) {
+/**
+ * The quote document — header and lines in one call, through
+ * `public.public_quote`, because the page is what a client opens and a
+ * signed-out visitor cannot read `xano_mirror` at all. It hands out one quote
+ * to whoever holds its uuid, as the old app's /quotation does.
+ */
+function usePublicQuote(uuid: string | undefined) {
   return useQuery({
     enabled: !!uuid,
-    queryKey: ['mirror', 'quote', uuid],
-    queryFn: async (): Promise<QuoteDetail | null> => {
-      const { data, error } = await mirror
-        .from('quote_detail')
-        .select('*')
-        .eq('uuid', uuid!)
-        .maybeSingle()
+    queryKey: ['public-quote', uuid],
+    queryFn: async (): Promise<{ detail: QuoteDetail; lines: QuoteLine[] } | null> => {
+      const { data, error } = await (supabase as unknown as SupabaseClient).rpc('public_quote', {
+        p_uuid: uuid!,
+      })
       if (error) throw error
-      return (data as QuoteDetail) ?? null
+      return (data as { detail: QuoteDetail; lines: QuoteLine[] } | null) ?? null
     },
   })
+}
+
+export function useQuote(uuid: string | undefined) {
+  const q = usePublicQuote(uuid)
+  return { ...q, data: q.data ? q.data.detail : q.data }
 }
 
 /**
@@ -1556,21 +1565,15 @@ export function useQuote(uuid: string | undefined) {
  * which is what Xano's `fee_type: "desc"` achieves, since "supplier_cost"
  * sorts after "sequel_fee".
  */
-export function useQuoteLines(quoteId: number | undefined) {
-  return useQuery({
-    enabled: Number.isFinite(quoteId),
-    queryKey: ['mirror', 'quote-lines', quoteId],
-    queryFn: async (): Promise<QuoteLine[]> => {
-      const { data, error } = await mirror
-        .from('quote_lines')
-        .select('*')
-        .eq('quote_id', quoteId!)
-      if (error) throw error
-      return ((data ?? []) as QuoteLine[]).sort(
-        (a, b) =>
-          (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
-          (b.fee_type ?? '').localeCompare(a.fee_type ?? ''),
-      )
-    },
-  })
+export function useQuoteLines(uuid: string | undefined) {
+  const q = usePublicQuote(uuid)
+  const lines = q.data?.lines ?? []
+  return {
+    ...q,
+    data: [...lines].sort(
+      (a, b) =>
+        (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
+        (b.fee_type ?? '').localeCompare(a.fee_type ?? ''),
+    ),
+  }
 }

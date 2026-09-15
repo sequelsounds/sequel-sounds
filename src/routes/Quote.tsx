@@ -379,7 +379,7 @@ async function downloadQuote(card: HTMLElement, fileName: string, background: st
 export default function Quote() {
   const { uuid } = useParams()
   const quote = useQuote(uuid)
-  const lines = useQuoteLines(quote.data?.id)
+  const lines = useQuoteLines(uuid)
   const cardRef = useRef<HTMLDivElement>(null)
   const [saving, setSaving] = useState(false)
 
