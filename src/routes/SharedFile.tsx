@@ -109,7 +109,7 @@ export default function SharedFile() {
   const size = sizeText(file?.file_size ?? null)
 
   return (
-    <div className="sf-page">
+    <div className={`sf-page${kind === 'video' ? ' is-video' : ''}`}>
       {/* The invoice form's header and footer bars, rules removed (Andy):
           wordmark top left, the file centred between them. */}
       <div className="qw-head">

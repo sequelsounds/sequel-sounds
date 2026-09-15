@@ -3834,7 +3834,13 @@
   .sf-card {
     width: 100%;
     max-width: 880px;
-    padding: 16px 32px;
+    padding: 32px;
+  }
+
+  /* A video page usually scrolls, so the empty footer bar would only be
+     dead space at the bottom — Andy. */
+  .sf-page.is-video .qw-foot {
+    height: 0;
   }
 
   /* asset-header, but in Creato Display and reading "Project Asset" rather
@@ -3893,15 +3899,13 @@
     background-color: rgb(17, 17, 17);
   }
 
-  /* ⚠️ Capped to what the screen has left, not 70vh: everything else on the
-     page (bars, title, player bar, DOWNLOAD, expiry) is about 34rem, and at
-     70vh a 16:9 video pushed the page ~230px past an 800px window — Andy saw
-     scroll with nothing apparently below. Never under 15rem; a screen too
-     short for that scrolls. */
+  /* Full width at the video's own shape; the page scrolls if the window is
+     short — Andy, 16 Sep, after a cap to the space left made it far too
+     thin. The 80vh ceiling only matters for portrait video. */
   .sv-video {
     display: block;
     width: 100%;
-    max-height: max(15rem, calc(100dvh - 34rem));
+    max-height: 80dvh;
     cursor: pointer;
   }
 
