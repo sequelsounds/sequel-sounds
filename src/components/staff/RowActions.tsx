@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useArchiveInvoice } from '../../lib/invoiceEdits'
 import { useArchiveQuote } from '../../lib/quoteWrites'
+import { useArchiveSupplier } from '../../lib/supplierWrites'
 import { useIsFinance } from '../../lib/xanoMirror'
 import type { Invoice, Quote } from '../../lib/xanoMirror'
 
@@ -65,6 +66,45 @@ export function QuoteRowActions({
       canArchive
       archive={archive}
     />
+  )
+}
+
+/**
+ * The archive cell on the Partners and Roster rows. The old app draws the mark
+ * (delete_Partner_button) with nothing behind it; archiving a supplier is new,
+ * Andy's call, 15 Sep. Archived suppliers leave both lists and every supplier
+ * picker; lines that already point at one keep its name.
+ */
+export function SupplierArchiveAction({ id }: { id: number }) {
+  const [open, setOpen] = useState(false)
+  const archive = useArchiveSupplier()
+  return (
+    <>
+      <span className="row-action">
+        <button
+          type="button"
+          className="row-action-button"
+          aria-label="Archive this supplier"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            archive.reset()
+            setOpen(true)
+          }}
+        >
+          <ArchiveIcon />
+        </button>
+      </span>
+      {open && (
+        <ArchiveModal
+          header="Are you sure you want to archive this supplier?"
+          subheader="It will no longer appear in the supplier lists."
+          archive={archive}
+          onConfirm={() => archive.mutate(id, { onSuccess: () => setOpen(false) })}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   )
 }
 
@@ -148,6 +188,7 @@ function RowActions({
       {archiving && (
         <ArchiveModal
           header={`Are you sure you want to delete this ${what}?`}
+          subheader="Your client will no longer be able to see it."
           archive={archive}
           onConfirm={() => archive.mutate(id, { onSuccess: () => setArchiving(false) })}
           onClose={() => setArchiving(false)}
@@ -227,11 +268,13 @@ function ShareModal({
 
 function ArchiveModal({
   header,
+  subheader,
   archive,
   onConfirm,
   onClose,
 }: {
   header: string
+  subheader: string
   archive: Archive
   onConfirm: () => void
   onClose: () => void
@@ -239,7 +282,7 @@ function ArchiveModal({
   return (
     <Modal onClose={onClose}>
       <div className="rm-header">{header}</div>
-      <div className="rm-subheader">Your client will no longer be able to see it.</div>
+      <div className="rm-subheader">{subheader}</div>
       {archive.error && <p className="form-error">{archive.error.message}</p>}
       <div className="rm-buttons">
         {/* Closes only once the archive has worked — the old app learned

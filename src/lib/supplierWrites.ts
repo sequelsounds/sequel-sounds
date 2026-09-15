@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { mirror } from './xanoMirror'
+import { supabase } from './supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Editing a supplier — the first thing in the rebuild that writes.
@@ -246,6 +248,28 @@ export function useCountries() {
       return ((data ?? []) as Country[]).sort((a, b) =>
         (a.country ?? '') < (b.country ?? '') ? -1 : (a.country ?? '') > (b.country ?? '') ? 1 : 0,
       )
+    },
+  })
+}
+
+/**
+ * Archives a supplier: status Archived, never deleted (Andy, 15 Sep). It leaves
+ * the Partners and Roster lists and the pickers; its page still opens.
+ */
+export function useArchiveSupplier() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (supplierId: number) => {
+      const { error } = await (supabase as unknown as SupabaseClient).rpc(
+        'track_archive_supplier',
+        { p_supplier_id: supplierId },
+      )
+      if (error) throw error
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mirror', 'partners'] })
+      void qc.invalidateQueries({ queryKey: ['mirror', 'roster'] })
+      void qc.invalidateQueries({ queryKey: ['mirror', 'invoice-lookups'] })
     },
   })
 }

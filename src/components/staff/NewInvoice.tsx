@@ -441,7 +441,7 @@ export function NewInvoice({ projectId, prefill, onClose, onCreated }: Props) {
           <SectionScreen
             section={section}
             value={f.sections[sectionKey]}
-            suppliers={lookups.data?.suppliers ?? []}
+            suppliers={(lookups.data?.suppliers ?? []).filter((s) => !s.archived)}
             onChange={(next) => patch({ sections: { ...f.sections, [sectionKey]: next } })}
           />
         )}

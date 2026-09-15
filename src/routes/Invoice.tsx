@@ -580,7 +580,9 @@ export default function Invoice() {
                           falls through to the first real supplier and an
                           unanswered select looks answered. */}
                       <option value="">Select supplier</option>
-                      {(lookups.data?.suppliers ?? []).map((sup) => (
+                      {(lookups.data?.suppliers ?? [])
+                        .filter((sup) => !sup.archived || sup.id === l.supplier_id)
+                        .map((sup) => (
                         <option key={sup.id} value={sup.id}>
                           {sup.label}
                         </option>

@@ -712,7 +712,12 @@ export function usePartners() {
   return useQuery({
     queryKey: ['mirror', 'partners'],
     queryFn: async (): Promise<Partner[]> => {
-      const { data, error } = await mirror.from('partner_list').select('*')
+      // Archived suppliers leave the list (Andy, 15 Sep); the view keeps
+      // them so a supplier's own page still opens by link.
+      const { data, error } = await mirror
+        .from('partner_list')
+        .select('*')
+        .neq('status', 'Archived')
       if (error) throw error
       return ((data ?? []) as Partner[]).sort(byTitle)
     },
@@ -804,7 +809,10 @@ export function useRoster() {
   return useQuery({
     queryKey: ['mirror', 'roster'],
     queryFn: async (): Promise<RosterMember[]> => {
-      const { data, error } = await mirror.from('roster_list').select('*')
+      const { data, error } = await mirror
+        .from('roster_list')
+        .select('*')
+        .neq('status', 'Archived')
       if (error) throw error
       return ((data ?? []) as RosterMember[]).sort(byTitle)
     },

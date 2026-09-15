@@ -324,7 +324,7 @@ export function useInvoiceLookups() {
       const [clients, currencies, suppliers, countries] = await Promise.all([
         mirror.from('clients').select('id, company, status'),
         mirror.from('currencies_bank_accounts').select('id, currency'),
-        mirror.from('supplier_list').select('id, title, countries_list_id'),
+        mirror.from('supplier_list').select('id, title, countries_list_id, status'),
         mirror.from('countries_list').select('id, country'),
       ])
       const failed = [clients, currencies, suppliers, countries].find((r) => r.error)
@@ -355,10 +355,23 @@ export function useInvoiceLookups() {
          * ⚠️ No type filter, matching the old app's picker — so composition
          * teams appear here too. Flagged there, kept here for parity.
          */
-        suppliers: rows<{ id: number; title: string | null; countries_list_id: number | null }>(suppliers)
+        //
+        // ⚠️ Archived suppliers are KEPT and flagged, not dropped: a line that
+        // already points at one must still show its name (Andy, 15 Sep). Each
+        // picker leaves them out unless the line already holds one.
+        suppliers: rows<{
+          id: number
+          title: string | null
+          countries_list_id: number | null
+          status: string | null
+        }>(suppliers)
           .map((s) => {
             const country = s.countries_list_id ? countryName.get(s.countries_list_id) : ''
-            return { id: s.id, label: country ? `${s.title ?? ''} (${country})` : (s.title ?? '') }
+            return {
+              id: s.id,
+              label: country ? `${s.title ?? ''} (${country})` : (s.title ?? ''),
+              archived: s.status === 'Archived',
+            }
           })
           .sort(byLabel),
       }
