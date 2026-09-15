@@ -3887,7 +3887,12 @@
 
   .sa-bar {
     display: grid;
-    grid-template-columns: 34px minmax(0, 1fr) auto auto;
+    /* ⚠️ The time column is a FIXED width. Creato Display has no tabular
+       figures, so "1:11" is narrower than "0:00"; an auto column let the
+       waveform's width change on every tick, the bar count changed with it,
+       and the whole shape re-bucketed and jumped each time the song was
+       clicked through — Andy, 16 Sep. */
+    grid-template-columns: 34px minmax(0, 1fr) 6.5rem auto;
     align-items: center;
     gap: 18px;
     height: 78px;
@@ -3947,7 +3952,7 @@
 
   @media (max-width: 40rem) {
     .sa-bar {
-      grid-template-columns: 34px minmax(0, 1fr) auto;
+      grid-template-columns: 34px minmax(0, 1fr) 6.5rem;
     }
 
     .sa-volume {
