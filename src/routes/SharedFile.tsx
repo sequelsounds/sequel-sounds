@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
+import SequelLogo from '../components/SequelLogo'
 import SharedAudio from '../components/viewer/SharedAudio'
 import { fileKind, openShare, saveSharePeaks, type SharedFile as Shared } from '../lib/assets'
 
@@ -109,52 +110,60 @@ export default function SharedFile() {
 
   return (
     <div className="sf-page">
-      <img className="sf-pin" src="/sequel-mark.png" alt="Sequel" width={400} height={400} />
+      {/* The invoice form's header and footer bars, rules removed (Andy):
+          wordmark top left, the file centred between them. */}
+      <div className="qw-head">
+        <SequelLogo wordmark className="qw-logo !h-auto !w-20" />
+      </div>
 
-      {(file || error) && (
-        <div className="sf-card">
-          <div className="sf-header">Project Asset</div>
-          <div className="sf-name">{file?.file_name ?? ''}</div>
-          <div className="sf-head">
-            <div className="sf-meta">
-              {file ? (size ? `${KIND_LABEL[kind]} - ${size}` : KIND_LABEL[kind]) : ''}
+      <div className="sf-main">
+        {(file || error) && (
+          <div className="sf-card">
+            <div className="sf-header">Project Asset</div>
+            <div className="sf-name">{file?.file_name ?? ''}</div>
+            <div className="sf-head">
+              <div className="sf-meta">
+                {file ? (size ? `${KIND_LABEL[kind]} - ${size}` : KIND_LABEL[kind]) : ''}
+              </div>
             </div>
+
+            {file && kind !== 'other' && (
+              <div className={`sf-preview${kind === 'audio' ? ' is-audio' : ''}`}>
+                {kind === 'video' && (
+                  <video className="sf-media" src={file.url} controls preload="metadata" onLoadedMetadata={loaded} onError={loaded} />
+                )}
+                {kind === 'audio' && (
+                  <SharedAudio
+                    src={file.url}
+                    onReady={loaded}
+                    peaks={file.peaks}
+                    size={Number(file.file_size) || 0}
+                    onPeaks={(p) => void saveSharePeaks(code, p)}
+                  />
+                )}
+                {kind === 'image' && (
+                  <img className="sf-image" src={file.url} alt={file.file_name} onLoad={loaded} onError={loaded} />
+                )}
+                {kind === 'doc' && (
+                  <iframe className="sf-doc" src={file.url} title={file.file_name} onLoad={loaded} />
+                )}
+              </div>
+            )}
+
+            {file && (
+              <div className="sf-actions">
+                <a className="bp-button is-ghost sf-download" href={file.download_url} onClick={download}>
+                  Download
+                </a>
+              </div>
+            )}
+            {error && <div className="sf-error">{error}</div>}
+            {expiry && !error && <div className="sf-expiry">This link expires on {expiry}</div>}
           </div>
+        )}
+      </div>
 
-          {file && kind !== 'other' && (
-            <div className={`sf-preview${kind === 'audio' ? ' is-audio' : ''}`}>
-              {kind === 'video' && (
-                <video className="sf-media" src={file.url} controls preload="metadata" onLoadedMetadata={loaded} onError={loaded} />
-              )}
-              {kind === 'audio' && (
-                <SharedAudio
-                  src={file.url}
-                  onReady={loaded}
-                  peaks={file.peaks}
-                  size={Number(file.file_size) || 0}
-                  onPeaks={(p) => void saveSharePeaks(code, p)}
-                />
-              )}
-              {kind === 'image' && (
-                <img className="sf-image" src={file.url} alt={file.file_name} onLoad={loaded} onError={loaded} />
-              )}
-              {kind === 'doc' && (
-                <iframe className="sf-doc" src={file.url} title={file.file_name} onLoad={loaded} />
-              )}
-            </div>
-          )}
-
-          {file && (
-            <div className="sf-actions">
-              <a className="bp-button is-ghost sf-download" href={file.download_url} onClick={download}>
-                Download
-              </a>
-            </div>
-          )}
-          {error && <div className="sf-error">{error}</div>}
-          {expiry && !error && <div className="sf-expiry">This link expires on {expiry}</div>}
-        </div>
-      )}
+      <div className="qw-foot" />
 
       {!ready && (
         <div className="sf-loading" role="status">

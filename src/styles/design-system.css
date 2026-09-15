@@ -3802,36 +3802,32 @@
   /* Centred top to bottom as well — Andy, 16 Sep. min-height rather than
      height, so a tall video or PDF simply grows the page instead of being
      cut off at the top. */
+  /* Header and footer are the invoice form's .qw-head / .qw-foot (Andy),
+     without their rules — he tried the lines and took them out. The bars stay
+     for the wordmark's position and so the file sits centred between them. */
+  .sf-page .qw-head {
+    border-bottom: 0;
+  }
+
+  .sf-page .qw-foot {
+    border-top: 0;
+  }
+
   .sf-page {
     display: flex;
     min-height: 100vh;
-    padding: 48px 24px 24px;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
     color: var(--color-sequel-brown);
     background-color: rgb(245, 244, 241);
   }
 
-  /* The brown square mark where the staff rail puts it (Andy): 4rem, 3rem in
-     and 2rem down. Absolute, not fixed, so it scrolls away rather than sit on
-     top of the file on a short screen. */
-  .sf-pin {
-    position: absolute;
-    top: 2rem;
-    left: 3rem;
-    z-index: 10;
-    width: 4rem;
-    height: 4rem;
-  }
-
-  @media (max-width: 767px) {
-    .sf-pin {
-      top: 1rem;
-      left: 1rem;
-      width: 3rem;
-      height: 3rem;
-    }
+  .sf-main {
+    display: flex;
+    flex: 1 1 auto;
+    padding: 24px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 
   /* share_card_v2 */
