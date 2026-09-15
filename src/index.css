@@ -1406,6 +1406,285 @@
     cursor: pointer;
   }
 
+  /* ── The upload modal: upload_modal_wrapper and the contract-form classes
+     it borrows (upload-zone-box, file-selected-div, menu-edit-input-field,
+     yes_no_tabs.tag_tab, menu-submit-button.full_width), read off the
+     staging stylesheet 16 Sep. */
+  .rm-message.am-box {
+    max-width: 700px;
+    padding: 2.5rem 2.5rem 1rem;
+  }
+
+  .am-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  .am-zone {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 20rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 0.8rem;
+    line-height: 1rem;
+    background-color: rgba(55, 43, 41, 0.05);
+    border: 1px solid var(--color-sequel-brown);
+  }
+
+  /* The whole box is the file input, invisible, so a drop anywhere lands. */
+  .am-file {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .am-zone-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .am-zone-text {
+    width: 100%;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 400;
+    text-align: center;
+  }
+
+  @keyframes am-flip {
+    25% { transform: rotateX(180deg) rotateY(0); }
+    50% { transform: rotateX(180deg) rotateY(180deg); }
+    75% { transform: rotateX(0) rotateY(180deg); }
+    100% { transform: rotateX(0) rotateY(0); }
+  }
+
+  .am-spin rect {
+    transform-origin: 50% 50%;
+    animation: am-flip 6s cubic-bezier(0.09, 0.57, 0.49, 0.9) infinite;
+  }
+
+  .am-picked {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 3rem;
+    padding: 0.5rem;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 0.8rem;
+    line-height: 0.8rem;
+    border: 1px solid var(--color-sequel-brown);
+  }
+
+  .am-picked-icon {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .am-picked-text {
+    width: 100%;
+    margin-left: 0.5rem;
+    overflow: hidden;
+    white-space: pre;
+    text-overflow: ellipsis;
+  }
+
+  /* field_delete_x-file.small: two hairlines crossed. */
+  .am-picked-x {
+    position: relative;
+    flex: none;
+    width: 1.2rem;
+    height: 1.2rem;
+    cursor: pointer;
+    background: none;
+    border: 0;
+  }
+
+  .am-picked-x::before,
+  .am-picked-x::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0.35rem;
+    right: 0.35rem;
+    height: 1px;
+    background-color: var(--color-sequel-brown);
+    transform: rotate(45deg);
+  }
+
+  .am-picked-x::after {
+    transform: rotate(-45deg);
+  }
+
+  .am-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  /* asset-instructions-txt */
+  .am-label {
+    margin-bottom: 0.5rem;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1rem;
+  }
+
+  /* menu-edit-input-field. Line height a rem, not Webflow's 0.8rem, which
+     clips descenders in a fixed 2rem box (see .edit-field-input). */
+  .am-input {
+    width: 100%;
+    height: 2rem;
+    padding: 0 0.5rem;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 0.8rem;
+    line-height: 1rem;
+    color: var(--color-sequel-brown);
+    background-color: rgba(55, 43, 41, 0.05);
+    border: 1px solid var(--color-sequel-brown);
+  }
+
+  .am-input:focus {
+    outline: none;
+    background-color: rgba(55, 43, 41, 0.16);
+  }
+
+  .am-input::placeholder {
+    font-style: italic;
+    color: rgba(55, 43, 41, 0.6);
+  }
+
+  .am-tags {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  /* yes_no_tabs + tag_tab: fifths, borders collapsed. */
+  .am-tag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20%;
+    margin-left: -1px;
+    padding: 0.5625rem 1.25rem;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    text-align: center;
+    text-transform: uppercase;
+    color: var(--color-sequel-brown);
+    cursor: pointer;
+    background-color: transparent;
+    border: 1px solid var(--color-sequel-brown);
+    transition: background-color 0.1s;
+  }
+
+  .am-tag:first-child {
+    margin-left: 0;
+  }
+
+  .am-tag:hover,
+  .am-tag.is-selected {
+    color: var(--color-sequel-silver);
+    background-color: var(--color-sequel-brown);
+  }
+
+  .am-tag:focus-visible,
+  .am-submit:focus-visible {
+    outline: none;
+  }
+
+  /* menu-submit-button; .is-full is its full_width combo. */
+  .am-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-start;
+    margin-bottom: 1.25rem;
+    padding: 0.4rem 1.2rem;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    color: var(--color-sequel-brown);
+    cursor: pointer;
+    background-color: transparent;
+    border: 1px solid var(--color-sequel-brown);
+    transition: background-color 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .am-submit:hover {
+    color: var(--color-sequel-silver);
+    background-color: var(--color-sequel-brown);
+  }
+
+  .am-submit.is-full {
+    align-self: center;
+    width: 100%;
+    height: 2rem;
+    padding: 0.6rem 1.2rem;
+    font-family: 'Azeret Mono', ui-monospace, monospace;
+    font-size: 0.8rem;
+    font-weight: 300;
+    line-height: 1rem;
+  }
+
+  .am-submit.is-off {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .am-error {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 1rem;
+  }
+
+  /* row_flash: a saved row blinks three times. */
+  @keyframes am-flash {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(55, 43, 41, 0.12); }
+  }
+
+  .project-row.is-flashing {
+    animation: am-flash 0.5s ease-in-out 3;
+  }
+
+  /* tag_cell: the pill's cell is the edit trigger. */
+  .row-tag-cell {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    color: inherit;
+    cursor: pointer;
+    background: none;
+    border: 0;
+  }
+
   .qw-note {
     margin-top: 1.5rem;
     font-family: 'Creato Display', Arial, sans-serif;

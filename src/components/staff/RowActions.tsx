@@ -198,7 +198,16 @@ function RowActions({
   )
 }
 
-export function Modal({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+export function Modal({
+  onClose,
+  children,
+  className = '',
+}: {
+  onClose: () => void
+  children: React.ReactNode
+  /** A modifier on the box — the upload modal is wider and shorter-footed. */
+  className?: string
+}) {
   return createPortal(
     <div
       className="rm-darken"
@@ -207,7 +216,7 @@ export function Modal({ onClose, children }: { onClose: () => void; children: Re
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="rm-message" role="dialog" aria-modal="true">
+      <div className={`rm-message ${className}`} role="dialog" aria-modal="true">
         {children}
       </div>
     </div>,

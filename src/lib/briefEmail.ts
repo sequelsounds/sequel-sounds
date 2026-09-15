@@ -15,12 +15,9 @@ import type { Project } from './xanoMirror'
  * The brief goes via the clipboard because mailto bodies are plain text and
  * truncate past about 2,000 characters; the body only carries a paste prompt.
  *
- * ⚠️ PROJECT ASSETS is not written yet. The old email lists each asset's share
- * link; the new app has no asset share links until the shared file link
- * (/link) is built. Add the section then, between TERMS and SUBMISSIONS.
- *
- * ⚠️ Uploaded briefs put the file's 7-day link first. Not here either — upload
- * brief comes with the asset upload.
+ * Uploaded briefs put the file first, as a 7-day download link — the longest
+ * S3 allows — so it survives sitting in an inbox. PROJECT ASSETS lists a fresh
+ * 7-day /link for every file on the project, minted at click time.
  */
 export function buildBriefEmail(
   d: Pick<BriefDetail, 'answers' | 'source'>,
@@ -30,6 +27,10 @@ export function buildBriefEmail(
     'brand' | 'title' | 'term' | 'territory' | 'media' | 'scripts' | 'durations' | 'cutdowns' | 'studio_inbox_link' | 'disco_inbox_link'
   >,
   isMac: boolean,
+  extra: {
+    file?: { name: string; url: string } | null
+    assets?: { label: string; link: string }[]
+  } = {},
 ): { html: string; text: string; subject: string; prompt: string } {
   const ans = d.answers
   const briefName = ans.name || 'Brief'
@@ -60,6 +61,10 @@ export function buildBriefEmail(
   para('Please see the brief below.')
 
   heading(`BRIEF: ${briefName.toUpperCase()}`)
+  if (d.source === 'upload' && extra.file) {
+    link(`The brief (${extra.file.name})`, extra.file.url)
+    text.push('')
+  }
   for (const item of items) {
     if (item.key === 'budget_note') continue
     qa(item.question, item.answer)
@@ -90,6 +95,12 @@ export function buildBriefEmail(
   if (filled.length) {
     heading('TERMS')
     para(filled.map(([k, v]) => `${k}: ${v}`).join('\n'))
+  }
+
+  if (extra.assets?.length) {
+    heading('PROJECT ASSETS')
+    for (const a of extra.assets) link(a.label, a.link)
+    text.push('')
   }
 
   // The Studio inbox, falling back to DISCO for projects that never got one.

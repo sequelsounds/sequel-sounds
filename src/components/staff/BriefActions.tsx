@@ -14,6 +14,7 @@ import {
   type BriefItem,
 } from '../../lib/briefs'
 import { EditEnum, EditField } from './EditField'
+import { assetUrl, shareProjectAssets } from '../../lib/assets'
 import { buildBriefEmail } from '../../lib/briefEmail'
 import type { Brief, Project } from '../../lib/xanoMirror'
 import { ArchiveIcon, Modal, ShareIcon } from './RowActions'
@@ -186,9 +187,13 @@ function viewTitle(d: BriefDetail | undefined): string {
   return name || 'Brief'
 }
 
-function viewMeta(d: BriefDetail | undefined, failed: boolean): string {
+function viewMeta(d: BriefDetail | undefined, failed: boolean, fileName: string | null): string {
   if (failed) return "Couldn't load this brief. Close and try again."
   if (!d) return ''
+  // Uploaded briefs say so, and name the file.
+  if (d.source === 'upload') {
+    return `Uploaded ${briefDate(d.submitted_at ?? d.created_at)}${fileName ? ` - ${fileName}` : ''}`
+  }
   if (!d.submitted_at) return 'Not yet submitted'
   return `Submitted ${briefDate(d.submitted_at)}`
 }
@@ -198,15 +203,17 @@ function viewMeta(d: BriefDetail | undefined, failed: boolean): string {
  * and are never rendered as HTML. Only answered questions are listed.
  */
 export function BriefViewModal({
-  briefId,
+  brief,
   project,
   onClose,
 }: {
-  briefId: number
+  brief: Brief
   project: Project
   onClose: () => void
 }) {
-  const detail = useBriefDetail(briefId)
+  const detail = useBriefDetail(brief.id)
+  const fileUuid = brief.source === 'upload' ? brief.asset_uuid : null
+  const [fileError, setFileError] = useState<string | null>(null)
   const d = detail.data
   const items = d ? briefItems(d.answers) : []
   const [copied, setCopied] = useState(false)
@@ -222,7 +229,8 @@ export function BriefViewModal({
     <Modal onClose={onClose}>
       <button type="button" className="wizard-close rm-close" aria-label="Close" onClick={onClose} />
       <div className="rm-header">{viewTitle(d)}</div>
-      <div className="rm-subheader">{viewMeta(d, detail.isError)}</div>
+      <div className="rm-subheader">{viewMeta(d, detail.isError, brief.file_name)}</div>
+      {fileError && <p className="form-error">{fileError}</p>}
       {editing && d && <BriefEditor detail={d} projectId={project.id} />}
       {!editing && items.length > 0 && (
         <div className="bv-answers">
@@ -237,11 +245,40 @@ export function BriefViewModal({
       {/* Only once the brief has loaded, so it cannot send a half-empty email. */}
       {d && (
         <div className="rm-buttons">
+          {/* OPEN FILE, uploads only. Opened from the click with a URL signed
+              for it, never a bound href. The tab opens first so it is not
+              treated as a popup. */}
+          {!editing && fileUuid && (
+            <button
+              type="button"
+              className="wizard-btn rm-button bv-email"
+              onClick={() => {
+                const tab = window.open('about:blank', '_blank')
+                setFileError(null)
+                assetUrl(fileUuid).then(
+                  (url) => {
+                    if (tab) tab.location.href = url
+                  },
+                  (e: Error) => {
+                    tab?.close()
+                    setFileError(e.message)
+                  },
+                )
+              }}
+            >
+              OPEN FILE
+            </button>
+          )}
           {!editing && (
             <button
               type="button"
               className="wizard-btn rm-button bv-email"
-              onClick={() => emailBrief(d, items, project).then(() => setCopied(true))}
+              onClick={() =>
+                emailBrief(d, items, project, fileUuid, brief.file_name).then(
+                  () => setCopied(true),
+                  (e: Error) => setFileError(e.message),
+                )
+              }
             >
               {copied ? 'COPIED - PASTE INTO EMAIL' : 'EMAIL BRIEF'}
             </button>
@@ -313,21 +350,37 @@ function BriefEditor({ detail, projectId }: { detail: BriefDetail; projectId: nu
  * subject filled in for the sender to paste into. The email opens only once
  * the copy has landed. What goes in it: `lib/briefEmail.ts`.
  */
-async function emailBrief(d: BriefDetail, items: BriefItem[], p: Project): Promise<void> {
-  const m = buildBriefEmail(d, items, p, /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent || ''))
+async function emailBrief(
+  d: BriefDetail,
+  items: BriefItem[],
+  p: Project,
+  fileUuid: string | null,
+  fileName: string | null,
+): Promise<void> {
+  // The file link and the asset links are fetched first, but the clipboard
+  // item is handed over NOW, holding promises: Safari refuses a clipboard
+  // write that is not made inside the click, and an await would end the click.
+  const isMac = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent || '')
+  const built = Promise.all([
+    fileUuid
+      ? assetUrl(fileUuid, { email: true }).then((url) => ({ name: fileName || 'file', url }))
+      : Promise.resolve(null),
+    shareProjectAssets(p.id),
+  ]).then(([file, assets]) => buildBriefEmail(d, items, p, isMac, { file, assets }))
+
   try {
-    if (window.ClipboardItem && navigator.clipboard?.write) {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': new Blob([m.html], { type: 'text/html' }),
-          'text/plain': new Blob([m.text], { type: 'text/plain' }),
-        }),
-      ])
-    } else {
-      await navigator.clipboard.writeText(m.text)
-    }
+    if (!window.ClipboardItem || !navigator.clipboard?.write) throw new Error('no rich clipboard')
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html': built.then((m) => new Blob([m.html], { type: 'text/html' })),
+        'text/plain': built.then((m) => new Blob([m.text], { type: 'text/plain' })),
+      }),
+    ])
   } catch {
-    await navigator.clipboard.writeText(m.text)
+    // Formatted copy unsupported or refused: plain text, so the button still works.
+    await navigator.clipboard.writeText((await built).text)
   }
+  const m = await built
+  // The email opens only after the copy has landed.
   window.location.href = `mailto:?subject=${encodeURIComponent(m.subject)}&body=${encodeURIComponent(m.prompt)}`
 }

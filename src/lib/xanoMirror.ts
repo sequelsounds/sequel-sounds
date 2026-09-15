@@ -287,6 +287,10 @@ export type Brief = {
       Xano's get_project_briefs hands it out. Null otherwise. */
   share_token: string | null
   share_expires_at: string | null
+  /** Uploaded briefs: the file behind the brief. */
+  file_name: string | null
+  file_type: string | null
+  asset_uuid: string | null
 }
 
 export type ProjectFile = {
@@ -300,6 +304,7 @@ export type ProjectFile = {
   final_edit: boolean | null
   uploaded_by: string | null
   created_at: string | null
+  uuid: string
 }
 
 /**

@@ -5,6 +5,7 @@ import { useIsStaff } from './lib/staff'
 import { supabase } from './lib/supabase'
 import Inbox from './routes/Inbox'
 import Brief from './routes/Brief'
+import SharedFile from './routes/SharedFile'
 import Client from './routes/Client'
 import Clients from './routes/Clients'
 import Library from './routes/Library'
@@ -72,6 +73,8 @@ export default function App() {
       {/* The client's briefing form. Token in the query string, as the old
           app's /brief?token= has it, so links already sent keep their shape. */}
       <Route path="/brief" element={<Brief />} />
+      {/* A shared project file. /link?id= is the old app's shape. */}
+      <Route path="/link" element={<SharedFile />} />
       <Route path="/p/:token" element={<SharedPlaylist />} />
       <Route path="/t/:token" element={<SharedTrack />} />
 

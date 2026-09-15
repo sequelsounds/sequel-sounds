@@ -39,4 +39,14 @@ check('windows prompt', lib.prompt.includes('Ctrl+V'))
 const com = buildBriefEmail({ answers: { name: 'Y', brief_type: 'Commercial' }, source: 'share_link' }, [], project, true)
 check('commercial: budget, no demo fee', com.text.includes('BUDGET/LICENCE FEE') && !com.text.includes('Demo fee'))
 
+const up = buildBriefEmail(
+  { answers: { name: 'Upload' }, source: 'upload' }, [], project, true,
+  { file: { name: 'brief.pdf', url: 'https://s3/x' }, assets: [{ label: 'Deck', link: 'https://app/link?id=abc' }] },
+)
+check('upload: file link first', up.text.indexOf('The brief (brief.pdf): https://s3/x') > up.text.indexOf('BRIEF: UPLOAD') && up.text.indexOf('The brief') < up.text.indexOf('BUDGET'))
+check('upload: budget placeholder', up.text.includes('BUDGET/LICENCE FEE') && !up.text.includes('Demo fee'))
+check('assets between terms and submissions', up.text.indexOf('TERMS') < up.text.indexOf('PROJECT ASSETS') && up.text.indexOf('PROJECT ASSETS') < up.text.indexOf('SUBMISSIONS'))
+check('asset link line', up.text.includes('Deck: https://app/link?id=abc'))
+check('no assets section when none', !m.text.includes('PROJECT ASSETS'))
+
 process.exit(failed ? 1 : 0)

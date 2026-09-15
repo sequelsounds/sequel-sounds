@@ -12,6 +12,13 @@ import {
   type ShareState,
 } from '../components/staff/BriefActions'
 import { briefLink, useRequestBrief } from '../lib/briefs'
+import { fileTypeLabel } from '../lib/assets'
+import {
+  AssetModal,
+  AssetRowActions,
+  openAssetPage,
+  type AssetModalMode,
+} from '../components/staff/AssetActions'
 import { formatBytes, formatMoney } from '../lib/format'
 import {
   useProjectLookups,
@@ -354,6 +361,7 @@ function Rows<T>({
   onAction,
   menu,
   open,
+  rowClass,
   empty,
   state,
   variant,
@@ -366,6 +374,7 @@ function Rows<T>({
   menu?: MenuItem[]
   /** A row that opens something in place (a modal) rather than a page. */
   open?: (item: T) => (() => void) | null
+  rowClass?: (item: T) => string
   empty: string
   state: List<T>
   variant: 'quote' | 'invoice' | 'asset' | 'brief' | 'contract' | 'song'
@@ -392,7 +401,7 @@ function Rows<T>({
       {state.data?.map((item, i) => {
         const href = link?.(item) ?? null
         const onOpen = open?.(item) ?? null
-        const className = `project-row project-row-${variant}${onOpen ? ' is-openable' : ''}`
+        const className = `project-row project-row-${variant}${onOpen ? ' is-openable' : ''}${rowClass ? rowClass(item) : ''}`
         return href ? (
           <Link key={i} to={href} className={className}>
             {row(item)}
@@ -456,7 +465,14 @@ export default function Project() {
   const saveProject = useSaveProject(projectId)
   const requestBrief = useRequestBrief(projectId)
   const [briefShare, setBriefShare] = useState<ShareState | null>(null)
-  const [briefView, setBriefView] = useState<number | null>(null)
+  const [briefView, setBriefView] = useState<Brief | null>(null)
+  const [assetModal, setAssetModal] = useState<AssetModalMode | null>(null)
+  // row_flash: the row just saved blinks, then stops.
+  const [flash, setFlash] = useState<string | null>(null)
+  const flashRow = (uuid: string) => {
+    setFlash(uuid)
+    window.setTimeout(() => setFlash((f) => (f === uuid ? null : f)), 1600)
+  }
 
   // REQUEST BRIEF: the modal opens at once and fills in when the token lands.
   const onRequestBrief = () => {
@@ -758,9 +774,14 @@ export default function Project() {
           <Rows<ProjectFile>
             title="Assets"
             action="+ New ASSET"
+            onAction={edit ? () => setAssetModal({ kind: 'upload' }) : undefined}
             empty="Nothing here yet, click the New Asset button to get started"
             state={files}
             variant="asset"
+            // The row body opens the file's share page in a new tab; the tag,
+            // share and delete cells are their own targets.
+            open={(f) => (f.uuid ? () => openAssetPage(f.uuid) : null)}
+            rowClass={(f) => (f.uuid === flash ? ' is-flashing' : '')}
             row={(f) => (
               <>
                 <Title>{f.description || f.file_name}</Title>
@@ -768,10 +789,36 @@ export default function Project() {
                 <Cell>{formatBytes(f.file_size)}</Cell>
                 <Cell>{fmt(shortDate, f.created_at)}</Cell>
                 {/* asset_row_tag is hidden rather than blank when untagged:
-                    assets filed before tags existed have none. */}
-                <span>{f.asset_tag && <span className="row-flag">{f.asset_tag}</span>}</span>
+                    assets filed before tags existed have none. For staff the
+                    cell is the edit trigger, pill or not. */}
+                {edit ? (
+                  <button
+                    type="button"
+                    className="row-tag-cell"
+                    aria-label="Edit this file"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setAssetModal({ kind: 'edit', asset: f })
+                    }}
+                  >
+                    {f.asset_tag && <span className="row-flag">{f.asset_tag}</span>}
+                  </button>
+                ) : (
+                  <span>{f.asset_tag && <span className="row-flag">{f.asset_tag}</span>}</span>
+                )}
+                {edit && <AssetRowActions asset={f} projectId={projectId} />}
               </>
             )}
+          />
+        )}
+
+        {assetModal && projectId !== undefined && (
+          <AssetModal
+            mode={assetModal}
+            projectId={projectId}
+            onClose={() => setAssetModal(null)}
+            onSaved={flashRow}
           />
         )}
 
@@ -853,18 +900,21 @@ export default function Project() {
             menu={[
               { label: 'REQUEST BRIEF', onClick: edit ? onRequestBrief : undefined },
               { label: 'CREATE BRIEF', onClick: edit ? onCreateBrief : undefined },
-              // Rides on the asset upload, which comes with the shared file link.
-              { label: 'UPLOAD BRIEF' },
+              {
+                label: 'UPLOAD BRIEF',
+                onClick: edit ? () => setAssetModal({ kind: 'brief' }) : undefined,
+              },
             ]}
             empty="No briefs yet. Request one from the client or add it yourself."
             state={briefs}
             variant="brief"
             // Only a submitted brief has anything to open.
-            open={(b) => (b.status === 'Submitted' ? () => setBriefView(b.id) : null)}
+            open={(b) => (b.status === 'Submitted' ? () => setBriefView(b) : null)}
             row={(b) => (
               <>
                 <Title>{briefSummary(b)}</Title>
-                <Cell>{b.brief_type}</Cell>
+                {/* An uploaded brief says what kind of file it is. */}
+                <Cell>{b.source === 'upload' ? fileTypeLabel(b.file_type, b.file_name) : b.brief_type}</Cell>
                 <Cell>{briefState(b)}</Cell>
                 <Cell>{fmt(longDate, b.submitted_at ?? b.created_at)}</Cell>
                 {edit && <BriefRowActions brief={b} projectId={projectId} />}
@@ -875,7 +925,7 @@ export default function Project() {
 
         {briefShare && <BriefShareModal state={briefShare} onClose={() => setBriefShare(null)} />}
         {briefView !== null && (
-          <BriefViewModal briefId={briefView} project={p} onClose={() => setBriefView(null)} />
+          <BriefViewModal brief={briefView} project={p} onClose={() => setBriefView(null)} />
         )}
 
         {tab === 'Creative' && (
