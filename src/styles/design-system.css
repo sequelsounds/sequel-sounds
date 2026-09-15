@@ -3877,10 +3877,17 @@
     max-height: 70vh;
   }
 
+  /* share_audio's 24px of padding, but on the black box around the player.
+     ⚠️ On the <audio> itself it crushed the controls: the app is border-box
+     throughout, so 48px of padding came out of the player's own 54px and left
+     a 6px strip — Andy, 16 Sep. */
+  .sf-preview.is-audio {
+    padding: 24px;
+  }
+
   .sf-audio {
     display: block;
     width: 100%;
-    padding: 24px;
   }
 
   .sf-image {

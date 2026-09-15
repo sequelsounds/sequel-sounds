@@ -1322,6 +1322,8 @@
     margin-right: 1rem;
   }
 
+  /* The link itself is text-block-51 inside asset_link_share_div: weight 300,
+     not the wrapper's 500 — Andy, 16 Sep. */
   .rm-link {
     display: block;
     width: 100%;
@@ -1331,7 +1333,7 @@
     overflow: hidden;
     font-family: 'Creato Display', Arial, sans-serif;
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 300;
     text-overflow: ellipsis;
     white-space: nowrap;
     cursor: text;
@@ -1343,6 +1345,12 @@
     flex: 0 0 6rem;
     width: 6rem;
     white-space: nowrap;
+  }
+
+  /* No focus ring on the modal buttons: the app's :focus-visible outline sits
+     flush on the 1px border and reads as a doubled, heavy edge — Andy, 16 Sep. */
+  .rm-message button:focus-visible {
+    outline: none;
   }
 
   /* .modal-text: tucked up under the subheader it follows. */

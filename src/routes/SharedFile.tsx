@@ -83,6 +83,9 @@ export default function SharedFile() {
     const t = window.setTimeout(() => setReady(true), 8000)
     return () => window.clearTimeout(t)
   }, [file, kind])
+  // Metadata, not data: with preload="metadata" a browser may stop before it
+  // has any frames, and loadeddata never comes — the sheet then sat for the
+  // full eight seconds on a WAV.
   const loaded = () => setReady(true)
 
   const download = async (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -118,12 +121,12 @@ export default function SharedFile() {
           </div>
 
           {file && kind !== 'other' && (
-            <div className="sf-preview">
+            <div className={`sf-preview${kind === 'audio' ? ' is-audio' : ''}`}>
               {kind === 'video' && (
-                <video className="sf-media" src={file.url} controls preload="metadata" onLoadedData={loaded} onError={loaded} />
+                <video className="sf-media" src={file.url} controls preload="metadata" onLoadedMetadata={loaded} onError={loaded} />
               )}
               {kind === 'audio' && (
-                <audio className="sf-audio" src={file.url} controls preload="metadata" onLoadedData={loaded} onError={loaded} />
+                <audio className="sf-audio" src={file.url} controls preload="metadata" onLoadedMetadata={loaded} onError={loaded} />
               )}
               {kind === 'image' && (
                 <img className="sf-image" src={file.url} alt={file.file_name} onLoad={loaded} onError={loaded} />
