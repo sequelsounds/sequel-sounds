@@ -293,6 +293,16 @@
     outline: none;
   }
 
+  /* No focus box on tabs, anywhere — Andy, 15 Sep. The selected tab already
+     carries its underline. */
+  [role='tab']:focus-visible,
+  .project-tab:focus-visible,
+  .filter-tab:focus-visible,
+  .chart-tab:focus-visible,
+  .tab:focus-visible {
+    outline: none;
+  }
+
   /* Firefox draws its own dotted inner border on focused buttons, on top of
      the outline above. */
   ::-moz-focus-inner {
@@ -930,7 +940,6 @@
     column-gap: 0.75rem;
     align-items: center;
     padding: 0.5rem 2rem;
-    border-bottom: 1px solid var(--color-sequel-line, rgba(55, 43, 41, 0.12));
   }
 
   /* A money row holding an editable field rather than a value: the field
@@ -1180,8 +1189,10 @@
     text-align: right;
   }
 
+  /* A shadow, not a wider border — a 2px border grows the box and lifts the
+     figure inside it. */
   .qi-amount:focus {
-    border-bottom-width: 2px;
+    box-shadow: inset 0 -1px 0 var(--color-sequel-brown);
   }
 
   .qi-amount::placeholder {
@@ -1288,6 +1299,11 @@
     opacity: 0.35;
   }
 
+  .qw-totals {
+    display: flex;
+    gap: 2.5rem;
+  }
+
   .qw-total {
     font-family: 'Creato Display', Arial, sans-serif;
     font-size: 0.875rem;
@@ -1358,6 +1374,12 @@
     .qw-foot {
       height: 4.25rem;
       padding: 0 1rem;
+    }
+
+    .qw-totals {
+      flex-direction: column;
+      gap: 0.25rem;
+      text-align: center;
     }
   }
 }

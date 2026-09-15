@@ -276,6 +276,7 @@ export function NewInvoice({ projectId, prefill, onClose, onCreated }: Props) {
   const currencyLabel =
     (lookups.data?.currencies ?? []).find((c: Option) => c.id === f.currencyId)?.label ?? ''
   const totalText = [currencyLabel, amount.format(totals.totalToInvoice)].filter(Boolean).join(' ')
+  const spendText = [currencyLabel, amount.format(totals.totalSpend)].filter(Boolean).join(' ')
 
   const answered = (): boolean => {
     switch (key) {
@@ -563,10 +564,16 @@ export function NewInvoice({ projectId, prefill, onClose, onCreated }: Props) {
         )}
 
         {/* Hidden on the first step and on the summary, as the old app's is,
-            and until there is a figure to total — Andy, 15 Sep. */}
-        {step > 0 && key !== 'summary' && totals.totalToInvoice !== 0 ? (
-          <span className="qw-total">
-            TOTAL <strong>{totalText}</strong>
+            and until there is a figure to total. Spend and invoice side by
+            side so a Non-Paythrough line shows up somewhere — Andy, 15 Sep. */}
+        {step > 0 && key !== 'summary' && totals.totalSpend !== 0 ? (
+          <span className="qw-totals">
+            <span className="qw-total">
+              TOTAL SPEND <strong>{spendText}</strong>
+            </span>
+            <span className="qw-total">
+              TOTAL TO INVOICE <strong>{totalText}</strong>
+            </span>
           </span>
         ) : (
           <span />

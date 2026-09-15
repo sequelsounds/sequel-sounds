@@ -3200,6 +3200,7 @@
     margin-left: 2rem;
   }
 
+  /* No rule between rows — Andy, 15 Sep. The total keeps its rule above. */
   .money-row {
     display: flex;
     align-items: baseline;
@@ -3207,11 +3208,15 @@
     gap: 1rem;
     min-height: 2rem;
     padding: 0.5rem 0;
-    border-bottom: 1px solid rgb(55 43 41 / 15%);
     /* Webflow's body sets an absolute 20px and these panes inherit it; the app
        shell sets a 1.4 ratio. Stated so a row here is the same height as one
        on the pages this sits beside. */
     line-height: 20px;
+  }
+
+  /* The Details tab keeps its rules: label and value pairs, not fields. */
+  .money-row.has-rule {
+    border-bottom: 1px solid rgb(55 43 41 / 15%);
   }
 
   .money-row-label {

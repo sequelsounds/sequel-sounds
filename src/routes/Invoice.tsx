@@ -159,7 +159,7 @@ function MoneyField({
 
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="money-row">
+    <div className="money-row has-rule">
       <span className="money-row-label">{label}</span>
       <span className="money-row-value">{value}</span>
     </div>
@@ -307,6 +307,8 @@ export default function Invoice() {
         <Stat label="Total spend" value={amt(v.gross_spend)} />
         <div className="tab-band-divider" />
         <Stat label="Profit" value={amt(v.total_sequel_profit)} />
+        <div className="tab-band-divider" />
+        <Stat label="Status" value={v.status ?? '—'} />
       </div>
 
       <div className="project-tabs is-plain" role="tablist">
@@ -510,12 +512,6 @@ export default function Invoice() {
 
         {tab === 'Supplier costs' && (
           <>
-            <p className="section-note">
-              A paythrough line is one Sequel bills the client for and pays on. A line that is
-              not a paythrough is settled by the client direct — Sequel still records the spend,
-              so it counts in Total spend but not in Total to invoice. Sequel&rsquo;s own fees
-              are not here; they are on the Sequel fees tab.
-            </p>
             {lines.isPending && (
               <div className="flex justify-center py-8">
                 <Loader />
@@ -532,7 +528,7 @@ export default function Invoice() {
                 <div key={l.id} className="project-row project-row-invoice-line">
                   <span className="row-title">{l.supplier || 'No supplier'}</span>
                   <span className="row-field">{l.category ?? ''}</span>
-                  <span className="row-field">{l.is_paythrough ? 'Paythrough' : 'Client direct'}</span>
+                  <span className="row-field">{l.is_paythrough ? 'Paythrough' : 'Non-Paythrough'}</span>
                   <span className="row-field">{l.qbo_bill_id ? 'Billed' : ''}</span>
                   <span className="row-field">{amt(l.fee_amount)}</span>
                 </div>
@@ -592,7 +588,7 @@ export default function Invoice() {
                       }
                     >
                       <option value="true">Paythrough</option>
-                      <option value="false">Client direct</option>
+                      <option value="false">Non-Paythrough</option>
                     </select>
 
                     <input
@@ -620,10 +616,10 @@ export default function Invoice() {
                   </div>
                 ))}
 
-                <div className="px-8 py-4">
+                <div className="px-8 py-6">
                   <button
                     type="button"
-                    className="qw-choice"
+                    className="btn btn-mono btn-outline w-auto whitespace-nowrap"
                     disabled={addLine.isPending}
                     onClick={() => void addLine.mutateAsync('Demos')}
                   >
@@ -643,11 +639,6 @@ export default function Invoice() {
 
         {tab === 'Cost avoidance' && (
           <>
-            <p className="section-note">
-              What the client was saved against the original quote. This is money that did not
-              move, so it is a reporting figure only and is deliberately in none of the three
-              totals above.
-            </p>
             <div className="money-list">
               {v.locked ? (
                 <>
