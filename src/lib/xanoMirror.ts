@@ -137,6 +137,20 @@ export function useMe() {
  * makes the same split, and its own note is worth repeating — hiding a link
  * is not access control.
  */
+/** Whether the signed-in person is finance — archiving a raised invoice needs it. */
+export function useIsFinance() {
+  return useQuery({
+    queryKey: ['mirror', 'is-finance'],
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await (supabase as unknown as SupabaseClient).rpc(
+        'track_is_finance',
+      )
+      if (error) throw error
+      return data === true
+    },
+  })
+}
+
 export function useIsManagement() {
   return useQuery({
     queryKey: ['mirror', 'is-management'],
@@ -233,6 +247,8 @@ export type Invoice = {
   gross_spend_amount: number | null
   po_number: string | null
   aws_link: string | null
+  // Raised in QuickBooks when set. Archiving one is finance-only.
+  qbo_invoice_id: string | null
 }
 
 export type Contract = {
@@ -388,7 +404,19 @@ export function useProjectInvoices(id: number | undefined) {
   return useQuery({
     enabled: Number.isFinite(id),
     queryKey: ['mirror', 'invoices', id],
-    queryFn: () => rows<Invoice>('project_invoices', id!, 'id'),
+    // ⚠️ Archived invoices are left out, as the old app's get_project_invoices
+    // does. Written as an OR so a row with no status is still shown — a bare
+    // `<>` drops NULL rows (mirror trap 4).
+    queryFn: async () => {
+      const { data, error } = await mirror
+        .from('project_invoices')
+        .select('*')
+        .eq('project_master_list_id', id!)
+        .or('status.is.null,status.neq.Archived')
+        .order('id', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as Invoice[]
+    },
   })
 }
 

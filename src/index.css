@@ -1237,6 +1237,101 @@
     width: 10px;
   }
 
+  /* ── Row action modals: share and delete on the project's invoice rows ──
+     The old app's .darken_modal, .modal_message_div, .modal-header,
+     .modal-subheader, .modal_buttons_wrap, .asset_link_share_div and
+     .modal-button.copy, read off the staging stylesheet 15 Sep. The buttons
+     are .wizard-btn, which is already the copy of .modal-button. rm- because
+     .modal-* names are taken in this file. */
+  .row-action-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.25rem;
+    color: inherit;
+    cursor: pointer;
+    background: none;
+    border: 0;
+  }
+
+  .row-action.is-inert .row-action-button {
+    cursor: not-allowed;
+  }
+
+  .rm-darken {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #372b2966;
+    cursor: default;
+  }
+
+  .rm-message {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    padding: 2.5rem;
+    color: var(--color-sequel-brown);
+    background-color: var(--color-sequel-silver);
+    border: 1px solid var(--color-sequel-brown);
+  }
+
+  .rm-close {
+    top: 1.5rem;
+    right: 1.5rem;
+  }
+
+  .rm-header {
+    margin-bottom: 0.5rem;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 1.2rem;
+    font-weight: 400;
+  }
+
+  .rm-subheader {
+    margin-bottom: 1rem;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 0.9rem;
+    font-weight: 300;
+  }
+
+  .rm-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 2rem;
+  }
+
+  .rm-button {
+    margin-right: 1rem;
+  }
+
+  .rm-link {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin-right: 2rem;
+    padding: 0.4rem 0.5rem;
+    overflow: hidden;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: text;
+    user-select: all;
+    border: 1px solid var(--color-sequel-brown);
+  }
+
+  .rm-copy {
+    flex: 0 0 6rem;
+    width: 6rem;
+    white-space: nowrap;
+  }
+
   .qw-note {
     margin-top: 1.5rem;
     font-family: 'Creato Display', Arial, sans-serif;

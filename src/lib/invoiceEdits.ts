@@ -145,3 +145,21 @@ export const LINE_CATEGORIES = [
   'Publishing',
   'Other Fees',
 ] as const
+
+/**
+ * Archives an invoice: status Archived, never a hard delete (Andy, 4 Sep).
+ * Once it is in QuickBooks only finance can — the database refuses anyone
+ * else, whatever the page shows (Andy, 15 Sep).
+ */
+export function useArchiveInvoice(projectId: number | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (invoiceId: number) => {
+      const { error } = await rpc('track_archive_invoice', { p_invoice_id: invoiceId })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mirror', 'invoices', projectId] })
+    },
+  })
+}

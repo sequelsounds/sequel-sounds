@@ -4,6 +4,7 @@ import { Loader } from '../components/Loader'
 import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
 import { NewQuote } from '../components/staff/NewQuote'
 import { NewInvoice } from '../components/staff/NewInvoice'
+import { InvoiceRowActions } from '../components/staff/InvoiceRowActions'
 import { formatBytes, formatMoney } from '../lib/format'
 import {
   useProjectLookups,
@@ -822,6 +823,7 @@ export default function Project() {
                 <Cell>{i.invoice_number}</Cell>
                 <Cell>{fmt(shortDate, i.invoice_date)}</Cell>
                 <Cell>{i.status}</Cell>
+                {edit && <InvoiceRowActions invoice={i} projectId={projectId} />}
               </>
             )}
           />
