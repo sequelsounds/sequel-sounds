@@ -109,7 +109,7 @@ export default function SharedFile() {
 
   return (
     <div className="sf-page">
-      <div className="sf-pin">Sequel</div>
+      <img className="sf-pin" src="/sequel-mark.png" alt="Sequel" width={400} height={400} />
 
       {(file || error) && (
         <div className="sf-card">
