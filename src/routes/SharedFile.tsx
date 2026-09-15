@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
+import SharedAudio from '../components/viewer/SharedAudio'
 import { fileKind, openShare, type SharedFile as Shared } from '../lib/assets'
 
 /**
@@ -125,9 +126,7 @@ export default function SharedFile() {
               {kind === 'video' && (
                 <video className="sf-media" src={file.url} controls preload="metadata" onLoadedMetadata={loaded} onError={loaded} />
               )}
-              {kind === 'audio' && (
-                <audio className="sf-audio" src={file.url} controls preload="metadata" onLoadedMetadata={loaded} onError={loaded} />
-              )}
+              {kind === 'audio' && <SharedAudio src={file.url} onReady={loaded} />}
               {kind === 'image' && (
                 <img className="sf-image" src={file.url} alt={file.file_name} onLoad={loaded} onError={loaded} />
               )}

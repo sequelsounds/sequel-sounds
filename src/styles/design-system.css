@@ -3877,17 +3877,70 @@
     max-height: 70vh;
   }
 
-  /* share_audio's 24px of padding, but on the black box around the player.
-     ⚠️ On the <audio> itself it crushed the controls: the app is border-box
-     throughout, so 48px of padding came out of the player's own 54px and left
-     a 6px strip — Andy, 16 Sep. */
+  /* The audio preview is the app's own player bar (SharedAudio), not the
+     browser's control — Andy, 16 Sep. Brown, as the bar is everywhere else. */
   .sf-preview.is-audio {
-    padding: 24px;
+    background-color: var(--color-sequel-brown);
   }
 
-  .sf-audio {
-    display: block;
-    width: 100%;
+  .sa-bar {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 18px;
+    height: 78px;
+    padding: 0 22px;
+    color: var(--color-sequel-silver);
+    background-color: var(--color-sequel-brown);
+  }
+
+  .sa-play {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    color: var(--color-sequel-brown);
+    background-color: var(--color-sequel-silver);
+  }
+
+  .sa-time {
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .sa-volume {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .sa-volume button {
+    display: flex;
+    color: inherit;
+  }
+
+  .sa-error {
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 300;
+  }
+
+  .sa-bar button:focus-visible {
+    outline: none;
+  }
+
+  @media (max-width: 40rem) {
+    .sa-bar {
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+    }
+
+    .sa-volume {
+      display: none;
+    }
   }
 
   .sf-image {
