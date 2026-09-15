@@ -9,6 +9,7 @@ import {
   useBillLinks,
   usePaymentTimes,
   useQboBills,
+  useQboOrphans,
   type FinanceInvoice,
   type Stage,
 } from '../lib/finance'
@@ -93,6 +94,7 @@ function ClientInvoices() {
   const finance = useIsFinance()
   const isFinance = finance.data === true
   const times = usePaymentTimes(isFinance)
+  const orphans = useQboOrphans(isFinance)
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>('All')
@@ -152,6 +154,25 @@ function ClientInvoices() {
           </>
         )}
       </div>
+
+      {/* ⚠️ The failed-raise check. Loud on purpose: an invoice QuickBooks has
+          and the app does not is one a second raise would bill twice. */}
+      {(orphans.data?.orphans?.length ?? 0) > 0 && (
+        <div className="finance-alert" role="alert">
+          <span className="finance-alert-title">In QuickBooks but not in the app — do not raise these again:</span>
+          {orphans.data!.orphans!.map((o) => (
+            <a
+              key={o.id}
+              className="finance-alert-item"
+              href={`https://app.qbo.intuit.com/app/invoice?txnId=${o.id}`}
+              target="_blank"
+              rel="noopener"
+            >
+              {o.doc_number ?? `id ${o.id}`} · {o.customer} · {formatMoney(o.total, o.currency)} · {fmtDate(o.txn_date)}
+            </a>
+          ))}
+        </div>
+      )}
 
       <div className="filter-tabs" role="tablist" aria-label="Invoices">
         {filters.map((f) => (

@@ -5,6 +5,8 @@
 //   { action: "disconnect" }          -> { ok, revoked }
 //   { action: "payment_times" }       -> { connected, clients?, overall? }
 //   { action: "bills" }               -> { connected, bills? }
+//   { action: "invoice", doc_number } -> { connected, invoices? }  read only
+//   { action: "orphans" }             -> { connected, orphans? }   read only
 //
 // Talks to QuickBooks through the Intuit app "Sequel App New", a separate
 // connection from the old app's (Xano table 65), so nothing here can rotate or
@@ -426,6 +428,46 @@ async function listBills(admin: SupabaseClient) {
     .sort((a, b) => (b.txn_date ?? '').localeCompare(a.txn_date ?? '') || Number(b.id) - Number(a.id))
 }
 
+/**
+ * QuickBooks invoices the app has no record of.
+ *
+ * ⚠️ WHY. A raise creates the invoice in QuickBooks and THEN records it. If
+ * anything fails in between, QuickBooks has an invoice the app still shows as
+ * unraised — and raising it again bills the client twice. That happened on
+ * 9 Sep (invoice 292) and 10 Sep (293 → 1166, found by Andy on 15 Sep). This
+ * is the check that makes such a failure loud: the Finance page shows every
+ * orphan it returns.
+ *
+ * Matched on the QuickBooks id stored on the app's invoice. Only invoices
+ * dated on or after the app's first (13 Nov 2025) count — anything older
+ * predates the app and was never meant to be in it.
+ */
+const ORPHANS_FROM = '2025-11-01'
+
+async function listOrphans(admin: SupabaseClient) {
+  const { token, realm } = await accessToken(admin)
+  const [invoices, known] = await Promise.all([
+    queryAll(token, realm, admin, `select * from Invoice where TxnDate >= '${ORPHANS_FROM}'`, 'Invoice'),
+    admin.schema('xano_mirror').from('invoices').select('qbo_invoice_id'),
+  ])
+  if (known.error) throw new Error('Could not read the app\u2019s invoices.')
+  const ids = new Set(
+    ((known.data ?? []) as { qbo_invoice_id: string | null }[])
+      .map((r) => (r.qbo_invoice_id ?? '').trim())
+      .filter(Boolean),
+  )
+  return invoices
+    .filter((i) => !ids.has(String(i.Id)))
+    .map((i) => ({
+      id: String(i.Id),
+      doc_number: (i.DocNumber as string | undefined) ?? null,
+      txn_date: (i.TxnDate as string | undefined) ?? null,
+      customer: (i.CustomerRef as { name?: string } | undefined)?.name ?? '',
+      currency: (i.CurrencyRef as { value?: string } | undefined)?.value ?? null,
+      total: Number(i.TotalAmt ?? 0),
+    }))
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(origin) })
@@ -434,7 +476,7 @@ Deno.serve(async (req) => {
   const userId = await financeUser(req)
   if (!userId) return json({ error: 'Only finance can use QuickBooks from here.' }, 403, origin)
 
-  let body: { action?: string; return_to?: unknown }
+  let body: { action?: string; return_to?: unknown; doc_number?: unknown }
   try {
     body = await req.json()
   } catch {
@@ -488,6 +530,37 @@ Deno.serve(async (req) => {
   if (body.action === 'bills') {
     try {
       return json({ connected: true, bills: await listBills(admin) }, 200, origin)
+    } catch (e) {
+      if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
+      return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
+    }
+  }
+
+  if (body.action === 'invoice') {
+    // Read only. For reconciling an invoice QuickBooks has and the app does
+    // not (an orphaned raise). The number is checked before it goes near the
+    // query string.
+    const doc = typeof body.doc_number === 'string' ? body.doc_number.trim() : ''
+    if (!/^[A-Za-z0-9-]{1,21}$/.test(doc)) return json({ error: 'doc_number is not valid' }, 400, origin)
+    try {
+      const { token, realm } = await accessToken(admin)
+      const rows = await queryAll(
+        token,
+        realm,
+        admin,
+        `select * from Invoice where DocNumber = '${doc}'`,
+        'Invoice',
+      )
+      return json({ connected: true, invoices: rows }, 200, origin)
+    } catch (e) {
+      if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
+      return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
+    }
+  }
+
+  if (body.action === 'orphans') {
+    try {
+      return json({ connected: true, orphans: await listOrphans(admin) }, 200, origin)
     } catch (e) {
       if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
       return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)

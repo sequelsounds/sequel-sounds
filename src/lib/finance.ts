@@ -152,3 +152,27 @@ export function billStageOf(b: QboBill): BillStage {
   if (b.due_date && b.due_date < today()) return 'Overdue'
   return 'Unpaid'
 }
+
+export type QboOrphan = {
+  id: string
+  doc_number: string | null
+  txn_date: string | null
+  customer: string
+  currency: string | null
+  total: number
+}
+
+/**
+ * QuickBooks invoices the app has no record of — the failed-raise check.
+ * A raise that created the invoice and then failed to record it leaves one of
+ * these, and raising it again would bill the client twice. Finance only.
+ */
+export function useQboOrphans(enabled: boolean) {
+  return useQuery({
+    queryKey: ['qbo', 'orphans'],
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: false,
+    queryFn: () => callQuickBooks<{ connected: boolean; error?: string; orphans?: QboOrphan[] }>({ action: 'orphans' }),
+  })
+}
