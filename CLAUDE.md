@@ -28,6 +28,11 @@ npm run lint    # oxlint
 npm run types   # regenerate src/lib/database.types.ts (needs the supabase CLI)
 ```
 
+**Type-check with `npx tsc -b`.** ⚠️ `npx tsc --noEmit -p .` checks NOTHING here —
+the root tsconfig only holds project references — and exits 0 whatever the
+code says. It was used for a whole session on 15 Sep 2026 and hid real errors.
+Proven: a deliberate type error fails `tsc -b` and passes the other.
+
 There is **no Prettier config**, but the codebase is Prettier-formatted with
 `--no-semi --single-quote`. Match it. If a scripted edit disturbs formatting,
 reformat with exactly those flags rather than hand-fixing indentation.
