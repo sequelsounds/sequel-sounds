@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
-import { EditEnum, EditField, EditSelect, ReadOnlyField } from '../components/staff/EditField'
+import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
+import { QboBillingAddress, QboVendorField } from '../components/staff/QboVendorField'
 // The house format for a GBP figure on a stats band: rounded to the pound, the
 // same as /management and /dashboard. Pennies belong on an invoice, not a tile.
 import { money } from '../components/staff/reporting'
@@ -248,39 +249,17 @@ export default function Partner() {
 
         {tab === 'Finance' && (
           <div className="edit-form">
-            {/* ⚠️ NOT editable here, on purpose, and the one field on this page
-                that is a real gap rather than a copy of one.
-
-                Track edits it through a picker that lists QuickBooks' own
-                vendors as "Name — CURRENCY", because QuickBooks ties a vendor
-                to one currency and the same supplier can exist twice —
-                "Audio Network GBP" and "Audio Network Milan". Without the
-                currency the two are indistinguishable and a bill goes to the
-                wrong entity. The mirror holds only the id, so a text box here
-                would be a raw id typed by hand into exactly that trap.
-
-                The database already refuses this column to anyone who is not
-                finance (supplier_list_write_guard), so the guard is in place
-                and waiting for the picker rather than the other way round. */}
-            <ReadOnlyField
-              label="QuickBooks Vendor"
-              value={p.qbo_vendor_id}
-              note="needs the vendor picker"
-            />
+            {/* The old app's vendor picker, finance only. Choosing a vendor
+                saves its id and currency together; the database refuses both
+                to anyone who is not finance (supplier_list_write_guard). */}
+            <QboVendorField supplierId={p.id} uuid={uuid} vendorId={p.qbo_vendor_id} />
             <EditField
               label="Finance Email"
               value={p.finance_email}
               onSave={text('finance_email')}
             />
-            {/* QuickBooks is the source of truth for a vendor's billing address
-                and Xano stores no copy, so there is nothing in the mirror to
-                read. An unlinked supplier has no address anywhere in the
-                system. */}
-            <ReadOnlyField
-              label="Billing Address (from QuickBooks)"
-              value=""
-              note="lives in QuickBooks"
-            />
+            {/* Read from QuickBooks, never stored here. */}
+            <QboBillingAddress vendorId={p.qbo_vendor_id} />
           </div>
         )}
       </div>

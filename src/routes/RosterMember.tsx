@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
-import { EditEnum, EditField, EditSelect, ReadOnlyField } from '../components/staff/EditField'
+import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
+import { QboBillingAddress, QboVendorField } from '../components/staff/QboVendorField'
 // The house format for a GBP figure on a stats band: rounded to the pound, the
 // same as /management and /dashboard. Pennies belong on an invoice, not a tile.
 import { money } from '../components/staff/reporting'
@@ -204,31 +205,17 @@ export default function RosterMember() {
 
         {tab === 'Finance' && (
           <div className="edit-form">
-            {/* ⚠️ Not editable yet, and deliberately not a text box. Track
-                resolves this to "SpaceBar Audio — EUR" by calling QuickBooks,
-                and the currency is load-bearing: a supplier billing in two
-                currencies is two vendors, and the wrong one is a bill sent to
-                the wrong entity. The mirror holds the id alone, so until the
-                picker is rebuilt an editable field here would be a raw id
-                typed by hand. The database already refuses this column to
-                anyone who is not finance. */}
-            <ReadOnlyField
-              label="QuickBooks Vendor"
-              value={m.qbo_vendor_id}
-              note="needs the vendor picker"
-            />
+            {/* The old app's vendor picker, finance only. Choosing a vendor
+                saves its id and currency together; the database refuses both
+                to anyone who is not finance (supplier_list_write_guard). */}
+            <QboVendorField supplierId={m.id} uuid={uuid} vendorId={m.qbo_vendor_id} />
             <EditField
               label="Finance Email"
               value={m.finance_email}
               onSave={text('finance_email')}
             />
-            {/* QuickBooks is the source of truth for the address and Xano keeps
-                no copy, so there is nothing to read. */}
-            <ReadOnlyField
-              label="Billing Address (from QuickBooks)"
-              value=""
-              note="lives in QuickBooks"
-            />
+            {/* Read from QuickBooks, never stored here. */}
+            <QboBillingAddress vendorId={m.qbo_vendor_id} />
           </div>
         )}
       </div>

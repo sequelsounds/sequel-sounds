@@ -1490,3 +1490,69 @@
     }
   }
 }
+
+/* The QuickBooks vendor picker and billing address on the supplier Finance
+   tabs — copied from the old app's `invoice_combo_*` and
+   `project-edit-readonly-value` styles, 15 Sep 2026. */
+@layer components {
+  .qbo-combo {
+    position: relative;
+    width: 100%;
+  }
+
+  .qbo-combo-panel {
+    position: absolute;
+    top: 100%;
+    z-index: 40;
+    width: 100%;
+    max-height: 16rem;
+    overflow: auto;
+    border: 1px solid var(--color-sequel-brown);
+    background-color: var(--color-sequel-silver);
+    box-shadow: 0 6px 18px rgb(55 43 41 / 14%);
+  }
+
+  .qbo-combo-option {
+    display: block;
+    width: 100%;
+    padding: 0.5rem;
+    border: 0;
+    background: transparent;
+    color: rgb(55 43 41 / 70%);
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 300;
+    line-height: 0.8rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .qbo-combo-option:hover {
+    background-color: rgb(55 43 41 / 8%);
+  }
+
+  .qbo-combo-empty {
+    padding: 0.625rem 0.5rem;
+    color: var(--color-sequel-brown);
+    opacity: 0.5;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 300;
+    line-height: 0.8rem;
+  }
+
+  .qbo-address {
+    padding: 8px;
+    color: rgb(55 43 41 / 70%);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    white-space: pre-line;
+  }
+
+  /* Sits where a field's save status goes, so it reads as part of the label
+     row rather than a second control. */
+  .qbo-connect {
+    margin-bottom: 5px;
+    font-size: 0.7rem;
+  }
+}
