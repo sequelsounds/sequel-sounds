@@ -396,7 +396,19 @@ export function useProjectQuotes(id: number | undefined) {
   return useQuery({
     enabled: Number.isFinite(id),
     queryKey: ['mirror', 'quotes', id],
-    queryFn: () => rows<Quote>('project_quotes', id!, 'id'),
+    // ⚠️ Archived quotes are left out, as the old app's
+    // get_projects_quotes_by_uuid does — they were showing here. An OR, so the
+    // quotes with no status still show (mirror trap 4).
+    queryFn: async () => {
+      const { data, error } = await mirror
+        .from('project_quotes')
+        .select('*')
+        .eq('project_master_list_id', id!)
+        .or('status.is.null,status.neq.Archived')
+        .order('id', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as Quote[]
+    },
   })
 }
 

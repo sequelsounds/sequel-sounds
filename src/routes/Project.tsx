@@ -4,7 +4,7 @@ import { Loader } from '../components/Loader'
 import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
 import { NewQuote } from '../components/staff/NewQuote'
 import { NewInvoice } from '../components/staff/NewInvoice'
-import { InvoiceRowActions } from '../components/staff/InvoiceRowActions'
+import { InvoiceRowActions, QuoteRowActions } from '../components/staff/RowActions'
 import { formatBytes, formatMoney } from '../lib/format'
 import {
   useProjectLookups,
@@ -760,6 +760,7 @@ export default function Project() {
                   <span className="row-field">{formatMoney(q.grand_total_amount)}</span>
                 </span>
                 <Cell>{fmt(shortDate, q.created_at)}</Cell>
+                {edit && <QuoteRowActions quote={q} projectId={projectId} />}
               </>
             )}
           />

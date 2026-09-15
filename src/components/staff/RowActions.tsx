@@ -1,20 +1,23 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useArchiveInvoice } from '../../lib/invoiceEdits'
+import { useArchiveQuote } from '../../lib/quoteWrites'
 import { useIsFinance } from '../../lib/xanoMirror'
-import type { Invoice } from '../../lib/xanoMirror'
+import type { Invoice, Quote } from '../../lib/xanoMirror'
 
 /**
- * The share and delete cells on a project's invoice row, and the two modals
- * behind them — the old app's `shareable_invoice_menu` and
- * `Delete_invoice_modal`, wording and layout read off the staging page.
+ * The share and delete cells on a project's invoice and estimate rows, and the
+ * two modals behind them — the old app's `shareable_invoice_menu` /
+ * `shareable_quote_menu` and `Delete_invoice_modal` / `Delete_quote_Modal`,
+ * wording and layout read off the staging page.
  *
- * Two changes from the old app, both Andy's, 15 Sep:
- *  - SHARE copies the link to the invoice's own page. The old app shared
- *    AWS_link, which is empty on every invoice.
+ * Changes from the old app, all Andy's, 15 Sep:
+ *  - An invoice's SHARE copies the link to the invoice's own page. The old app
+ *    shared AWS_link, which is empty on every invoice. A quote's share is the
+ *    old app's: the quote document, which opens for anyone holding the link.
  *  - DELETE archives, as the old app does, but an invoice already in
  *    QuickBooks can be archived by finance only. The cell is drawn and dead for
- *    everyone else; the database refuses anyway.
+ *    everyone else; the database refuses anyway. Quotes: any staff member.
  *
  * ⚠️ These sit inside the row's link. Every click here stops at the cell, and
  * the modals are portalled out — but React still bubbles a portal's clicks
@@ -27,12 +30,72 @@ export function InvoiceRowActions({
   invoice: Invoice
   projectId: number | undefined
 }) {
+  const finance = useIsFinance()
+  const archive = useArchiveInvoice(projectId)
+  const raised = (invoice.qbo_invoice_id ?? '') !== ''
+  return (
+    <RowActions
+      id={invoice.id}
+      what="invoice"
+      shareLink={invoice.uuid ? `${window.location.origin}/invoices/${invoice.uuid}` : null}
+      shareHeader="Shareable Link Generated"
+      shareSubheader="Click copy to share your invoice link"
+      canArchive={!raised || finance.data === true}
+      inertTitle="In QuickBooks — only finance can delete it"
+      archive={archive}
+    />
+  )
+}
+
+export function QuoteRowActions({
+  quote,
+  projectId,
+}: {
+  quote: Quote
+  projectId: number | undefined
+}) {
+  const archive = useArchiveQuote(projectId)
+  return (
+    <RowActions
+      id={quote.id}
+      what="quote"
+      shareLink={quote.uuid ? `${window.location.origin}/quotes/${quote.uuid}` : null}
+      shareHeader="Share your quote"
+      shareSubheader="Please use this link to share your quote."
+      canArchive
+      archive={archive}
+    />
+  )
+}
+
+type Archive = {
+  mutate: (id: number, opts?: { onSuccess?: () => void }) => void
+  isPending: boolean
+  error: Error | null
+  reset: () => void
+}
+
+function RowActions({
+  id,
+  what,
+  shareLink,
+  shareHeader,
+  shareSubheader,
+  canArchive,
+  inertTitle,
+  archive,
+}: {
+  id: number
+  what: 'invoice' | 'quote'
+  shareLink: string | null
+  shareHeader: string
+  shareSubheader: string
+  canArchive: boolean
+  inertTitle?: string
+  archive: Archive
+}) {
   const [sharing, setSharing] = useState(false)
   const [archiving, setArchiving] = useState(false)
-  const finance = useIsFinance()
-
-  const raised = (invoice.qbo_invoice_id ?? '') !== ''
-  const canArchive = !raised || finance.data === true
 
   const stop = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -45,8 +108,8 @@ export function InvoiceRowActions({
         <button
           type="button"
           className="row-action-button"
-          aria-label="Share this invoice"
-          disabled={!invoice.uuid}
+          aria-label={`Share this ${what}`}
+          disabled={!shareLink}
           onClick={(e) => {
             stop(e)
             setSharing(true)
@@ -59,28 +122,34 @@ export function InvoiceRowActions({
         <button
           type="button"
           className="row-action-button"
-          aria-label="Delete this invoice"
-          title={canArchive ? undefined : 'In QuickBooks — only finance can delete it'}
+          aria-label={`Delete this ${what}`}
+          title={canArchive ? undefined : inertTitle}
           disabled={!canArchive}
           onClick={(e) => {
             stop(e)
-            if (canArchive) setArchiving(true)
+            if (canArchive) {
+              archive.reset()
+              setArchiving(true)
+            }
           }}
         >
           <ArchiveIcon />
         </button>
       </span>
 
-      {sharing && invoice.uuid && (
+      {sharing && shareLink && (
         <ShareModal
-          link={`${window.location.origin}/invoices/${invoice.uuid}`}
+          link={shareLink}
+          header={shareHeader}
+          subheader={shareSubheader}
           onClose={() => setSharing(false)}
         />
       )}
       {archiving && (
         <ArchiveModal
-          invoiceId={invoice.id}
-          projectId={projectId}
+          header={`Are you sure you want to delete this ${what}?`}
+          archive={archive}
+          onConfirm={() => archive.mutate(id, { onSuccess: () => setArchiving(false) })}
           onClose={() => setArchiving(false)}
         />
       )}
@@ -105,13 +174,23 @@ function Modal({ onClose, children }: { onClose: () => void; children: React.Rea
   )
 }
 
-function ShareModal({ link, onClose }: { link: string; onClose: () => void }) {
+function ShareModal({
+  link,
+  header,
+  subheader,
+  onClose,
+}: {
+  link: string
+  header: string
+  subheader: string
+  onClose: () => void
+}) {
   const [copied, setCopied] = useState(false)
   return (
     <Modal onClose={onClose}>
       <button type="button" className="wizard-close rm-close" aria-label="Close" onClick={onClose} />
-      <div className="rm-header">Shareable Link Generated</div>
-      <div className="rm-subheader">Click copy to share your invoice link</div>
+      <div className="rm-header">{header}</div>
+      <div className="rm-subheader">{subheader}</div>
       <div className="rm-buttons">
         <div className="rm-link">{link}</div>
         <button
@@ -147,18 +226,19 @@ function ShareModal({ link, onClose }: { link: string; onClose: () => void }) {
 }
 
 function ArchiveModal({
-  invoiceId,
-  projectId,
+  header,
+  archive,
+  onConfirm,
   onClose,
 }: {
-  invoiceId: number
-  projectId: number | undefined
+  header: string
+  archive: Archive
+  onConfirm: () => void
   onClose: () => void
 }) {
-  const archive = useArchiveInvoice(projectId)
   return (
     <Modal onClose={onClose}>
-      <div className="rm-header">Are you sure you want to delete this invoice?</div>
+      <div className="rm-header">{header}</div>
       <div className="rm-subheader">Your client will no longer be able to see it.</div>
       {archive.error && <p className="form-error">{archive.error.message}</p>}
       <div className="rm-buttons">
@@ -168,7 +248,7 @@ function ArchiveModal({
           type="button"
           className="wizard-btn rm-button"
           disabled={archive.isPending}
-          onClick={() => archive.mutate(invoiceId, { onSuccess: onClose })}
+          onClick={onConfirm}
         >
           {archive.isPending ? 'DELETING…' : 'CONFIRM'}
         </button>

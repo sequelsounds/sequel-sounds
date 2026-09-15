@@ -272,3 +272,22 @@ export function useQuoteLookups() {
     },
   })
 }
+
+/**
+ * Archives a quote: status Archived, never a hard delete. Any Sequel staff
+ * member can, as in the old app's archive_quote.
+ */
+export function useArchiveQuote(projectId: number | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (quoteId: number) => {
+      const { error } = await (supabase as unknown as SupabaseClient).rpc('track_archive_quote', {
+        p_quote_id: quoteId,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mirror', 'quotes', projectId] })
+    },
+  })
+}
