@@ -1575,13 +1575,8 @@
     margin-bottom: 0;
   }
 
-  /* The column heads: Sequel Brown with silver type, at the filter tabs' size
-     (0.7rem) — Andy, 15 Sep. */
-  .finance-head {
-    background-color: var(--color-sequel-brown);
-    color: var(--color-sequel-silver);
-  }
-
+  /* The column heads at the filter tabs' size (0.7rem) — Andy, 15 Sep. A brown
+     band with silver type was tried and reverted. */
   .finance-head .project-list-head-cell {
     font-size: 0.7rem;
   }
