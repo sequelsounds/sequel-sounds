@@ -146,9 +146,14 @@ interaction. Test focus styles by sending Tab keypresses.
 
 ## Deployment
 
-The app is a static build on **Cloudflare Workers** at
-**https://studio.sequelsounds.com** (`wrangler.jsonc`, assets from `./dist`,
-SPA not-found handling).
+The app is a static build on **Cloudflare Workers** (`wrangler.jsonc`, assets
+from `./dist`, SPA not-found handling). It runs at
+**https://studio.sequelsounds.com** today; its intended home is
+**https://app.sequelsounds.com** (Andy, 13 and 15 Sep 2026) — everything on the
+old app and the audio side ends up there. short.io still holds
+`app.sequelsounds.com` until its links expire on 19 Sep, so the move is after
+that. Both origins are allowed everywhere below; keep it that way until
+`studio.` is retired.
 
 `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are **build-time**
 variables — Vite inlines them, so they belong in Cloudflare's build environment,
@@ -158,13 +163,15 @@ not as Worker secrets. Set as Worker secrets they do nothing and the app throws
 **A new origin has to be added in four places, or uploads fail in ways that
 look unrelated:**
 
-1. `ALLOWED_ORIGINS` in `supabase/functions/sign-upload/index.ts` **and**
-   `supabase/functions/sign-media/index.ts`, then redeploy both
+1. `ALLOWED_ORIGINS` in every edge function the browser calls —
+   `sign-upload`, `sign-media`, `sign-document`, `delete-track` and
+   `quickbooks` — then redeploy each
 2. the S3 bucket CORS — `infra/s3-cors.json`, applied with
    `aws s3api put-bucket-cors --bucket sequel-sounds-media --region eu-west-2
    --cors-configuration file://infra/s3-cors.json`
 3. `APP_BASE_URL` in the Supabase secrets, which is what `xano-webhook` uses to
-   build the inbox links Xano stores
+   build the inbox links Xano stores — change this only when the app is
+   actually served from the new origin, or every new link points nowhere
 
 Miss (1) and the presign call is blocked — or, for `sign-media`, every artwork
 and preview in the staff app silently fails to load; miss (2) and the presign succeeds but
@@ -181,6 +188,8 @@ ever names one key at a time — so it has no `s3:ListBucket` and no
 Edge Functions deploy separately from the app; editing a file under
 `supabase/functions/` changes nothing until it is deployed. There is no supabase
 CLI on this machine, but the Supabase MCP can deploy — keep `verify_jwt` as it
-was (`true` for `sign-upload` and `sign-media`, `false` for `xano-webhook` and
-`track-processed`, which authenticate themselves with a shared secret).
+was (`true` for `sign-upload`, `sign-media`, `sign-document` and `delete-track`;
+`false` for `xano-webhook`, `xano-mirror-sync` and `track-processed`, which
+authenticate themselves with a shared secret, and for `quickbooks` and
+`qbo-callback`, which check finance and the OAuth state themselves).
 

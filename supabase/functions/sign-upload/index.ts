@@ -27,6 +27,7 @@ const URL_TTL_SECONDS = 900
 
 const ALLOWED_ORIGINS = [
   /^http:\/\/localhost:\d+$/, // dev
+  /^https:\/\/app\.sequelsounds\.com$/, // the app's own domain (Andy, 13 Sep)
   /^https:\/\/studio\.sequelsounds\.com$/, // the live app
   /^https:\/\/[^.]+\.sequelsounds\.app$/, // Webflow subdomains
 ]

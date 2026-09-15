@@ -198,7 +198,7 @@ function RowActions({
   )
 }
 
-function Modal({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+export function Modal({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
   return createPortal(
     <div
       className="rm-darken"

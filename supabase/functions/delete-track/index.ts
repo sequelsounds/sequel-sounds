@@ -14,6 +14,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 
 const ALLOWED_ORIGINS = [
   /^http:\/\/localhost:\d+$/,
+  /^https:\/\/app\.sequelsounds\.com$/, // the app's own domain (Andy, 13 Sep)
   /^https:\/\/studio\.sequelsounds\.com$/,
   /^https:\/\/[^.]+\.sequelsounds\.app$/,
 ]

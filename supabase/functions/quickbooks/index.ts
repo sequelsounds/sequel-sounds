@@ -2,6 +2,7 @@
 //
 //   { action: "connect", return_to }  -> { url }   Intuit's consent page
 //   { action: "vendors" }             -> { connected, vendors?, error? }
+//   { action: "disconnect" }          -> { ok, revoked }
 //
 // Talks to QuickBooks through the Intuit app "Sequel App New", a separate
 // connection from the old app's (Xano table 65), so nothing here can rotate or
@@ -20,6 +21,7 @@ const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 const API_BASE = 'https://quickbooks.api.intuit.com'
 const REDIRECT_URI = 'https://sveirphsppyfhulymjiu.supabase.co/functions/v1/qbo-callback'
 const SCOPE = 'com.intuit.quickbooks.accounting'
+const REVOKE_URL = 'https://developer.api.intuit.com/v2/oauth2/tokens/revoke'
 
 const ALLOWED_ORIGINS = [
   /^http:\/\/localhost:\d+$/,
@@ -299,6 +301,37 @@ Deno.serve(async (req) => {
       if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
       return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
     }
+  }
+
+  if (body.action === 'disconnect') {
+    // Revoke at Intuit first, so the grant is gone there and not just
+    // forgotten here; then drop the row whatever Intuit said, because a
+    // connection finance has asked to remove must not keep working. Revoking
+    // is per Intuit app, so this cannot touch the old app's connection.
+    const { data } = await admin
+      .from('qbo_connection')
+      .select('refresh_token, access_token')
+      .eq('environment', 'production')
+      .maybeSingle()
+    const token = (data?.refresh_token ?? data?.access_token) as string | null | undefined
+    let revoked = false
+    if (token) {
+      const clientId = Deno.env.get('QBO_CLIENT_ID') ?? ''
+      const clientSecret = Deno.env.get('QBO_CLIENT_SECRET') ?? ''
+      const res = await fetch(REVOKE_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      })
+      revoked = res.ok
+    }
+    const { error } = await admin.from('qbo_connection').delete().eq('environment', 'production')
+    if (error) return json({ error: 'Could not remove the QuickBooks connection.' }, 500, origin)
+    return json({ ok: true, revoked }, 200, origin)
   }
 
   return json({ error: 'unknown action' }, 400, origin)

@@ -40,6 +40,7 @@ const READ_KEY_RE = /^invoices\/po\/[0-9a-f-]{36}\.[a-z0-9]+$/
 
 const ALLOWED_ORIGINS = [
   /^http:\/\/localhost:\d+$/,
+  /^https:\/\/app\.sequelsounds\.com$/, // the app's own domain (Andy, 13 Sep)
   /^https:\/\/studio\.sequelsounds\.com$/,
   /^https:\/\/[^.]+\.sequelsounds\.app$/,
 ]

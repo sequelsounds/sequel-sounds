@@ -5,6 +5,7 @@
       "AllowedMethods": ["PUT", "GET", "HEAD"],
       "AllowedOrigins": [
         "http://localhost:5173",
+        "https://app.sequelsounds.com",
         "https://studio.sequelsounds.com",
         "https://*.sequelsounds.app"
       ],

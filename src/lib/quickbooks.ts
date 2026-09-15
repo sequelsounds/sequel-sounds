@@ -71,6 +71,21 @@ export async function connectQuickBooks() {
 }
 
 /**
+ * Removes the connection: revoked at Intuit, then deleted here. Only the new
+ * app's Intuit app ("Sequel App New") is affected — the old app's connection
+ * is a different grant.
+ */
+export function useDisconnectQuickBooks() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => callQuickBooks<{ ok: boolean; revoked: boolean }>({ action: 'disconnect' }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['qbo', 'vendors'] })
+    },
+  })
+}
+
+/**
  * "Name — CURRENCY", the old app's label. The currency is not decoration:
  * QuickBooks ties a vendor to one currency, so the same supplier can exist
  * twice — "Audio Network GBP" and "Audio Network Milan" — and a bill sent to

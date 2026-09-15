@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useIsFinance } from '../../lib/xanoMirror'
+import { Modal } from './RowActions'
 import {
   addressLines,
   connectQuickBooks,
+  useDisconnectQuickBooks,
   useLinkQboVendor,
   useQboVendors,
   vendorLabel,
@@ -24,7 +26,8 @@ import {
  *    message for every way it can be blank.
  *
  * Added because this app holds its own QuickBooks connection: a Connect link
- * when there is no connection, and the reason when a save or a call fails.
+ * when there is no connection, a Disconnect link (with a confirm) when there
+ * is, and the reason when a save or a call fails.
  *
  * ⚠️ Old-app defect NOT copied: its address asks QuickBooks through a
  * finance-only endpoint for everyone, so a non-finance user sees "Loading..."
@@ -43,6 +46,8 @@ export function QboVendorField({
   const isFinance = finance.data === true
   const vendors = useQboVendors(isFinance)
   const link = useLinkQboVendor(uuid)
+  const disconnect = useDisconnectQuickBooks()
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false)
   const qc = useQueryClient()
 
   const [open, setOpen] = useState(false)
@@ -148,6 +153,10 @@ export function QboVendorField({
                 <button type="button" className="link-button qbo-connect" onClick={() => void connect()}>
                   Connect QuickBooks
                 </button>
+              ) : connected ? (
+                <button type="button" className="link-button qbo-connect" onClick={() => setConfirmDisconnect(true)}>
+                  Disconnect
+                </button>
               ) : null)}
           </div>
           <div className="qbo-combo">
@@ -208,6 +217,32 @@ export function QboVendorField({
               </div>
             )}
           </div>
+          {confirmDisconnect && (
+            <Modal onClose={() => setConfirmDisconnect(false)}>
+              <div className="rm-header">Disconnect QuickBooks?</div>
+              <div className="rm-subheader">
+                The new app will stop reading vendors until finance connects it again. The old app&rsquo;s
+                QuickBooks connection is not affected.
+              </div>
+              {disconnect.error && <p className="form-error">{disconnect.error.message}</p>}
+              <div className="rm-buttons">
+                {/* Closes only once it has worked, like the archive modal. */}
+                <button
+                  type="button"
+                  className="wizard-btn rm-button"
+                  disabled={disconnect.isPending}
+                  onClick={() =>
+                    disconnect.mutate(undefined, { onSuccess: () => setConfirmDisconnect(false) })
+                  }
+                >
+                  {disconnect.isPending ? 'DISCONNECTING…' : 'CONFIRM'}
+                </button>
+                <button type="button" className="wizard-btn rm-button" onClick={() => setConfirmDisconnect(false)}>
+                  CANCEL
+                </button>
+              </div>
+            </Modal>
+          )}
         </div>
   )
 }
