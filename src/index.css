@@ -1345,6 +1345,55 @@
     white-space: nowrap;
   }
 
+  /* .modal-text: tucked up under the subheader it follows. */
+  .rm-text {
+    margin-top: -1rem;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 0.9rem;
+    font-weight: 300;
+  }
+
+  /* The brief view, brief_view_answers / _qa / _question: a scrolling band
+     ruled top and bottom, its rules running the full width of the modal. */
+  .bv-answers {
+    max-height: 60vh;
+    margin: 1.5rem -2.5rem 0;
+    padding: 1.5rem 2.5rem 0.5rem;
+    overflow-y: auto;
+    border-top: 1px solid var(--color-sequel-brown);
+    border-bottom: 1px solid var(--color-sequel-brown);
+  }
+
+  .bv-qa {
+    margin-bottom: 1.25rem;
+  }
+
+  .bv-question {
+    font-weight: 400;
+  }
+
+  /* The client's own line breaks, kept. */
+  .bv-answer {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .bv-email {
+    white-space: nowrap;
+  }
+
+  /* contract-btn-swap / hidden-buttons-wrap: + NEW BRIEF gives way to its
+     three choices, 16px apart, and they stay until the tab is left. */
+  .pane-menu {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .project-row.is-openable {
+    cursor: pointer;
+  }
+
   .qw-note {
     margin-top: 1.5rem;
     font-family: 'Creato Display', Arial, sans-serif;

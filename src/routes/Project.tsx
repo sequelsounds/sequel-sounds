@@ -5,6 +5,13 @@ import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
 import { NewQuote } from '../components/staff/NewQuote'
 import { NewInvoice } from '../components/staff/NewInvoice'
 import { InvoiceRowActions, QuoteRowActions } from '../components/staff/RowActions'
+import {
+  BriefRowActions,
+  BriefShareModal,
+  BriefViewModal,
+  type ShareState,
+} from '../components/staff/BriefActions'
+import { briefLink, useRequestBrief } from '../lib/briefs'
 import { formatBytes, formatMoney } from '../lib/format'
 import {
   useProjectLookups,
@@ -283,10 +290,13 @@ function Form({ children }: { children: React.ReactNode }) {
 }
 
 /** App subtitle wraps: the tab's own subtitle, and the button that adds to it. */
+type MenuItem = { label: string; onClick?: () => void }
+
 function PaneBar({
   title,
   action,
   onAction,
+  menu,
 }: {
   title: string
   action?: string
@@ -294,16 +304,36 @@ function PaneBar({
       create flow behind them yet, and a live button that does nothing is
       worse than one that says so. */
   onAction?: () => void
+  /** contract-btn-swap: the button gives way to these choices when clicked,
+      and they stay until the tab is left. An item with no onClick is drawn
+      disabled, for the same reason as above. */
+  menu?: MenuItem[]
 }) {
+  const [open, setOpen] = useState(false)
   return (
     <div className="pane-bar">
       <div className="pane-title">{title}</div>
-      {action && (
+      {action && menu && open && (
+        <div className="pane-menu">
+          {menu.map((m) => (
+            <button
+              key={m.label}
+              type="button"
+              className="btn btn-mono btn-outline"
+              disabled={!m.onClick}
+              onClick={m.onClick}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {action && !(menu && open) && (
         <button
           type="button"
           className="btn btn-mono btn-outline"
-          disabled={!onAction}
-          onClick={onAction}
+          disabled={menu ? !menu.some((m) => m.onClick) : !onAction}
+          onClick={menu ? () => setOpen(true) : onAction}
         >
           {action}
         </button>
@@ -322,6 +352,8 @@ function Rows<T>({
   title,
   action,
   onAction,
+  menu,
+  open,
   empty,
   state,
   variant,
@@ -331,6 +363,9 @@ function Rows<T>({
   title: string
   action?: string
   onAction?: () => void
+  menu?: MenuItem[]
+  /** A row that opens something in place (a modal) rather than a page. */
+  open?: (item: T) => (() => void) | null
   empty: string
   state: List<T>
   variant: 'quote' | 'invoice' | 'asset' | 'brief' | 'contract' | 'song'
@@ -346,7 +381,7 @@ function Rows<T>({
 }) {
   return (
     <>
-      <PaneBar title={title} action={action} onAction={onAction} />
+      <PaneBar title={title} action={action} onAction={onAction} menu={menu} />
       {state.isPending && (
         <div className="flex justify-center py-16">
           <Loader />
@@ -356,13 +391,14 @@ function Rows<T>({
       {state.data?.length === 0 && <p className="empty-note">{empty}</p>}
       {state.data?.map((item, i) => {
         const href = link?.(item) ?? null
-        const className = `project-row project-row-${variant}`
+        const onOpen = open?.(item) ?? null
+        const className = `project-row project-row-${variant}${onOpen ? ' is-openable' : ''}`
         return href ? (
           <Link key={i} to={href} className={className}>
             {row(item)}
           </Link>
         ) : (
-          <div key={i} className={className}>
+          <div key={i} className={className} onClick={onOpen ?? undefined}>
             {row(item)}
           </div>
         )
@@ -418,6 +454,50 @@ export default function Project() {
   const lookups = useProjectLookups()
   const people = useProjectPeople()
   const saveProject = useSaveProject(projectId)
+  const requestBrief = useRequestBrief(projectId)
+  const [briefShare, setBriefShare] = useState<ShareState | null>(null)
+  const [briefView, setBriefView] = useState<number | null>(null)
+
+  // REQUEST BRIEF: the modal opens at once and fills in when the token lands.
+  const onRequestBrief = () => {
+    if (requestBrief.isPending) return
+    setBriefShare({ kind: 'pending' })
+    requestBrief.mutate(false, {
+      onSuccess: (m) =>
+        setBriefShare({ kind: 'ready', link: briefLink(m.share_token), expires: m.expires_at }),
+      onError: () => setBriefShare({ kind: 'failed' }),
+    })
+  }
+
+  // CREATE BRIEF: the supervisor fills the same form in, in a new tab. The tab
+  // is opened NOW, blank, while the click still counts — one opened after the
+  // mint returns is blocked as a popup.
+  const onCreateBrief = () => {
+    if (requestBrief.isPending) return
+    const tab = window.open('about:blank', '_blank')
+    requestBrief.mutate(true, {
+      onSuccess: (m) => {
+        const url = briefLink(m.share_token, true)
+        if (tab && !tab.closed) tab.location.href = url
+        else window.location.href = url
+        // Back on this tab after filling it in: show the brief as Submitted.
+        // Focus, as the old app has it, or the tab becoming visible again —
+        // whichever comes first.
+        const back = () => {
+          if (document.visibilityState !== 'visible') return
+          window.removeEventListener('focus', back)
+          document.removeEventListener('visibilitychange', back)
+          void briefs.refetch()
+        }
+        window.addEventListener('focus', back)
+        document.addEventListener('visibilitychange', back)
+      },
+      onError: () => {
+        tab?.close()
+        window.alert("Couldn't create the brief. Please try again.")
+      },
+    })
+  }
   const [quoting, setQuoting] = useState(false)
   const [invoicing, setInvoicing] = useState(false)
   const save = (patch: ProjectPatch) => saveProject.mutateAsync(patch)
@@ -770,18 +850,32 @@ export default function Project() {
           <Rows<Brief>
             title="Briefs"
             action="+ NEW BRIEF"
+            menu={[
+              { label: 'REQUEST BRIEF', onClick: edit ? onRequestBrief : undefined },
+              { label: 'CREATE BRIEF', onClick: edit ? onCreateBrief : undefined },
+              // Rides on the asset upload, which comes with the shared file link.
+              { label: 'UPLOAD BRIEF' },
+            ]}
             empty="No briefs yet. Request one from the client or add it yourself."
             state={briefs}
             variant="brief"
+            // Only a submitted brief has anything to open.
+            open={(b) => (b.status === 'Submitted' ? () => setBriefView(b.id) : null)}
             row={(b) => (
               <>
                 <Title>{briefSummary(b)}</Title>
                 <Cell>{b.brief_type}</Cell>
                 <Cell>{briefState(b)}</Cell>
                 <Cell>{fmt(longDate, b.submitted_at ?? b.created_at)}</Cell>
+                {edit && <BriefRowActions brief={b} projectId={projectId} />}
               </>
             )}
           />
+        )}
+
+        {briefShare && <BriefShareModal state={briefShare} onClose={() => setBriefShare(null)} />}
+        {briefView !== null && (
+          <BriefViewModal briefId={briefView} project={p} onClose={() => setBriefView(null)} />
         )}
 
         {tab === 'Creative' && (

@@ -4,6 +4,7 @@ import { useSession } from './lib/auth'
 import { useIsStaff } from './lib/staff'
 import { supabase } from './lib/supabase'
 import Inbox from './routes/Inbox'
+import Brief from './routes/Brief'
 import Client from './routes/Client'
 import Clients from './routes/Clients'
 import Library from './routes/Library'
@@ -68,6 +69,9 @@ export default function App() {
           card, no nav rail — and it is what a client opens. Putting it inside
           StaffLayout gave it a sidebar the original has never had. */}
       <Route path="/quotes/:uuid" element={<Quote />} />
+      {/* The client's briefing form. Token in the query string, as the old
+          app's /brief?token= has it, so links already sent keep their shape. */}
+      <Route path="/brief" element={<Brief />} />
       <Route path="/p/:token" element={<SharedPlaylist />} />
       <Route path="/t/:token" element={<SharedTrack />} />
 

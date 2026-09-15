@@ -283,6 +283,10 @@ export type Brief = {
   // token once it lapses; the view states the rule instead.
   share_link_live: boolean | null
   created_at: string | null
+  /** Only while the link would still work and the brief is unanswered, as
+      Xano's get_project_briefs hands it out. Null otherwise. */
+  share_token: string | null
+  share_expires_at: string | null
 }
 
 export type ProjectFile = {
@@ -444,7 +448,18 @@ export function useProjectBriefs(id: number | undefined) {
   return useQuery({
     enabled: Number.isFinite(id),
     queryKey: ['mirror', 'briefs', id],
-    queryFn: () => rows<Brief>('project_briefs', id!, 'id'),
+    // get_project_briefs: newest first, archived left out. Written as an OR so
+    // a row with no status still shows (mirror trap 4).
+    queryFn: async () => {
+      const { data, error } = await mirror
+        .from('project_briefs')
+        .select('*')
+        .eq('project_master_list_id', id!)
+        .or('status.is.null,status.neq.Archived')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as Brief[]
+    },
   })
 }
 
