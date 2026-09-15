@@ -168,7 +168,9 @@ function SectionScreen({
         <h2 className="qw-title">{section.heading}</h2>
       </div>
 
-      <div className="qi-entry-wrap">
+      {/* Over the fields, on the column's right edge — Andy, 15 Sep. The old
+          app put it at the far right of the screen. */}
+      <div className="qi-column qi-entry-wrap">
         <button
           type="button"
           className="qi-entry"

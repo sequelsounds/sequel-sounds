@@ -267,11 +267,17 @@ export default function Invoice() {
   return (
     <>
       <div className="header-band">
-        <div className="page-eyebrow">Invoicing</div>
+        <div className="page-eyebrow">Finance</div>
         <div className="title-row">
           <h1 className="page-title">
             {v.invoice_number ? `Invoice ${v.invoice_number}` : `Invoice ID ${v.id}`}
           </h1>
+          {/* Where the invoice stands, in one of the app's button squares —
+              Andy, 15 Sep, in place of the old "Raised in QuickBooks" banner.
+              RAISED keys off the same single flag every write refuses on. */}
+          <span className="btn btn-mono btn-outline invoice-state">
+            {v.status === 'Paid' ? 'PAID' : v.locked ? 'RAISED' : 'NOT RAISED'}
+          </span>
         </div>
         <div className="page-subtitle">
           {v.project_master_list_id ? (
@@ -284,15 +290,6 @@ export default function Invoice() {
           )}
         </div>
       </div>
-
-      {/* One flag, from one column, as Xano computes it — so the page and the
-          database cannot disagree about whether an invoice is still open. */}
-      {v.locked && (
-        <div className="locked-banner">
-          Raised in QuickBooks{v.qbo_invoice_id ? ` (id ${v.qbo_invoice_id})` : ''}. This is a
-          financial record now, and nothing can change it.
-        </div>
-      )}
 
       {/* The three totals, in the invoice's own currency.
             to invoice = all Sequel fees + paythrough third-party rows only
@@ -362,6 +359,7 @@ export default function Invoice() {
             {/* Null on 148 of 150 — a historic backfill gap, not a missing
                 feature. Anything raised through QuickBooks now gets one. */}
             <Detail label="Due date" value={fmtDate(v.due_date)} />
+            <Detail label="QuickBooks ID" value={v.qbo_invoice_id || '—'} />
             {v.locked ? (
               <>
                 <Detail label="Currency" value={v.currency ?? '—'} />

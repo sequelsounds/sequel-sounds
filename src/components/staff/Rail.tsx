@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useIsManagement } from '../../lib/xanoMirror'
 import SequelLogo from '../SequelLogo'
@@ -22,7 +22,10 @@ import SequelLogo from '../SequelLogo'
 // The twelve, in Track's order. `to` is null where the page has not been
 // rebuilt yet: those are shown and not clickable, because a nav that quietly
 // omitted four of its items would misrepresent how far along this is.
-const LINKS: { label: string; to: string | null }[] = [
+// `also` lists other routes that belong to the item, so it is bold there too.
+// An invoice page is Finance — Andy, 15 Sep. It takes effect once Finance has
+// a `to`; an unbuilt item is never marked.
+const LINKS: { label: string; to: string | null; also?: string[] }[] = [
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Management', to: '/management' },
   { label: 'Notifications', to: null },
@@ -32,7 +35,7 @@ const LINKS: { label: string; to: string | null }[] = [
   { label: 'Partners', to: '/partners' },
   { label: 'Clients', to: '/clients' },
   { label: 'Users', to: '/users' },
-  { label: 'Finance', to: null },
+  { label: 'Finance', to: null, also: ['/invoices'] },
   { label: 'Settings', to: null },
 ]
 
@@ -41,6 +44,9 @@ export default function Rail() {
   // too. The database is what actually refuses — see useIsManagement.
   const management = useIsManagement()
   const links = LINKS.filter((l) => l.label !== 'Management' || management.data === true)
+  const { pathname } = useLocation()
+  const inAlso = (also?: string[]) =>
+    (also ?? []).some((p) => pathname === p || pathname.startsWith(`${p}/`))
 
   return (
     // Placed explicitly rather than by source order: the rail spans two rows,
@@ -50,9 +56,13 @@ export default function Rail() {
         <SequelLogo className="h-16! w-16!" />
       </NavLink>
 
-      {links.map(({ label, to }) =>
+      {links.map(({ label, to, also }) =>
         to ? (
-          <NavLink key={label} to={to} className="nav-link-app">
+          <NavLink
+            key={label}
+            to={to}
+            className={`nav-link-app${inAlso(also) ? ' is-current' : ''}`}
+          >
             {label}
           </NavLink>
         ) : (

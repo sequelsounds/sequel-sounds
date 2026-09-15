@@ -1110,7 +1110,6 @@
   .qi-entry-wrap {
     display: flex;
     justify-content: flex-end;
-    width: 100%;
   }
 
   .qi-entry {

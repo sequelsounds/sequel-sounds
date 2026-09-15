@@ -2596,7 +2596,8 @@
 
   /* Track marks no current page at all. This does, with weight rather than
      colour, so the marker cannot be mistaken for a disabled item. */
-  .nav-link-app[aria-current='page'] {
+  .nav-link-app[aria-current='page'],
+  .nav-link-app.is-current {
     font-weight: 500;
   }
 
@@ -3272,15 +3273,12 @@
      banner reads the same single `locked` flag every other read-only state
      keys off, so the page cannot say one thing while the database says
      another. */
-  .locked-banner {
-    width: calc(100% - 4rem);
-    margin: 0 0 1rem 2rem;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--color-sequel-line);
-    background-color: rgb(255 255 255 / 40%);
-    font-size: 0.75rem;
-    font-weight: 300;
-    line-height: 1rem;
+  /* RAISED / NOT RAISED / PAID beside the invoice number: the outline
+     button's square, but a label, so it does not act like a button. */
+  .invoice-state,
+  .invoice-state:hover:not(:disabled) {
+    cursor: default;
+    background-color: transparent;
     color: var(--color-sequel-brown);
   }
 
