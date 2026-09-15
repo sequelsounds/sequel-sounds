@@ -241,6 +241,8 @@ export function AssetModal({
               <input
                 id="am-description"
                 type="text"
+                // No browser suggestions: the name is new every time — Andy, 16 Sep.
+                autoComplete="off"
                 maxLength={256}
                 className="am-input"
                 placeholder="e.g. Director's Treatment"
