@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import SequelLogo from '../components/SequelLogo'
-import SharedAudio from '../components/viewer/SharedAudio'
+import SharedMedia from '../components/viewer/SharedMedia'
 import { fileKind, openShare, saveSharePeaks, type SharedFile as Shared } from '../lib/assets'
 
 /**
@@ -128,13 +128,11 @@ export default function SharedFile() {
             </div>
 
             {file && kind !== 'other' && (
-              <div className={`sf-preview${kind === 'audio' ? ' is-audio' : ''}`}>
-                {kind === 'video' && (
-                  <video className="sf-media" src={file.url} controls preload="metadata" onLoadedMetadata={loaded} onError={loaded} />
-                )}
-                {kind === 'audio' && (
-                  <SharedAudio
+              <div className={`sf-preview${kind === 'audio' || kind === 'video' ? ' is-player' : ''}`}>
+                {(kind === 'audio' || kind === 'video') && (
+                  <SharedMedia
                     src={file.url}
+                    video={kind === 'video'}
                     onReady={loaded}
                     peaks={file.peaks}
                     size={Number(file.file_size) || 0}

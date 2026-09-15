@@ -3877,18 +3877,83 @@
     background-color: rgb(17, 17, 17);
   }
 
-  .sf-media {
-    display: block;
-    width: 100%;
-    max-height: 70vh;
-  }
-
-  /* The audio preview is the app's own player bar (SharedAudio), not the
+  /* Audio and video play in the app's own bar (SharedMedia), not the
      browser's control — Andy, 16 Sep. Colours flipped from the staff bar
      (brown marks on the page's own ground). A 1px brown border and a silver
      ground were both tried and taken off again the same day — Andy. */
-  .sf-preview.is-audio {
+  .sf-preview.is-player {
+    overflow: visible;
     background-color: transparent;
+  }
+
+  /* Video: the picture, and the same bar under it. Nothing sits on the
+     picture but the centre square. */
+  .sv-frame {
+    position: relative;
+    background-color: rgb(17, 17, 17);
+  }
+
+  .sv-video {
+    display: block;
+    width: 100%;
+    max-height: 70vh;
+    cursor: pointer;
+  }
+
+  .sv-centre {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    width: 64px;
+    height: 64px;
+    place-items: center;
+    color: var(--color-sequel-silver);
+    background-color: var(--color-sequel-brown);
+    transform: translate(-50%, -50%);
+  }
+
+  .sv-centre:focus-visible {
+    outline: none;
+  }
+
+  /* Playing: shown for a moment (the pause mark, as a click's answer), then
+     gone, and clicks pass through to the picture. */
+  .sv-centre.is-playing {
+    pointer-events: none;
+    animation: sv-fade 0.7s ease-out forwards;
+  }
+
+  @keyframes sv-fade {
+    0%,
+    40% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* Full screen takes the bar with it, on the page's ground. */
+  .sv.is-full {
+    display: flex;
+    padding: 24px 48px;
+    flex-direction: column;
+    justify-content: center;
+    background-color: rgb(245, 244, 241);
+  }
+
+  .sv.is-full .sv-frame {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    justify-content: center;
+  }
+
+  .sv.is-full .sv-video {
+    max-height: none;
+    height: 100%;
+    object-fit: contain;
   }
 
   .sa-bar {
@@ -3907,6 +3972,16 @@
     padding: 0;
     color: var(--color-sequel-brown);
     background-color: transparent;
+  }
+
+  /* Video adds a full-screen button at the end. */
+  .sa-bar.is-video {
+    grid-template-columns: 34px minmax(0, 1fr) var(--sa-time, 3.8rem) auto auto;
+  }
+
+  .sa-full {
+    display: flex;
+    color: inherit;
   }
 
   .sa-play {
@@ -3976,6 +4051,10 @@
   @media (max-width: 40rem) {
     .sa-bar {
       grid-template-columns: 34px minmax(0, 1fr) var(--sa-time, 3.8rem);
+    }
+
+    .sa-bar.is-video {
+      grid-template-columns: 34px minmax(0, 1fr) var(--sa-time, 3.8rem) auto;
     }
 
     .sa-volume {

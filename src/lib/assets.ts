@@ -69,10 +69,12 @@ export async function uploadAsset(projectId: number, file: File): Promise<string
     }
     throw new Error('That file could not be uploaded. Please try again.')
   }
-  // An audio file gets its waveform worked out here, from the copy already on
-  // this machine, so the share page never has to download it to draw one.
-  // Never waited on, and a failure only means a flat bar.
-  if (fileKind(file.name) === 'audio') {
+  // An audio or video file gets its waveform (a video's is its soundtrack's)
+  // worked out here, from the copy already on this machine, so the share page
+  // never has to download it to draw one. Never waited on, and a failure — a
+  // silent video, say — only means a flat bar.
+  const kind = fileKind(file.name)
+  if (kind === 'audio' || kind === 'video') {
     void peaksFromFile(file)
       .then((peaks) =>
         peaks ? rpc('track_set_asset_peaks', { p_uuid: signed.uuid, p_peaks: peaks }) : null,
