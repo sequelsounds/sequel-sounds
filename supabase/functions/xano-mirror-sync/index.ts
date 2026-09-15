@@ -114,6 +114,20 @@ function coerce(value: unknown, rule: Rule): unknown {
   return value
 }
 
+/**
+ * How the mirror's column names were made from Xano's field names: lower case,
+ * slashes and other punctuation dropped, runs of spaces or dashes to one
+ * underscore. "Closed/Cancelled Date" is closedcancelled_date.
+ */
+function normaliseKey(key: string): string {
+  return key
+    .toLowerCase()
+    .replace(/[^a-z0-9_\s-]/g, '')
+    .replace(/[\s-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+}
+
 type Payload = {
   table?: string
   rows?: Record<string, unknown>[]
@@ -198,13 +212,31 @@ Deno.serve(async (req) => {
   // Columns Xano no longer sends are left alone rather than nulled; columns it
   // sends that the mirror does not have are dropped, so adding a field in Xano
   // does not break the sync before the mirror catches up.
+  //
+  // ⚠️ 15 Sep 2026: "dropped" was also catching every field Xano names with
+  // capitals. The mirror's columns were created lower-case — Invoice_number is
+  // invoice_number, Description is description, Total_to_invoice is
+  // total_to_invoice — and an exact-name lookup matched none of them, so a new
+  // invoice arrived with no number, no description and a zero total. A key
+  // with no exact column now tries its normalised name; an exact match always
+  // wins, so a field can never overwrite another that Xano also sent.
   const prepared: Record<string, unknown>[] = []
   for (const row of rows) {
     const out: Record<string, unknown> = {}
+    const fallback: [string, unknown][] = []
     for (const [key, value] of Object.entries(row)) {
       const rule = rules.get(key)
-      if (!rule) continue
+      if (!rule) {
+        fallback.push([key, value])
+        continue
+      }
       out[key] = coerce(value, rule)
+    }
+    for (const [key, value] of fallback) {
+      const column = normaliseKey(key)
+      const rule = rules.get(column)
+      if (!rule || column in out) continue
+      out[column] = coerce(value, rule)
     }
     if (out.id === null || out.id === undefined) {
       return json({ error: 'every row needs an id', table }, 400)
