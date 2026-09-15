@@ -3834,7 +3834,7 @@
   .sf-card {
     width: 100%;
     max-width: 880px;
-    padding: 32px;
+    padding: 16px 32px;
   }
 
   /* asset-header, but in Creato Display and reading "Project Asset" rather
@@ -3893,10 +3893,15 @@
     background-color: rgb(17, 17, 17);
   }
 
+  /* ⚠️ Capped to what the screen has left, not 70vh: everything else on the
+     page (bars, title, player bar, DOWNLOAD, expiry) is about 34rem, and at
+     70vh a 16:9 video pushed the page ~230px past an 800px window — Andy saw
+     scroll with nothing apparently below. Never under 15rem; a screen too
+     short for that scrolls. */
   .sv-video {
     display: block;
     width: 100%;
-    max-height: 70vh;
+    max-height: max(15rem, calc(100dvh - 34rem));
     cursor: pointer;
   }
 
