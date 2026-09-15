@@ -100,6 +100,9 @@ export default function SharedAudio({
         <Waveform
           progress={duration > 0 ? Math.min(1, position / duration) : 0}
           peaks={peaks}
+          // Flipped for the silver bar: played in brown, the rest a pale brown.
+          played="#372b29"
+          unplayed="#b5aeab"
           onSeek={(fraction) => {
             const a = audio.current
             if (a && duration > 0) a.currentTime = fraction * duration
