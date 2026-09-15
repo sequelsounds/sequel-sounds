@@ -72,6 +72,8 @@ const NUMBER_TYPES = new Set([
   'real',
 ])
 
+type Rule = { type: string; zeroIsNull: boolean; blankIsNull: boolean }
+
 /**
  * Xano's conventions, turned into Postgres ones:
  *
@@ -82,8 +84,17 @@ const NUMBER_TYPES = new Set([
  * Empty strings are kept for text columns, where "" and null are genuinely
  * different, and dropped everywhere else.
  */
-function coerce(value: unknown, dataType: string): unknown {
+function coerce(value: unknown, rule: Rule): unknown {
+  const dataType = rule.type
   if (value === null || value === undefined) return null
+
+  // ⚠️ Xano's "unset" against the mirror's constraints — 15 Sep 2026. An unset
+  // link arrives as 0 and an unset enum as "". The mirror has real foreign
+  // keys and CHECK constraints, so either one failed the WHOLE table's push:
+  // nothing upserted, nothing deleted, for eight tables, silently, for at
+  // least a day. See xano_mirror_column_rules.
+  if (rule.zeroIsNull && (value === 0 || value === '0')) return null
+  if (rule.blankIsNull && typeof value === 'string' && value.trim() === '') return null
 
   if (TIME_TYPES.has(dataType)) {
     if (value === '' || value === 0 || value === '0') return null
@@ -162,7 +173,7 @@ Deno.serve(async (req) => {
   // column list is what "no such table in xano_mirror" looks like.
   const { data: columns, error: columnsError } = await admin
     .schema('public')
-    .rpc('xano_mirror_columns', { p_table: table })
+    .rpc('xano_mirror_column_rules', { p_table: table })
   if (columnsError) {
     return json({ error: 'could not read table columns', detail: columnsError.message }, 500)
   }
@@ -170,10 +181,17 @@ Deno.serve(async (req) => {
     return json({ error: 'unknown table', table }, 404)
   }
 
-  const types = new Map<string, string>(
-    (columns as { column_name: string; data_type: string }[]).map((c) => [
+  const rules = new Map<string, Rule>(
+    (
+      columns as {
+        column_name: string
+        data_type: string
+        zero_is_null: boolean
+        blank_is_null: boolean
+      }[]
+    ).map((c) => [
       c.column_name,
-      c.data_type,
+      { type: c.data_type, zeroIsNull: c.zero_is_null, blankIsNull: c.blank_is_null },
     ]),
   )
 
@@ -184,9 +202,9 @@ Deno.serve(async (req) => {
   for (const row of rows) {
     const out: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(row)) {
-      const type = types.get(key)
-      if (!type) continue
-      out[key] = coerce(value, type)
+      const rule = rules.get(key)
+      if (!rule) continue
+      out[key] = coerce(value, rule)
     }
     if (out.id === null || out.id === undefined) {
       return json({ error: 'every row needs an id', table }, 400)
