@@ -1577,6 +1577,11 @@
 
   /* The column heads at the filter tabs' size (0.7rem) — Andy, 15 Sep. A brown
      band with silver type was tried and reverted. */
+  /* No rule under the column heads — Andy, 15 Sep. */
+  .finance-head {
+    border-bottom: none;
+  }
+
   .finance-head .project-list-head-cell {
     font-size: 0.7rem;
   }
