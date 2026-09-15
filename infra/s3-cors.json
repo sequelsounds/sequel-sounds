@@ -7,6 +7,7 @@
         "http://localhost:5173",
         "https://app.sequelsounds.com",
         "https://studio.sequelsounds.com",
+        "https://sequel-sounds.andy-4c2.workers.dev",
         "https://*.sequelsounds.app"
       ],
       "ExposeHeaders": ["ETag"],
