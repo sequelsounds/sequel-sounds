@@ -1569,6 +1569,12 @@
     align-items: center;
   }
 
+  /* The Management year toggle, moved into the title row, where the band
+     already sets the spacing. */
+  .finance-toggle {
+    margin-bottom: 0;
+  }
+
   .finance-pay-grid {
     grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
   }

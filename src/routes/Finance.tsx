@@ -10,8 +10,8 @@ import { useIsFinance } from '../lib/xanoMirror'
  *
  * ⚠️ NOT A REBUILD. The old app's nav links to `/finance` and the page does
  * not exist (a Webflow 404), so there was nothing to copy. What is here was
- * agreed with Andy on 15 Sep: one tab for client invoices, one for supplier
- * bills, and the average time each client takes to pay. It is built from the
+ * agreed with Andy on 15 Sep: client invoices and supplier bills, switched by
+ * an INVOICES / BILLS toggle in the top right, and the average time each client takes to pay. It is built from the
  * pieces the other list pages already use — the header band, the counters
  * band, the filter tabs and the projects list row — so it looks like the
  * rest of the app.
@@ -19,7 +19,9 @@ import { useIsFinance } from '../lib/xanoMirror'
  * Read only. `invoices` is still a synced table, so nothing here writes.
  */
 
-const TABS = ['Client invoices', 'Supplier bills'] as const
+/** The switch in the top right — Andy, 15 Sep: INVOICES and BILLS, styled as
+ *  the Management page's year toggle. */
+const TABS = ['Invoices', 'Bills'] as const
 type Tab = (typeof TABS)[number]
 
 const FILTERS = ['All', 'To raise', 'Awaiting payment', 'Overdue', 'Paid', 'Payment times'] as const
@@ -45,33 +47,34 @@ function Counter({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function Finance() {
-  const [tab, setTab] = useState<Tab>('Client invoices')
+  const [tab, setTab] = useState<Tab>('Invoices')
 
   return (
     <>
       <div className="header-band">
         <div className="page-eyebrow">Finance</div>
-        <h1 className="page-title">Invoices</h1>
+        <div className="title-row">
+          <h1 className="page-title">{tab === 'Invoices' ? 'Invoices' : 'Bills'}</h1>
+          <div className="year-toggle finance-toggle" role="tablist" aria-label="Invoices or bills">
+            {TABS.map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={tab === t}
+                className={`year-btn ${tab === t ? 'is-on' : ''}`}
+                onClick={() => setTab(t)}
+              >
+                {t.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="page-subtitle">Money in and money out.</div>
       </div>
 
-      <div className="project-tabs is-plain" role="tablist">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => setTab(t)}
-            className="project-tab"
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'Client invoices' && <ClientInvoices />}
-      {tab === 'Supplier bills' && <div className="no-result-row">Not built yet.</div>}
+      {tab === 'Invoices' && <ClientInvoices />}
+      {tab === 'Bills' && <div className="no-result-row">Not built yet.</div>}
     </>
   )
 }
