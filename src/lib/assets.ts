@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { peaksFromFile } from './peaks'
 
 /**
  * Project assets and their share links — the old app's Project Assets API
@@ -67,6 +68,16 @@ export async function uploadAsset(projectId: number, file: File): Promise<string
       throw new Error('Storage will not accept project files yet — the upload key has no permission for that folder.')
     }
     throw new Error('That file could not be uploaded. Please try again.')
+  }
+  // An audio file gets its waveform worked out here, from the copy already on
+  // this machine, so the share page never has to download it to draw one.
+  // Never waited on, and a failure only means a flat bar.
+  if (fileKind(file.name) === 'audio') {
+    void peaksFromFile(file)
+      .then((peaks) =>
+        peaks ? rpc('track_set_asset_peaks', { p_uuid: signed.uuid, p_peaks: peaks }) : null,
+      )
+      .catch(() => undefined)
   }
   return signed.uuid as string
 }
@@ -146,6 +157,8 @@ export type SharedFile = {
   expires_at: string
   url: string
   download_url: string
+  /** The waveform, if it has been worked out yet. */
+  peaks: number[] | null
 }
 
 /** `null` with a reason when the code is unknown, expired or throttled. */
@@ -155,6 +168,14 @@ export async function openShare(code: string): Promise<SharedFile | { error: str
   } catch (e) {
     return { error: (e as Error).message }
   }
+}
+
+/**
+ * The share page's backfill: a file uploaded before waveforms existed gets one
+ * the first time someone plays it. Write-once; the database ignores a second.
+ */
+export function saveSharePeaks(code: string, peaks: number[]) {
+  return signAsset({ action: 'peaks', code, peaks }).catch(() => undefined)
 }
 
 /* ------------------------------------------------------------------ formatting */

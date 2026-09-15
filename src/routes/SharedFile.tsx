@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import SharedAudio from '../components/viewer/SharedAudio'
-import { fileKind, openShare, type SharedFile as Shared } from '../lib/assets'
+import { fileKind, openShare, saveSharePeaks, type SharedFile as Shared } from '../lib/assets'
 
 /**
  * `/link?id=…` — the page a shared project file opens on, the old app's
@@ -126,7 +126,15 @@ export default function SharedFile() {
               {kind === 'video' && (
                 <video className="sf-media" src={file.url} controls preload="metadata" onLoadedMetadata={loaded} onError={loaded} />
               )}
-              {kind === 'audio' && <SharedAudio src={file.url} onReady={loaded} />}
+              {kind === 'audio' && (
+                <SharedAudio
+                  src={file.url}
+                  onReady={loaded}
+                  peaks={file.peaks}
+                  size={Number(file.file_size) || 0}
+                  onPeaks={(p) => void saveSharePeaks(code, p)}
+                />
+              )}
               {kind === 'image' && (
                 <img className="sf-image" src={file.url} alt={file.file_name} onLoad={loaded} onError={loaded} />
               )}

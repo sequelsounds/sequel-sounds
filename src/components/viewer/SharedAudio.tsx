@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatDuration } from '../../lib/format'
+import { peaksFromUrl } from '../../lib/peaks'
 import { PauseIcon, PlayIcon, VolumeIcon, VolumeMuteIcon } from '../staff/icons'
 import VolumeSlider from '../staff/VolumeSlider'
 import Waveform from '../staff/Waveform'
@@ -9,11 +10,25 @@ import Waveform from '../staff/Waveform'
  * scrubber, times, volume) in place of the browser's control, which Andy
  * rejected on sight, 16 Sep. One <audio>, no queue.
  *
- * The scrubber is the app's Waveform with no peaks: a shared file has not
- * been through the Lambda, so there is no peaks.json, and decoding the whole
- * file in the browser just to draw it would download all of it up front.
+ * The scrubber is the app's Waveform. Peaks come with the link when the file
+ * has them (worked out at upload); otherwise the page works them out once,
+ * in the background, and saves them for the next visitor — the bar draws
+ * flat until then.
  */
-export default function SharedAudio({ src, onReady }: { src: string; onReady: () => void }) {
+export default function SharedAudio({
+  src,
+  onReady,
+  peaks: stored,
+  size,
+  onPeaks,
+}: {
+  src: string
+  onReady: () => void
+  peaks: number[] | null
+  /** Bytes, to decide whether the file is small enough to decode here. */
+  size: number
+  onPeaks: (peaks: number[]) => void
+}) {
   const audio = useRef<HTMLAudioElement>(null)
   const [playing, setPlaying] = useState(false)
   const [position, setPosition] = useState(0)
@@ -21,6 +36,22 @@ export default function SharedAudio({ src, onReady }: { src: string; onReady: ()
   const [volume, setVolume] = useState(1)
   const [muted, setMuted] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [peaks, setPeaks] = useState<number[] | null>(stored)
+
+  useEffect(() => {
+    if (stored) return
+    let live = true
+    void peaksFromUrl(src, size).then((p) => {
+      if (!live || !p) return
+      setPeaks(p)
+      onPeaks(p)
+    })
+    return () => {
+      live = false
+    }
+    // Once per file. The signed URL changes on refresh; the file does not.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stored, size])
 
   useEffect(() => {
     const a = audio.current
@@ -68,7 +99,7 @@ export default function SharedAudio({ src, onReady }: { src: string; onReady: ()
       ) : (
         <Waveform
           progress={duration > 0 ? Math.min(1, position / duration) : 0}
-          peaks={null}
+          peaks={peaks}
           onSeek={(fraction) => {
             const a = audio.current
             if (a && duration > 0) a.currentTime = fraction * duration

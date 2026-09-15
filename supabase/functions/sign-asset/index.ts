@@ -12,6 +12,8 @@
 //            survives)
 //
 //   anyone (publishable key as bearer):
+//     { action: "peaks", code, peaks }
+//         -> saves a waveform for a file that has none (write-once)
 //     { action: "share", code }
 //         -> the file behind a /link code: name, type, size, expiry, an inline
 //            url for the preview and a download url that saves under the real
@@ -161,12 +163,29 @@ Deno.serve(async (req) => {
         file_type: data.file_type,
         file_size: data.file_size,
         expires_at: data.expires_at,
+        peaks: data.peaks ?? null,
         url: await sign(data.key, 'GET', READ_TTL_SECONDS),
         download_url: await sign(data.key, 'GET', READ_TTL_SECONDS, fileName),
       },
       200,
       origin,
     )
+  }
+
+  // ------------------------------------------------------------------ peaks
+  // The share page's waveform backfill. Write-once and checked in the
+  // database (live code, well-formed array); nothing here to sign.
+  if (body.action === 'peaks') {
+    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+      auth: { persistSession: false },
+    })
+    if (!Array.isArray(body.peaks) || body.peaks.length > 8000) return json({ error: 'invalid' }, 400, origin)
+    const { data, error } = await admin.rpc('share_set_peaks', {
+      p_code: String(body.code ?? ''),
+      p_peaks: body.peaks,
+    })
+    if (error) return json({ error: 'server' }, 500, origin)
+    return json({ ok: data === true }, 200, origin)
   }
 
   // ------------------------------------------------------------------ staff
