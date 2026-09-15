@@ -124,6 +124,8 @@ export default function SharedFile() {
             <div className="sf-head">
               <div className="sf-meta">
                 {file ? (size ? `${KIND_LABEL[kind]} - ${size}` : KIND_LABEL[kind]) : ''}
+                {/* The expiry lives on this line, not under DOWNLOAD — Andy. */}
+                {expiry && !error && ` · Link expires ${expiry}`}
               </div>
             </div>
 
@@ -156,7 +158,6 @@ export default function SharedFile() {
               </div>
             )}
             {error && <div className="sf-error">{error}</div>}
-            {expiry && !error && <div className="sf-expiry">This link expires on {expiry}</div>}
           </div>
         )}
       </div>

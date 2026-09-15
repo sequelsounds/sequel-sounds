@@ -4121,13 +4121,6 @@
   }
 
   /* share_expiry */
-  .sf-expiry {
-    margin-top: 20px;
-    font-family: 'Creato Display', Arial, sans-serif;
-    font-size: 0.8rem;
-    line-height: 1rem;
-  }
-
   /* share_loading_overlay: the wordmark beside the cassette. */
   .sf-loading {
     position: fixed;
