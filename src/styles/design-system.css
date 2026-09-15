@@ -3843,6 +3843,17 @@
     height: 0;
   }
 
+  /* …and the title starts close under the wordmark bar rather than 56px
+     down, to give the picture that height — Andy. */
+  .sf-page.is-video .sf-main {
+    padding-top: 0;
+    justify-content: flex-start;
+  }
+
+  .sf-page.is-video .sf-card {
+    padding-top: 8px;
+  }
+
   /* asset-header, but in Creato Display and reading "Project Asset" rather
      than Fahkwang "ASSET" — Andy, 16 Sep. */
   .sf-header {
