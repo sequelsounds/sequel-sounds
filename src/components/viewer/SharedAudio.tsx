@@ -21,20 +21,24 @@ import Waveform from '../staff/Waveform'
  * Local to this page, so the staff player keeps its own.
  */
 function Speaker({ muted, level }: { muted: boolean; level: number }) {
-  const lit = muted ? 0 : level <= 0 ? 0 : level < 0.34 ? 1 : level < 0.67 ? 2 : 3
+  // A solid speaker, square-cut like the play button, with sound waves that
+  // follow the level: one arc when quiet, two when louder, a cross when muted.
+  const waves = muted || level <= 0 ? 0 : level < 0.5 ? 1 : 2
   return (
-    <svg width="0.9rem" height="0.9rem" viewBox="0 0 12 12" aria-hidden="true">
-      {[4, 7, 10].map((h, i) => (
-        <rect
-          key={h}
-          x={1 + i * 4}
-          y={11 - h}
-          width="2"
-          height={h}
-          fill="currentColor"
-          opacity={i < lit ? 1 : 0.3}
-        />
-      ))}
+    <svg
+      width="1rem"
+      height="1rem"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="square"
+      aria-hidden="true"
+    >
+      <path d="M4 9h3.5L12 5v14l-4.5-4H4z" fill="currentColor" stroke="none" />
+      {waves === 0 && <path d="m16 10 4 4m0-4-4 4" />}
+      {waves >= 1 && <path d="M15.5 9.5a3.5 3.5 0 0 1 0 5" />}
+      {waves >= 2 && <path d="M18 7a7 7 0 0 1 0 10" />}
     </svg>
   )
 }
