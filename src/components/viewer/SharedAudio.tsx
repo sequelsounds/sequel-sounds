@@ -141,8 +141,8 @@ export default function SharedAudio({
           // Flipped for the silver bar: played in brown, the rest a pale brown.
           played="#372b29"
           unplayed="#b5aeab"
-          // Hairlines, 1px with a 1px gap — Andy wanted it much finer than the staff bar.
-          bar={1}
+          // Fine lines, 1.5px with a 1px gap — Andy went to hairlines, then a touch thicker.
+          bar={1.5}
           gap={1}
           onSeek={(fraction) => {
             const a = audio.current

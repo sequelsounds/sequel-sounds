@@ -58,7 +58,11 @@ export default function Waveform({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, width, height)
 
-      const bars = Math.max(1, Math.floor((width + gap) / (bar + gap)))
+      // Bar and gap snapped to whole device pixels, so a fractional width
+      // (1.5px) stays crisp: 3 and 2 on a Retina screen, 2 and 1 on a plain one.
+      const barPx = Math.max(1, Math.round(bar * dpr)) / dpr
+      const gapPx = Math.max(1, Math.round(gap * dpr)) / dpr
+      const bars = Math.max(1, Math.floor((width + gapPx) / (barPx + gapPx)))
       const pairs = peaks ? Math.floor(peaks.length / 2) : 0
       const playedBars = Math.round(progress * bars)
 
@@ -75,7 +79,7 @@ export default function Waveform({
         }
         const h = pairs > 0 ? Math.max(2, amp * height) : 3
         ctx.fillStyle = i < playedBars ? played : unplayed
-        ctx.fillRect(i * (bar + gap), (height - h) / 2, bar, h)
+        ctx.fillRect(i * (barPx + gapPx), (height - h) / 2, barPx, h)
       }
     }
 
