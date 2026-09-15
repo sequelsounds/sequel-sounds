@@ -20,6 +20,7 @@ import Dashboard from './routes/Dashboard'
 import Management from './routes/Management'
 import Users from './routes/Users'
 import Invoice from './routes/Invoice'
+import Finance from './routes/Finance'
 import Project from './routes/Project'
 import Projects from './routes/Projects'
 import Quote from './routes/Quote'
@@ -101,6 +102,7 @@ export default function App() {
             QuickBooks reads it out of Xano — so the table stays in the sync and
             nothing here writes. It exists because the chart segments and the
             project invoice rows all want somewhere to go. */}
+        <Route path="/invoices" element={<Finance />} />
         <Route path="/invoices/:uuid" element={<Invoice />} />
         <Route path="/playlists" element={<Playlists />} />
         <Route path="/playlists/:id" element={<PlaylistRoute />} />

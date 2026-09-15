@@ -35,7 +35,7 @@ const LINKS: { label: string; to: string | null; also?: string[] }[] = [
   { label: 'Partners', to: '/partners' },
   { label: 'Clients', to: '/clients' },
   { label: 'Users', to: '/users' },
-  { label: 'Finance', to: null, also: ['/invoices'] },
+  { label: 'Finance', to: '/invoices', also: ['/invoices'] },
   { label: 'Settings', to: null },
 ]
 

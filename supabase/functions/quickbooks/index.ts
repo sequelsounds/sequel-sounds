@@ -3,6 +3,7 @@
 //   { action: "connect", return_to }  -> { url }   Intuit's consent page
 //   { action: "vendors" }             -> { connected, vendors?, error? }
 //   { action: "disconnect" }          -> { ok, revoked }
+//   { action: "payment_times" }       -> { connected, clients?, overall? }
 //
 // Talks to QuickBooks through the Intuit app "Sequel App New", a separate
 // connection from the old app's (Xano table 65), so nothing here can rotate or
@@ -253,6 +254,131 @@ async function listVendors(admin: SupabaseClient): Promise<Vendor[]> {
   return out
 }
 
+/** Every row of one entity, a page at a time. */
+async function queryAll(
+  token: string,
+  realm: string,
+  admin: SupabaseClient,
+  select: string,
+  entity: string,
+): Promise<Record<string, unknown>[]> {
+  const out: Record<string, unknown>[] = []
+  const PAGE = 1000
+  for (let start = 1; ; start += PAGE) {
+    const query = `${select} startposition ${start} maxresults ${PAGE}`
+    const url = `${API_BASE}/v3/company/${realm}/query?minorversion=75&query=${encodeURIComponent(query)}`
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+    if (res.status === 401) {
+      await markBroken(admin, 'QuickBooks rejected the access token (401). Reconnect.')
+      throw new NotConnected('The QuickBooks connection was rejected. Connect it again.')
+    }
+    const body = (await res.json().catch(() => ({}))) as {
+      QueryResponse?: Record<string, Record<string, unknown>[] | undefined>
+      Fault?: unknown
+    }
+    if (!res.ok || body.Fault) throw new Error(`QuickBooks would not list ${entity} (HTTP ${res.status}).`)
+    const rows = body.QueryResponse?.[entity] ?? []
+    out.push(...rows)
+    if (rows.length < PAGE) break
+  }
+  return out
+}
+
+const DAY = 86_400_000
+const dayDiff = (later: string, earlier: string) =>
+  Math.round((Date.parse(later) - Date.parse(earlier)) / DAY)
+
+/**
+ * How long each client takes to pay, from QuickBooks itself, so it covers
+ * every invoice ever raised and not only the ones this app knows about.
+ *
+ * An invoice counts once it is fully paid (Balance 0) and at least one
+ * Payment links to it; the paid date is the LAST such payment, so a part
+ * payment does not make a client look quicker than they were. Days late is
+ * against the invoice's own DueDate, where it has one. Fully paid invoices
+ * with no linked payment — credited or written off — are left out rather
+ * than guessed at.
+ */
+async function paymentTimes(admin: SupabaseClient) {
+  const { token, realm } = await accessToken(admin)
+  const [invoices, payments] = await Promise.all([
+    queryAll(token, realm, admin, 'select Id, TxnDate, DueDate, Balance, CustomerRef from Invoice', 'Invoice'),
+    queryAll(token, realm, admin, 'select * from Payment', 'Payment'),
+  ])
+
+  const paidOn = new Map<string, string>()
+  for (const p of payments) {
+    const date = p.TxnDate as string | undefined
+    if (!date) continue
+    for (const line of (p.Line as { LinkedTxn?: { TxnId: string; TxnType: string }[] }[] | undefined) ?? []) {
+      for (const t of line.LinkedTxn ?? []) {
+        if (t.TxnType !== 'Invoice') continue
+        const prev = paidOn.get(t.TxnId)
+        if (!prev || date > prev) paidOn.set(t.TxnId, date)
+      }
+    }
+  }
+
+  type Acc = { id: string; name: string; paid: number; days: number; lateCount: number; late: number; open: number }
+  const byClient = new Map<string, Acc>()
+  const all = { paid: 0, days: 0, lateCount: 0, late: 0, open: 0 }
+
+  for (const inv of invoices) {
+    const ref = inv.CustomerRef as { value?: string; name?: string } | undefined
+    if (!ref?.value) continue
+    const acc =
+      byClient.get(ref.value) ??
+      { id: ref.value, name: ref.name ?? '', paid: 0, days: 0, lateCount: 0, late: 0, open: 0 }
+    byClient.set(ref.value, acc)
+
+    const balance = Number(inv.Balance ?? 0)
+    if (balance > 0) {
+      acc.open++
+      all.open++
+      continue
+    }
+    const paid = paidOn.get(String(inv.Id))
+    const issued = inv.TxnDate as string | undefined
+    if (!paid || !issued) continue
+    const d = Math.max(0, dayDiff(paid, issued))
+    acc.paid++
+    acc.days += d
+    all.paid++
+    all.days += d
+    const due = inv.DueDate as string | undefined
+    if (due) {
+      const l = dayDiff(paid, due)
+      acc.lateCount++
+      acc.late += l
+      all.lateCount++
+      all.late += l
+    }
+  }
+
+  const avg = (sum: number, n: number) => (n ? Math.round((sum / n) * 10) / 10 : null)
+  const clients = [...byClient.values()]
+    .filter((c) => c.paid > 0 || c.open > 0)
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      paid_invoices: c.paid,
+      open_invoices: c.open,
+      avg_days_to_pay: avg(c.days, c.paid),
+      avg_days_late: avg(c.late, c.lateCount),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  return {
+    clients,
+    overall: {
+      paid_invoices: all.paid,
+      open_invoices: all.open,
+      avg_days_to_pay: avg(all.days, all.paid),
+      avg_days_late: avg(all.late, all.lateCount),
+    },
+  }
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(origin) })
@@ -297,6 +423,15 @@ Deno.serve(async (req) => {
     try {
       const vendors = await listVendors(admin)
       return json({ connected: true, vendors }, 200, origin)
+    } catch (e) {
+      if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
+      return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
+    }
+  }
+
+  if (body.action === 'payment_times') {
+    try {
+      return json({ connected: true, ...(await paymentTimes(admin)) }, 200, origin)
     } catch (e) {
       if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
       return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)

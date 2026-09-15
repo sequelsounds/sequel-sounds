@@ -1556,3 +1556,37 @@
     font-size: 0.7rem;
   }
 }
+
+/* The Finance page's lists — the projects list row (4rem, whole-row invert on
+   hover) on its own column set. 15 Sep 2026; the old app has no such page. */
+@layer components {
+  .finance-grid {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 0.6fr 0.6fr 1.3fr 1.3fr 1.5fr 1fr 0.6fr 0.9fr;
+    gap: 16px;
+    padding: 0 2rem;
+    align-items: center;
+  }
+
+  .finance-pay-grid {
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  }
+
+  .finance-row {
+    min-height: 4rem;
+    max-height: 4rem;
+    color: var(--color-sequel-brown);
+    cursor: pointer;
+    transition: background-color 160ms ease;
+  }
+
+  .finance-pay-grid.finance-row {
+    cursor: default;
+  }
+
+  .finance-row:hover {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+}
