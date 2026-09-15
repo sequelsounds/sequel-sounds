@@ -444,6 +444,56 @@ async function listBills(admin: SupabaseClient) {
  */
 const ORPHANS_FROM = '2025-11-01'
 
+type Linked = { TxnId?: string; TxnType?: string }
+
+/**
+ * Invoices that were cancelled rather than lost, so they are not flagged
+ * (Andy, 15 Sep — 1122, a duplicate cancelled by a credit note):
+ * - voided: total 0;
+ * - fully credited: nothing owed, and every payment linked to it is a
+ *   credit-note application (a Payment of 0 that links a CreditMemo), so no
+ *   money was ever received against it.
+ * An invoice paid even partly in cash still counts, and is still flagged.
+ */
+async function cancelledIds(
+  token: string,
+  realm: string,
+  admin: SupabaseClient,
+  invoices: Record<string, unknown>[],
+): Promise<Set<string>> {
+  const out = new Set<string>()
+  const linkedOf = (i: Record<string, unknown>) => ((i.LinkedTxn as Linked[] | undefined) ?? [])
+  const payIds = new Set<string>()
+  for (const i of invoices) {
+    if (Number(i.TotalAmt ?? 0) === 0) out.add(String(i.Id))
+    else if (Number(i.Balance ?? 1) === 0)
+      for (const l of linkedOf(i)) if (l.TxnType === 'Payment' && l.TxnId) payIds.add(l.TxnId)
+  }
+  if (!payIds.size) return out
+
+  const list = [...payIds].map((id) => `'${id.replace(/[^0-9]/g, '')}'`).join(',')
+  const payments = await queryAll(token, realm, admin, `select * from Payment where Id in (${list})`, 'Payment')
+  const creditOnly = new Set(
+    payments
+      .filter(
+        (p) =>
+          Number(p.TotalAmt ?? 0) === 0 &&
+          ((p.Line as { LinkedTxn?: Linked[] }[] | undefined) ?? []).some((l) =>
+            (l.LinkedTxn ?? []).some((t) => t.TxnType === 'CreditMemo'),
+          ),
+      )
+      .map((p) => String(p.Id)),
+  )
+  for (const i of invoices) {
+    if (Number(i.TotalAmt ?? 0) === 0 || Number(i.Balance ?? 1) !== 0) continue
+    const links = linkedOf(i)
+    const direct = links.filter((l) => l.TxnType === 'CreditMemo')
+    const pays = links.filter((l) => l.TxnType === 'Payment')
+    if ((direct.length || pays.length) && pays.every((l) => creditOnly.has(String(l.TxnId)))) out.add(String(i.Id))
+  }
+  return out
+}
+
 async function listOrphans(admin: SupabaseClient) {
   const { token, realm } = await accessToken(admin)
   const [invoices, known] = await Promise.all([
@@ -456,8 +506,10 @@ async function listOrphans(admin: SupabaseClient) {
       .map((r) => (r.qbo_invoice_id ?? '').trim())
       .filter(Boolean),
   )
-  return invoices
-    .filter((i) => !ids.has(String(i.Id)))
+  const missing = invoices.filter((i) => !ids.has(String(i.Id)))
+  const cancelled = await cancelledIds(token, realm, admin, missing)
+  return missing
+    .filter((i) => !cancelled.has(String(i.Id)))
     .map((i) => ({
       id: String(i.Id),
       doc_number: (i.DocNumber as string | undefined) ?? null,
