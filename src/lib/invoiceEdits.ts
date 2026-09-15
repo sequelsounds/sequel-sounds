@@ -163,3 +163,39 @@ export function useArchiveInvoice(projectId: number | undefined) {
     },
   })
 }
+
+/** The seven values of the status enum, in the old app's picker order. */
+export const INVOICE_STATUSES = [
+  'Submitted',
+  'Returned',
+  'Awaiting Payment',
+  'Paid',
+  'Overdue',
+  'Failed',
+  'Archived',
+] as const
+
+/**
+ * The Status dropdown on /invoice — also how an invoice is archived from its
+ * own page, as in the old app. Staff until the raise; finance only after it
+ * (Andy, 15 Sep). The database decides; the page only hides what it refuses.
+ */
+export function useSetInvoiceStatus(invoiceId: number | undefined, uuid: string | undefined) {
+  const refresh = useInvoiceRefresh(uuid)
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (status: string) => {
+      if (invoiceId === undefined) throw new Error('No invoice loaded.')
+      const { error } = await rpc('track_set_invoice_status', {
+        p_invoice_id: invoiceId,
+        p_status: status,
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      refresh()
+      // An archived invoice leaves its project's Invoicing list.
+      void qc.invalidateQueries({ queryKey: ['mirror', 'invoices'] })
+    },
+  })
+}

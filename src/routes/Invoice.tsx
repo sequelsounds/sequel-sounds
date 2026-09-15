@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { formatMoney } from '../lib/format'
-import { useInvoice, useInvoiceLines } from '../lib/xanoMirror'
+import { useInvoice, useInvoiceLines, useIsFinance } from '../lib/xanoMirror'
 import { isS3PoKey, signPoRead, useInvoiceLookups, USAGE_REGIONS } from '../lib/invoiceWrites'
 import {
+  INVOICE_STATUSES,
   LINE_CATEGORIES,
   useAddInvoiceLine,
   useDeleteInvoiceLine,
+  useSetInvoiceStatus,
   useUpdateInvoice,
   useUpdateInvoiceLine,
 } from '../lib/invoiceEdits'
@@ -241,6 +243,8 @@ export default function Invoice() {
   const addLine = useAddInvoiceLine(invoice.data?.id, uuid)
   const updateLine = useUpdateInvoiceLine(uuid)
   const deleteLine = useDeleteInvoiceLine(uuid)
+  const setStatus = useSetInvoiceStatus(invoice.data?.id, uuid)
+  const finance = useIsFinance()
   const [tab, setTab] = useState<Tab>('Details')
 
   if (invoice.isPending) {
@@ -335,7 +339,22 @@ export default function Invoice() {
       <div className="min-h-0 flex-1 overflow-auto pt-8">
         {tab === 'Details' && (
           <div className="money-list">
-            <Detail label="Status" value={v.status ?? '—'} />
+            {/* The old app's Status select, and how an invoice is archived from
+                its own page. Staff until the raise; finance only after it. */}
+            {!v.locked || finance.data === true ? (
+              <div className="money-row is-editable">
+                <EditEnum
+                  label="Status"
+                  value={v.status}
+                  options={INVOICE_STATUSES}
+                  onSave={(next) =>
+                    next ? setStatus.mutateAsync(next) : Promise.resolve()
+                  }
+                />
+              </div>
+            ) : (
+              <Detail label="Status" value={v.status ?? '—'} />
+            )}
             {v.locked ? (
               <>
                 <Detail label="Description" value={v.description || 'Untitled invoice'} />
