@@ -4000,9 +4000,16 @@
     gap: 16px;
   }
 
-  /* The download link wears the brief page's .bp-button (Andy); this only drops the underline. */
+  /* The download link wears the brief page's .bp-button as an outline (Andy):
+     brown line and text, filling brown on hover rather than going pink. */
   .sf-download {
     text-decoration: none;
+  }
+
+  .bp-button.is-ghost.sf-download:hover {
+    color: var(--color-sequel-silver);
+    background-color: var(--color-sequel-brown);
+    border-color: var(--color-sequel-brown);
   }
 
   /* share_error */

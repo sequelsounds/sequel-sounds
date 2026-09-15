@@ -146,7 +146,7 @@ export default function SharedFile() {
 
           {file && (
             <div className="sf-actions">
-              <a className="bp-button sf-download" href={file.download_url} onClick={download}>
+              <a className="bp-button is-ghost sf-download" href={file.download_url} onClick={download}>
                 Download
               </a>
             </div>
