@@ -16,25 +16,25 @@ import Waveform from '../staff/Waveform'
  * flat until then.
  */
 /**
- * A lighter speaker than the staff bar's — Andy, 16 Sep: a thin open cone and
- * one short arc; a slash through it when muted. Local to this page, so the
- * staff player keeps its own.
+ * The volume mark: three rising bars rather than a speaker — Andy, 16 Sep
+ * (second design). The bars fill up to the level; muted, all three go pale.
+ * Local to this page, so the staff player keeps its own.
  */
-function Speaker({ muted }: { muted: boolean }) {
+function Speaker({ muted, level }: { muted: boolean; level: number }) {
+  const lit = muted ? 0 : level <= 0 ? 0 : level < 0.34 ? 1 : level < 0.67 ? 2 : 3
   return (
-    <svg
-      width="1rem"
-      height="1rem"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.25"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M5 10h3l4-3.5v11L8 14H5z" />
-      {muted ? <path d="m16 10 4 4m0-4-4 4" /> : <path d="M16 9.5a3.5 3.5 0 0 1 0 5" />}
+    <svg width="0.9rem" height="0.9rem" viewBox="0 0 12 12" aria-hidden="true">
+      {[4, 7, 10].map((h, i) => (
+        <rect
+          key={h}
+          x={1 + i * 4}
+          y={11 - h}
+          width="2"
+          height={h}
+          fill="currentColor"
+          opacity={i < lit ? 1 : 0.3}
+        />
+      ))}
     </svg>
   )
 }
@@ -137,6 +137,9 @@ export default function SharedAudio({
           // Flipped for the silver bar: played in brown, the rest a pale brown.
           played="#372b29"
           unplayed="#b5aeab"
+          // Hairlines, 1px with a 1px gap — Andy wanted it much finer than the staff bar.
+          bar={1}
+          gap={1}
           onSeek={(fraction) => {
             const a = audio.current
             if (a && duration > 0) a.currentTime = fraction * duration
@@ -153,7 +156,7 @@ export default function SharedAudio({
           aria-label={muted ? 'Unmute' : 'Mute'}
           title={muted ? 'Unmute' : 'Mute'}
         >
-          <Speaker muted={muted || volume === 0} />
+          <Speaker muted={muted || volume === 0} level={volume} />
         </button>
         <VolumeSlider
           value={muted ? 0 : volume}

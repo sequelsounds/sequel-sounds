@@ -10,6 +10,9 @@ type Props = {
   /** The two tones, for a page whose colours are not the bar's brown and silver. */
   played?: string
   unplayed?: string
+  /** Bar and gap in CSS pixels. The staff bar keeps 3 and 1. */
+  bar?: number
+  gap?: number
 }
 
 const BAR = 3
@@ -32,6 +35,8 @@ export default function Waveform({
   className = '',
   played = PLAYED,
   unplayed = UNPLAYED,
+  bar = BAR,
+  gap = GAP,
 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
 
@@ -53,7 +58,7 @@ export default function Waveform({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, width, height)
 
-      const bars = Math.max(1, Math.floor((width + GAP) / (BAR + GAP)))
+      const bars = Math.max(1, Math.floor((width + gap) / (bar + gap)))
       const pairs = peaks ? Math.floor(peaks.length / 2) : 0
       const playedBars = Math.round(progress * bars)
 
@@ -70,7 +75,7 @@ export default function Waveform({
         }
         const h = pairs > 0 ? Math.max(2, amp * height) : 3
         ctx.fillStyle = i < playedBars ? played : unplayed
-        ctx.fillRect(i * (BAR + GAP), (height - h) / 2, BAR, h)
+        ctx.fillRect(i * (bar + gap), (height - h) / 2, bar, h)
       }
     }
 
@@ -78,7 +83,7 @@ export default function Waveform({
     const observer = new ResizeObserver(draw)
     observer.observe(canvas)
     return () => observer.disconnect()
-  }, [peaks, progress, played, unplayed])
+  }, [peaks, progress, played, unplayed, bar, gap])
 
   return (
     <canvas
