@@ -1083,6 +1083,137 @@
     opacity: 1;
   }
 
+  /* ── Invoice form, fee sections ─────────────────────────────────────────
+     Copied from the old app's step (read 15 Sep off the staging page and its
+     stylesheet, measured at a 1319px viewport):
+       .question_heading_entries  60% wide
+       .add_entry_button_wrap     100% of the wrapper, button at its right edge
+       .add-invoice-items-section 60%, column, 16px gap, 2rem below
+       .invoice-item-row          flex, space-between, bottom-aligned
+       supplier select 50% · paythrough 22%, 2rem left · amount min 10rem,
+       2rem left · delete 2rem square with a rule under it
+     Amounts narrowed to 8rem and the X moved outside — Andy, 15 Sep.
+     qi- prefix: .qw-fee-* belongs to the quote wizard as well. */
+  .qi-column {
+    width: 60%;
+  }
+
+  .qi-entry-wrap {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .qi-entry {
+    padding: 0.5625rem 1.25rem;
+    font-family: 'Azeret Mono', monospace;
+    font-size: 0.875rem;
+    font-weight: 300;
+    line-height: 1.25rem;
+    text-align: center;
+    text-transform: uppercase;
+    color: var(--color-sequel-brown);
+    cursor: pointer;
+    background-color: transparent;
+    border: 1px solid var(--color-sequel-brown);
+    transition: background-color 200ms ease;
+  }
+
+  .qi-entry:hover {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  .qi-items {
+    display: flex;
+    flex-direction: column;
+    row-gap: 16px;
+    margin-bottom: 2rem;
+  }
+
+  .qi-row {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    width: 100%;
+  }
+
+  .qi-supplier,
+  .qi-paythrough,
+  .qi-amount {
+    min-width: 0;
+    margin: 0;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 300;
+    color: var(--color-sequel-brown);
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--color-sequel-brown);
+    border-radius: 0;
+  }
+
+  .qi-supplier:focus,
+  .qi-paythrough:focus,
+  .qi-amount:focus {
+    outline: none;
+  }
+
+  .qi-supplier {
+    width: 50%;
+    margin-top: 1rem;
+    padding: 8px 12px 4px;
+  }
+
+  .qi-paythrough {
+    width: 22%;
+    margin-top: 1rem;
+    margin-left: 2rem;
+    padding: 8px 12px 4px;
+  }
+
+  .qi-amount {
+    flex: 0 0 8rem;
+    margin-left: 2rem;
+    padding: 0.5rem 0.75rem;
+    text-align: right;
+  }
+
+  .qi-amount:focus {
+    border-bottom-width: 2px;
+  }
+
+  .qi-amount::placeholder {
+    color: var(--color-sequel-brown);
+  }
+
+
+  .qi-label {
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-sequel-brown);
+  }
+
+  /* Diverges from the old app on Andy's call, 15 Sep: the X sits outside the
+     column, to the right of the amount, and is smaller. Out of the flow so the
+     supplier amounts share the fee boxes' right edge. */
+  .qi-delete {
+    position: absolute;
+    right: -2rem;
+    bottom: 0.4rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    cursor: pointer;
+    background: none;
+    border: 0;
+  }
+
+  .qi-delete .qw-x {
+    width: 10px;
+  }
+
   .qw-note {
     margin-top: 1.5rem;
     font-family: 'Creato Display', Arial, sans-serif;
@@ -1140,6 +1271,13 @@
     transition: background-color 200ms ease;
   }
 
+  /* The thicker border was the browser's focus ring: NEXT becomes SUBMIT
+     INVOICE in the same place and keeps focus. */
+  .qw-step-button:focus,
+  .qw-step-button:focus-visible {
+    outline: none;
+  }
+
   .qw-step-button:hover:not(:disabled) {
     background-color: var(--color-sequel-brown);
     color: var(--color-sequel-silver);
@@ -1192,6 +1330,19 @@
     .qw-line-row {
       grid-template-columns: 1fr 1.5rem;
       row-gap: 0.5rem;
+    }
+
+    .qi-column {
+      width: 100%;
+    }
+
+    .qi-row {
+      flex-wrap: wrap;
+    }
+
+    /* Room for the X, which sits outside the column. */
+    .qi-items {
+      padding-right: 2rem;
     }
 
     .qw-fee-head,

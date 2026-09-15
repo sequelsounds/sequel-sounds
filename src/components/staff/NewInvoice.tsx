@@ -120,11 +120,19 @@ function Question({ title, children }: { title: string; children?: React.ReactNo
  * into a Xano decimal input, which could not parse the thousands separator and
  * stored 0 — a valid 200 with a zero in the column.
  */
-function AmountInput({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+function AmountInput({
+  value,
+  onChange,
+  className = 'qw-input qw-input-amount',
+}: {
+  value: string
+  onChange: (next: string) => void
+  className?: string
+}) {
   const [focused, setFocused] = useState(false)
   return (
     <input
-      className="qw-input qw-input-amount"
+      className={className}
       inputMode="decimal"
       placeholder="0.00"
       value={focused ? value : formatAmount(value)}
@@ -151,13 +159,19 @@ function SectionScreen({
     onChange({ ...value, lines: value.lines.map((l, j) => (i === j ? { ...l, ...patch } : l)) })
   }
 
+  // Laid out as the old app's step: heading on its own line, + ENTRY on a
+  // full-width line of its own, then the rows in a 60% column. See the
+  // .qi- rules in index.css for the measurements.
   return (
-    <div className="qw-question is-wide">
-      <div className="qw-fee-head">
+    <>
+      <div className="qi-column">
         <h2 className="qw-title">{section.heading}</h2>
+      </div>
+
+      <div className="qi-entry-wrap">
         <button
           type="button"
-          className="qw-choice"
+          className="qi-entry"
           onClick={() =>
             onChange({
               ...value,
@@ -169,78 +183,78 @@ function SectionScreen({
         </button>
       </div>
 
-      {value.lines.map((line, i) => (
-        <div key={i} className="qw-line-row">
-          <select
-            className="qw-input"
-            value={line.supplierId ?? ''}
-            onChange={(e) => setLine(i, { supplierId: e.target.value === '' ? null : Number(e.target.value) })}
-          >
-            {/* ⚠️ A placeholder option may be `selected`, never `disabled`. A
-                disabled option cannot be displayed, so the browser falls
-                through to the first real supplier and an unanswered select
-                becomes indistinguishable from an answered one. */}
-            <option value="">Select supplier</option>
-            {suppliers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-          <AmountInput value={line.amount} onChange={(v) => setLine(i, { amount: v })} />
-          <select
-            className="qw-input"
-            value={line.paythrough ? 'true' : 'false'}
-            onChange={(e) => setLine(i, { paythrough: e.target.value === 'true' })}
-          >
-            <option value="true">Paythrough</option>
-            <option value="false">Client pays direct</option>
-          </select>
-          {value.lines.length > 1 ? (
-            <button
-              type="button"
-              className="qw-fee-delete"
-              aria-label="Remove this line"
-              onClick={() => onChange({ ...value, lines: value.lines.filter((_, j) => j !== i) })}
+      <div className="qi-column qi-items">
+        {value.lines.map((line, i) => (
+          <div key={i} className="qi-row">
+            <select
+              className="qi-supplier"
+              value={line.supplierId ?? ''}
+              onChange={(e) =>
+                setLine(i, { supplierId: e.target.value === '' ? null : Number(e.target.value) })
+              }
             >
-              ×
-            </button>
-          ) : (
-            <span />
-          )}
-        </div>
-      ))}
+              {/* ⚠️ A placeholder option may be `selected`, never `disabled`. A
+                  disabled option cannot be displayed, so the browser falls
+                  through to the first real supplier and an unanswered select
+                  becomes indistinguishable from an answered one. */}
+              <option value="">Select supplier</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="qi-paythrough"
+              value={line.paythrough ? 'true' : 'false'}
+              onChange={(e) => setLine(i, { paythrough: e.target.value === 'true' })}
+            >
+              <option value="true">Paythrough</option>
+              <option value="false">Non-Paythrough</option>
+            </select>
+            <AmountInput
+              className="qi-amount"
+              value={line.amount}
+              onChange={(v) => setLine(i, { amount: v })}
+            />
+            {value.lines.length > 1 ? (
+              <button
+                type="button"
+                className="qi-delete"
+                aria-label="Remove this line"
+                onClick={() => onChange({ ...value, lines: value.lines.filter((_, j) => j !== i) })}
+              >
+                <span className="qw-x" />
+                <span className="qw-x is-counter" />
+              </button>
+            ) : null}
+          </div>
+        ))}
 
-      {/* ⚠️ Cost avoidance is what the client was SAVED against the original
-          quote. It is money that did not move, it is reported and never summed,
-          and it is in none of the three totals. */}
-      <div className="qw-fee-row">
-        <span className="qw-fee-label">Cost Avoidance</span>
-        <AmountInput
-          value={value.costAvoidance}
-          onChange={(costAvoidance) => onChange({ ...value, costAvoidance })}
-        />
-        <span />
-      </div>
-
-      {section.fees.map((fee) => (
-        <div key={fee.column} className="qw-fee-row">
-          <span className="qw-fee-label">{fee.label}</span>
+        {/* ⚠️ Cost avoidance is what the client was SAVED against the original
+            quote. It is money that did not move, it is reported and never
+            summed, and it is in none of the three totals. */}
+        <div className="qi-row">
+          <span className="qi-label">Cost Avoidance</span>
           <AmountInput
-            value={value.fees[fee.column] ?? ''}
-            onChange={(v) => onChange({ ...value, fees: { ...value.fees, [fee.column]: v } })}
+            className="qi-amount"
+            value={value.costAvoidance}
+            onChange={(costAvoidance) => onChange({ ...value, costAvoidance })}
           />
-          <span />
         </div>
-      ))}
 
-      {section.key === 'demos' && (
-        <p className="qw-note">
-          Paythrough means Sequel bills the client and pays the supplier. Client pays direct still
-          records the spend — it just does not go on the invoice.
-        </p>
-      )}
-    </div>
+        {section.fees.map((fee) => (
+          <div key={fee.column} className="qi-row">
+            <span className="qi-label">{fee.label}</span>
+            <AmountInput
+              className="qi-amount"
+              value={value.fees[fee.column] ?? ''}
+              onChange={(v) => onChange({ ...value, fees: { ...value.fees, [fee.column]: v } })}
+            />
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 
@@ -438,10 +452,6 @@ export function NewInvoice({ projectId, prefill, onClose, onCreated }: Props) {
               onChange={(e) => patch({ songName: e.target.value })}
               onKeyDown={(e) => e.key === 'Enter' && next()}
             />
-            <p className="qw-note">
-              Free text, and it may hold more than one — a library job often licences several at
-              once.
-            </p>
           </Question>
         )}
 
@@ -538,13 +548,6 @@ export function NewInvoice({ projectId, prefill, onClose, onCreated }: Props) {
               <span className="qw-summary-amount">{totalText}</span>
             </div>
 
-            {totals.totalSpend === totals.totalToInvoice && totals.thirdParty > 0 && (
-              /* Expected, and it looks like a bug the first time. */
-              <p className="qw-note">
-                Spend matches the invoice total because every supplier cost is a paythrough — the
-                client is paying for all of it through Sequel.
-              </p>
-            )}
             {error && <p className="form-error">{error}</p>}
           </div>
         )}
@@ -559,8 +562,9 @@ export function NewInvoice({ projectId, prefill, onClose, onCreated }: Props) {
           <span />
         )}
 
-        {/* Hidden on the first step and on the summary, as the old app's is. */}
-        {step > 0 && key !== 'summary' ? (
+        {/* Hidden on the first step and on the summary, as the old app's is,
+            and until there is a figure to total — Andy, 15 Sep. */}
+        {step > 0 && key !== 'summary' && totals.totalToInvoice !== 0 ? (
           <span className="qw-total">
             TOTAL <strong>{totalText}</strong>
           </span>

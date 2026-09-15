@@ -813,8 +813,12 @@ export default function Project() {
             row={(i) => (
               <>
                 <Title>{i.description || 'Untitled invoice'}</Title>
-                <span className="row-cost-symbol">{i.currency_symbol}</span>
-                <Cell>{formatMoney(i.total_amount)}</Cell>
+                {/* Symbol and amount in one cell, as on the estimates list —
+                    in separate columns they sat a column-width apart. */}
+                <span className="row-cost">
+                  <span className="row-cost-symbol">{i.currency_symbol}</span>
+                  <span className="row-field">{formatMoney(i.total_amount)}</span>
+                </span>
                 <Cell>{i.invoice_number}</Cell>
                 <Cell>{fmt(shortDate, i.invoice_date)}</Cell>
                 <Cell>{i.status}</Cell>
