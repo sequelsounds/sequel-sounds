@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react'
 import {
+  BRIEF_QUESTIONS,
   briefDate,
+  briefFlow,
   briefItems,
   briefLink,
+  fromUkDate,
+  toUkDate,
   useArchiveBrief,
   useBriefDetail,
+  useUpdateBrief,
   type BriefDetail,
   type BriefItem,
 } from '../../lib/briefs'
+import { EditEnum, EditField } from './EditField'
 import { buildBriefEmail } from '../../lib/briefEmail'
 import type { Brief, Project } from '../../lib/xanoMirror'
 import { ArchiveIcon, Modal, ShareIcon } from './RowActions'
@@ -204,6 +210,7 @@ export function BriefViewModal({
   const d = detail.data
   const items = d ? briefItems(d.answers) : []
   const [copied, setCopied] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   useEffect(() => {
     if (!copied) return
@@ -216,7 +223,8 @@ export function BriefViewModal({
       <button type="button" className="wizard-close rm-close" aria-label="Close" onClick={onClose} />
       <div className="rm-header">{viewTitle(d)}</div>
       <div className="rm-subheader">{viewMeta(d, detail.isError)}</div>
-      {items.length > 0 && (
+      {editing && d && <BriefEditor detail={d} projectId={project.id} />}
+      {!editing && items.length > 0 && (
         <div className="bv-answers">
           {items.map((item) => (
             <div key={item.key} className="bv-qa">
@@ -229,16 +237,72 @@ export function BriefViewModal({
       {/* Only once the brief has loaded, so it cannot send a half-empty email. */}
       {d && (
         <div className="rm-buttons">
-          <button
-            type="button"
-            className="wizard-btn rm-button bv-email"
-            onClick={() => emailBrief(d, items, project).then(() => setCopied(true))}
-          >
-            {copied ? 'COPIED - PASTE INTO EMAIL' : 'EMAIL BRIEF'}
+          {!editing && (
+            <button
+              type="button"
+              className="wizard-btn rm-button bv-email"
+              onClick={() => emailBrief(d, items, project).then(() => setCopied(true))}
+            >
+              {copied ? 'COPIED - PASTE INTO EMAIL' : 'EMAIL BRIEF'}
+            </button>
+          )}
+          {/* Each field saves as it is left, so DONE only closes the boxes. */}
+          <button type="button" className="wizard-btn rm-button" onClick={() => setEditing((e) => !e)}>
+            {editing ? 'DONE' : 'EDIT BRIEF'}
           </button>
         </div>
       )}
     </Modal>
+  )
+}
+
+/**
+ * Every question as a box, answered or not, so something the client adds later
+ * has somewhere to go. Branching follows the answers as they stand: the budget
+ * box shows only for commercially released music, lyrics not for
+ * instrumental. The questions read as they do on the client's form.
+ */
+function BriefEditor({ detail, projectId }: { detail: BriefDetail; projectId: number }) {
+  const save = useUpdateBrief(detail.id, projectId)
+  const a = detail.answers
+  // An uploaded brief has no answers to edit, only its name.
+  const questions =
+    detail.source === 'upload' ? BRIEF_QUESTIONS.filter((q) => q.key === 'name') : briefFlow(a)
+  return (
+    <div className="bv-answers bv-edit">
+      {questions.map((q) => {
+        if (q.type === 'choice') {
+          return (
+            <EditEnum
+              key={q.key}
+              label={q.title}
+              value={a[q.key] || null}
+              options={(q.choices ?? []).map((c) => c.value)}
+              onSave={(v) => save(q.key, v)}
+            />
+          )
+        }
+        if (q.type === 'date') {
+          return (
+            <EditField
+              key={q.key}
+              label={`${q.title} (DD/MM/YYYY)`}
+              value={a[q.key] ? toUkDate(a[q.key]) : ''}
+              onSave={(v) => save(q.key, v === null ? null : fromUkDate(v))}
+            />
+          )
+        }
+        return (
+          <EditField
+            key={q.key}
+            label={q.key === 'name' ? 'Brief name' : q.title}
+            value={a[q.key]}
+            textarea={q.type === 'long'}
+            onSave={(v) => save(q.key, v)}
+          />
+        )
+      })}
+    </div>
   )
 }
 

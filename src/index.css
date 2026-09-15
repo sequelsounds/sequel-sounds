@@ -1382,6 +1382,18 @@
     white-space: nowrap;
   }
 
+  /* EDIT BRIEF: the app's own save-on-blur boxes, inside the same ruled band.
+     The questions are long, so their labels wrap on a real line height, and
+     the textareas start at four lines rather than the Bio's eight — thirteen
+     of those would bury the form. */
+  .bv-edit .edit-field-label {
+    line-height: 1rem;
+  }
+
+  .bv-edit .edit-field-input-text {
+    min-height: calc(4rem + 2px);
+  }
+
   /* contract-btn-swap / hidden-buttons-wrap: + NEW BRIEF gives way to its
      three choices, 16px apart, and they stay until the tab is left. */
   .pane-menu {

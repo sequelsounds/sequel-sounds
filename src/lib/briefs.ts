@@ -299,3 +299,34 @@ export function briefItems(answers: BriefAnswers): BriefItem[] {
   }
   return out
 }
+
+/**
+ * Edit one answer on a brief that has come in — new, Andy 16 Sep: a client
+ * often adds something before the brief goes out. `key` is the question key.
+ * The date goes in as YYYY-MM-DD.
+ */
+export function useUpdateBrief(briefId: number, projectId: number | undefined) {
+  const qc = useQueryClient()
+  return async (key: string, value: string | null) => {
+    const { error } = await rpc('track_update_brief', {
+      p_brief_id: briefId,
+      p_key: key,
+      p_value: value,
+    })
+    if (error) throw error
+    await qc.invalidateQueries({ queryKey: ['mirror', 'brief', briefId] })
+    void qc.invalidateQueries({ queryKey: ['mirror', 'briefs', projectId] })
+  }
+}
+
+/** "2026-09-20" → "20/09/2026", for the edit box. */
+export function toUkDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso
+}
+
+/** "20/9/2026" → "2026-09-20". Anything else goes through as typed, and the database refuses it. */
+export function fromUkDate(uk: string): string {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(uk.trim())
+  return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : uk
+}
