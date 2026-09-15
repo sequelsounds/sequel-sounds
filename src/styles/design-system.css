@@ -3832,10 +3832,11 @@
     padding: 32px;
   }
 
-  /* asset-header */
+  /* asset-header, but in Creato Display and reading "Project Asset" rather
+     than Fahkwang "ASSET" — Andy, 16 Sep. */
   .sf-header {
     margin-bottom: 8px;
-    font-family: 'Fahkwang', sans-serif;
+    font-family: 'Creato Display', Arial, sans-serif;
     font-size: 2rem;
     font-weight: 400;
     line-height: 2rem;
@@ -3879,10 +3880,10 @@
 
   /* The audio preview is the app's own player bar (SharedAudio), not the
      browser's control — Andy, 16 Sep. Colours flipped from the staff bar
-     (silver ground, brown marks) and ruled all round — Andy, same day. */
+     (brown marks on the page's own ground). A 1px brown border and a silver
+     ground were both tried and taken off again the same day — Andy. */
   .sf-preview.is-audio {
-    background-color: var(--color-sequel-silver);
-    border: 1px solid var(--color-sequel-brown);
+    background-color: transparent;
   }
 
   .sa-bar {
@@ -3896,9 +3897,11 @@
     align-items: center;
     gap: 18px;
     height: 78px;
-    padding: 0 22px;
+    /* No inset now there is no box: the play square lines up with the
+       filename above and DOWNLOAD below. */
+    padding: 0;
     color: var(--color-sequel-brown);
-    background-color: var(--color-sequel-silver);
+    background-color: transparent;
   }
 
   .sa-play {

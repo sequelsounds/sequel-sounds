@@ -113,7 +113,7 @@ export default function SharedFile() {
 
       {(file || error) && (
         <div className="sf-card">
-          <div className="sf-header">ASSET</div>
+          <div className="sf-header">Project Asset</div>
           <div className="sf-name">{file?.file_name ?? ''}</div>
           <div className="sf-head">
             <div className="sf-meta">
