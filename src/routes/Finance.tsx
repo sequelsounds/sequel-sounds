@@ -161,7 +161,7 @@ function ClientInvoices() {
 
       {filter === 'Payment times' ? (
         <>
-          <div className="finance-grid finance-pay-grid project-list-head">
+          <div className="finance-grid finance-pay-grid project-list-head finance-head">
             <span className="project-list-head-cell">Client (QuickBooks)</span>
             <span className="project-list-head-cell">Paid invoices</span>
             <span className="project-list-head-cell">Avg days to pay</span>
@@ -196,7 +196,7 @@ function ClientInvoices() {
         </>
       ) : (
         <>
-          <div className="finance-grid project-list-head">
+          <div className="finance-grid project-list-head finance-head">
             <span className="project-list-head-cell">Number</span>
             <span className="project-list-head-cell">Date</span>
             <span className="project-list-head-cell">Client</span>
