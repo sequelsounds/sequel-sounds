@@ -3855,12 +3855,13 @@
   }
 
   /* asset-header, but in Creato Display and reading "Project Asset" rather
-     than Fahkwang "ASSET" — Andy, 16 Sep. */
+     than Fahkwang "ASSET" — Andy, 16 Sep. Medium, a step up from Regular
+    (Andy). */
   .sf-header {
     margin-bottom: 8px;
     font-family: 'Creato Display', Arial, sans-serif;
     font-size: 2rem;
-    font-weight: 400;
+    font-weight: 500;
     line-height: 2rem;
   }
 
