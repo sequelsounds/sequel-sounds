@@ -69,6 +69,10 @@ export default function SongConfirmation() {
   const [declined, setDeclined] = useState(false)
   const [finishing, setFinishing] = useState(false)
   const [slowFinish, setSlowFinish] = useState(false)
+  // Bumped on every "still preparing" answer, so the retry runs again even
+  // when `preparing` was already true.
+  const [prepTick, setPrepTick] = useState(0)
+  const finishingRef = useRef(false)
 
   useEffect(() => {
     document.title = 'Sequel | Song Confirmation'
@@ -81,9 +85,15 @@ export default function SongConfirmation() {
     if (r.state === 'open') return setScreen('form')
     setScreen('sign')
     setPreparing(r.state === 'preparing')
+    if (r.state === 'preparing') setPrepTick((t) => t + 1)
     setDeclined(!!r.declined)
     setSignError(r.error ?? null)
     if (r.signing_url) setSigningUrl(r.signing_url)
+    else if (r.state === 'sign' && !r.error && !r.declined) {
+      setSignError(
+        "We couldn't prepare your Schedule A just now. Please try again in a minute, or contact Sequel if the problem continues.",
+      )
+    }
   }, [])
 
   const openSign = useCallback(async () => {
@@ -121,22 +131,25 @@ export default function SongConfirmation() {
     if (screen !== 'sign' || !preparing) return
     const t = window.setTimeout(() => void openSign(), 3000)
     return () => window.clearTimeout(t)
-  }, [screen, preparing, openSign])
+  }, [screen, preparing, prepTick, openSign])
 
   // Firma's frame says it is done: ask the server, which asks Firma, until the
   // signed copy is ready. It usually is within seconds.
   const finish = useCallback(async () => {
-    if (!uuid) return
+    if (!uuid || finishingRef.current) return
+    finishingRef.current = true
     setFinishing(true)
     for (let i = 0; i < 30; i++) {
       try {
         const r = await checkSigned(uuid)
         if (r.state === 'done') {
+          finishingRef.current = false
           setFinishing(false)
           setScreen('done')
           return
         }
         if (r.declined) {
+          finishingRef.current = false
           setFinishing(false)
           setDeclined(true)
           return
@@ -146,6 +159,9 @@ export default function SongConfirmation() {
       }
       await new Promise((res) => window.setTimeout(res, 2000))
     }
+    // Still not there: say so, and let the slow poll below carry on.
+    finishingRef.current = false
+    setFinishing(false)
     setSlowFinish(true)
   }, [uuid])
 
@@ -202,7 +218,9 @@ export default function SongConfirmation() {
 
   const nextComposer = () => {
     const c = composers[composerIndex]
-    if (!c || !c.full_name.trim() || !(parseFloat(c.share_split) > 0)) return setComposerError(true)
+    const share = parseFloat(c?.share_split ?? '')
+    // Above 0 as the old page has it; at most 100, which the database also holds to.
+    if (!c || !c.full_name.trim() || !(share > 0 && share <= 100)) return setComposerError(true)
     setComposerError(false)
     setStep(step + 1)
   }

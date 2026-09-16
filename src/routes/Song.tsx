@@ -2,7 +2,13 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { useSong } from '../lib/xanoMirror'
-import { openSignedScheduleA, resendSongLink, useSongSigning } from '../lib/songSchedule'
+import {
+  openSignedScheduleA,
+  refreshSigning,
+  resendSongLink,
+  resetSigning,
+  useSongSigning,
+} from '../lib/songSchedule'
 
 /**
  * One song — Sequel Track's `/song`, rebuilt.
@@ -46,6 +52,20 @@ function ScheduleAPanel({ songId }: { songId: number }) {
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const sig = q.data?.signing
+
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true)
+    setNote(null)
+    try {
+      await fn()
+      await q.refetch()
+    } catch (e) {
+      setNote((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (!sig || sig.schedule_a_via !== 'firma') return null
 
   const progress = sig.schedule_a_signed_at
@@ -86,6 +106,37 @@ function ScheduleAPanel({ songId }: { songId: number }) {
             }}
           >
             SIGNED COPY
+          </button>
+        )}
+        {sig.composer_reg_form_status === 'Confirmed' && !sig.schedule_a_signed_at && (
+          <button
+            type="button"
+            className="btn btn-mono btn-outline"
+            disabled={busy}
+            onClick={() =>
+              run(async () => {
+                await refreshSigning(songId)
+              })
+            }
+          >
+            CHECK SIGNATURE
+          </button>
+        )}
+        {/* Only offered once something has gone wrong — a decline, or a
+            request Firma lost — because it discards the signing link the
+            composer may already be using. */}
+        {sig.composer_reg_form_status === 'Confirmed' && !sig.schedule_a_signed_at && sig.firma_error && (
+          <button
+            type="button"
+            className="btn btn-mono btn-outline"
+            disabled={busy}
+            onClick={() =>
+              run(async () => {
+                await resetSigning(songId)
+              })
+            }
+          >
+            RESET SIGNING
           </button>
         )}
         {sig.composer_reg_form_status === 'Pending' && (

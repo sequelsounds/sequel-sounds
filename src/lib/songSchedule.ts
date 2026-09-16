@@ -61,7 +61,7 @@ export function useCreateSong(projectId: number | undefined) {
       ),
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ['mirror', 'songs', projectId] })
-      void qc.invalidateQueries({ queryKey: ['mirror', 'sequel-songs'] })
+      void qc.invalidateQueries({ queryKey: ['mirror', 'songs'] })
     },
   })
 }
@@ -71,6 +71,19 @@ export function resendSongLink(songId: number) {
     { action: 'resend_link', song_id: songId },
     "The email couldn't be sent. Please try again.",
   )
+}
+
+/** Asks Firma, through the server, whether the composer has signed. */
+export function refreshSigning(songId: number) {
+  return call<{ state: string; declined?: boolean }>(
+    { action: 'refresh', song_id: songId },
+    "Couldn't check the signature just now.",
+  )
+}
+
+/** After a decline: the composer's link makes a fresh signing request. */
+export function resetSigning(songId: number) {
+  return call<{ ok: boolean }>({ action: 'reset_signing', song_id: songId }, "Couldn't reset the signing.")
 }
 
 export async function openSignedScheduleA(songId: number): Promise<string> {

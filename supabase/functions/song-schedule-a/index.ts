@@ -5,6 +5,9 @@
 //        -> { song_id, uuid, emailed, email_error? }
 //   { action: "resend_link", song_id }        -> { emailed, email_error? }
 //   { action: "document", song_id }           -> { url }  signed copy, 10 minutes
+//   { action: "refresh", song_id }            -> { state }  ask Firma if it is signed
+//   { action: "reset_signing", song_id }      -> { ok }     after a decline: the
+//        composer's link makes a fresh signing request next time it is opened
 //
 // Public (the composer; the song's uuid is the only credential, as in the old
 // app's /song-confirmation):
@@ -256,6 +259,9 @@ async function startSigning(db: Client, song: Song): Promise<{ url: string | nul
     .select('id')
   if (!claimed || claimed.length === 0) return { url: null, preparing: true }
 
+  // Once Firma has made the request, the claim is never released: a second
+  // attempt would pay for a second envelope. What went wrong is recorded.
+  let requestId: string | null = null
   try {
     const { data: writers, error } = await db
       .from('sequel_song_writer')
@@ -336,24 +342,35 @@ async function startSigning(db: Client, song: Song): Promise<{ url: string | nul
       recipients?: { id: string; designation?: string }[]
     }
 
+    requestId = created.id
     const signerId =
       created.first_signer?.id ?? created.recipients?.find((r) => r.designation === 'Signer')?.id ?? null
     const link = created.first_signer?.signing_link ?? null
-    await db
+    const url = signingUrl(signerId, link)
+    const { error: saveErr } = await db
       .from('sequel_songs')
       .update({
         firma_request_id: created.id,
         firma_signer_id: signerId,
         firma_signing_url: link,
-        firma_error: null,
+        firma_error: url ? null : 'Firma made the signing request but returned no signing link.',
       })
       .eq('id', song.id)
-    return { url: signingUrl(signerId, link) }
+    if (saveErr) throw new Error(`signing request ${created.id} was made but not saved: ${saveErr.message}`)
+    if (!url) throw new Error('Firma returned no signing link.')
+    return { url }
   } catch (e) {
     const message = (e as Error).message
     console.error('signing request failed', song.id, message)
-    // Release the claim so the next attempt can start straight away.
-    await db.from('sequel_songs').update({ schedule_a_sent_at: null, firma_error: message }).eq('id', song.id)
+    await db
+      .from('sequel_songs')
+      .update(
+        requestId
+          ? { firma_error: message }
+          : // Nothing was made, so release the claim and let the next try start at once.
+            { schedule_a_sent_at: null, firma_error: message },
+      )
+      .eq('id', song.id)
     throw e
   }
 }
@@ -368,9 +385,25 @@ async function finaliseIfSigned(db: Client, song: Song): Promise<'done' | 'sign'
   const id = encodeURIComponent(song.firma_request_id)
   const req = (await firma(`/signing-requests/${id}`)) as {
     status?: { finished?: boolean; declined_on?: string | null; cancelled_on?: string | null; finished_on?: string | null }
+    expires_at?: string | null
     final_document_download_url?: string | null
   }
-  if (req.status?.declined_on || req.status?.cancelled_on) return 'declined'
+  if (req.status?.declined_on || req.status?.cancelled_on) {
+    await db
+      .from('sequel_songs')
+      .update({
+        firma_error: req.status.declined_on
+          ? 'The composer declined the Schedule A. Reset the signing to send a fresh one.'
+          : 'The signing request was cancelled in Firma. Reset the signing to send a fresh one.',
+      })
+      .eq('id', song.id)
+    return 'declined'
+  }
+  if (!req.status?.finished && req.expires_at && new Date(req.expires_at) < new Date()) {
+    // Lapsed unsigned: forget it, so the link makes a fresh one when opened.
+    await resetSigning(db, song.id, 'The last signing request expired unsigned; a new one is made when the link is opened.')
+    return 'sign'
+  }
   if (!req.status?.finished || !req.final_document_download_url) return 'sign'
 
   const file = await fetch(req.final_document_download_url)
@@ -395,7 +428,7 @@ async function finaliseIfSigned(db: Client, song: Song): Promise<'done' | 'sign'
     console.error('reading the signer name failed', (e as Error).message)
   }
 
-  await db
+  const { error: doneErr } = await db
     .from('sequel_songs')
     .update({
       schedule_a_status: 'Complete',
@@ -405,7 +438,24 @@ async function finaliseIfSigned(db: Client, song: Song): Promise<'done' | 'sign'
       firma_error: null,
     })
     .eq('id', song.id)
+  if (doneErr) throw new Error(`signed, but marking it complete failed: ${doneErr.message}`)
   return 'done'
+}
+
+async function resetSigning(db: Client, songId: number, note: string | null) {
+  const { error } = await db
+    .from('sequel_songs')
+    .update({
+      firma_request_id: null,
+      firma_signer_id: null,
+      firma_signing_url: null,
+      schedule_a_sent_at: null,
+      firma_error: note,
+    })
+    .eq('id', songId)
+    // Not .neq(): that drops NULL rows as well (mirror trap 4).
+    .or('schedule_a_status.is.null,schedule_a_status.neq.Complete')
+  if (error) throw new Error(`reset failed: ${error.message}`)
 }
 
 // ------------------------------------------------------------------ handler
@@ -428,7 +478,13 @@ Deno.serve(async (req) => {
 
   try {
     // ---------------------------------------------------------- staff
-    if (action === 'create' || action === 'resend_link' || action === 'document') {
+    if (
+      action === 'create' ||
+      action === 'resend_link' ||
+      action === 'document' ||
+      action === 'refresh' ||
+      action === 'reset_signing'
+    ) {
       const caller = asCaller(req)
       if (!caller || !(await isStaff(caller))) return json({ error: 'Staff only.' }, 403, origin)
 
@@ -459,6 +515,26 @@ Deno.serve(async (req) => {
         }
         const emailError = await sendLinkEmail(db, song, appOrigin(req))
         return json({ emailed: !emailError, email_error: emailError ?? undefined }, 200, origin)
+      }
+
+      if (action === 'refresh') {
+        if (stateOf(song) !== 'sign' || !song.firma_request_id) return json({ state: stateOf(song) }, 200, origin)
+        try {
+          const now = await finaliseIfSigned(db, song)
+          return json({ state: now === 'done' ? 'done' : 'sign', declined: now === 'declined' }, 200, origin)
+        } catch (e) {
+          const message = (e as Error).message
+          await db.from('sequel_songs').update({ firma_error: message }).eq('id', song.id)
+          return json({ error: message }, 502, origin)
+        }
+      }
+
+      if (action === 'reset_signing') {
+        if (song.schedule_a_status === 'Complete') {
+          return json({ error: 'This Schedule A is already signed.' }, 400, origin)
+        }
+        await resetSigning(db, song.id, null)
+        return json({ ok: true }, 200, origin)
       }
 
       // document
@@ -526,7 +602,9 @@ Deno.serve(async (req) => {
           if (now === 'declined') return json({ state: 'sign', declined: true }, 200, origin)
           if (action === 'check') return json({ state: 'sign' }, 200, origin)
         }
-        const started = await startSigning(db, song)
+        // Read again: finaliseIfSigned may just have cleared a lapsed request.
+        const current = (await songByUuid(db, song.uuid)) ?? song
+        const started = await startSigning(db, current)
         if (started.preparing) return json({ state: 'preparing' }, 200, origin)
         return json({ state: 'sign', signing_url: started.url }, 200, origin)
       } catch (e) {
