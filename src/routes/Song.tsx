@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { useSong } from '../lib/xanoMirror'
+import { openSignedScheduleA, resendSongLink, useSongSigning } from '../lib/songSchedule'
 
 /**
  * One song — Sequel Track's `/song`, rebuilt.
@@ -15,9 +16,13 @@ import { useSong } from '../lib/xanoMirror'
  *     Reproducing the number would put a plausible, specific and entirely
  *     invented figure next to real money, so the tile is here and empty. Brand
  *     and Ownership beside it are real.
- *  2. **The Writers tab is empty markup on Track** — no fields, no rows. The
- *     eight composer slots and their CAE numbers and shares exist on the table
- *     and nothing shows them. Left empty, because there is nothing to copy.
+ *  2. **The Writers tab is empty markup on Track** — no fields, no rows. It
+ *     now lists the writers the composer confirmed (sequel_song_writer), for
+ *     songs confirmed through the form; older songs still show nothing here.
+ *
+ * New, Andy 16 Sep: a song made from + NEW SONG shows where its Schedule A
+ * has got to on Overview — the link emailed, confirmed, signed — with the
+ * signed copy, and says plainly if the email or the signing went wrong.
  *
  * The Creative tab lists the song's creative links on Track. Those come from a
  * different table and are not in this view, so it is empty here for now and
@@ -25,6 +30,110 @@ import { useSong } from '../lib/xanoMirror'
  *
  * Read-only, so Track's save-on-blur is not here.
  */
+
+const when = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+const stamp = (v: string | null) => (v ? when.format(new Date(v)) : '')
+
+/** Where a new-app song's Schedule A has got to, in one line. */
+function ScheduleAPanel({ songId }: { songId: number }) {
+  const q = useSongSigning(songId)
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  const sig = q.data?.signing
+  if (!sig || sig.schedule_a_via !== 'firma') return null
+
+  const progress = sig.schedule_a_signed_at
+    ? `Signed ${stamp(sig.schedule_a_signed_at)}${sig.schedule_a_signer_name ? ` by ${sig.schedule_a_signer_name}` : ''}`
+    : sig.composer_reg_form_status === 'Confirmed'
+      ? `Details confirmed ${stamp(sig.confirmed_at)} — waiting for the signature`
+      : sig.link_emailed_at
+        ? `Link emailed ${stamp(sig.link_emailed_at)} — waiting for the composer`
+        : 'Link not sent'
+  const problem = sig.link_email_error || sig.firma_error
+
+  return (
+    <>
+      <Field label="Schedule A" value={progress} />
+      <Field label="Sent To (Contract Email)" value={sig.contract_email} />
+      {problem && <p className="form-error">{problem}</p>}
+      {note && <p className="form-error">{note}</p>}
+      <div className="flex gap-4">
+        {sig.schedule_a_pdf_path && (
+          <button
+            type="button"
+            className="btn btn-mono btn-outline"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true)
+              setNote(null)
+              // Opened before the await, so the browser does not block it.
+              const tab = window.open('about:blank', '_blank')
+              try {
+                const url = await openSignedScheduleA(songId)
+                if (tab) tab.location.href = url
+              } catch (e) {
+                tab?.close()
+                setNote((e as Error).message)
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            SIGNED COPY
+          </button>
+        )}
+        {sig.composer_reg_form_status === 'Pending' && (
+          <button
+            type="button"
+            className="btn btn-mono btn-outline"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true)
+              setNote(null)
+              try {
+                const r = await resendSongLink(songId)
+                setNote(r.emailed ? null : (r.email_error ?? 'The email did not send.'))
+                await q.refetch()
+              } catch (e) {
+                setNote((e as Error).message)
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            RESEND LINK
+          </button>
+        )}
+      </div>
+    </>
+  )
+}
+
+function WritersPane({ songId }: { songId: number }) {
+  const q = useSongSigning(songId)
+  const writers = q.data?.writers ?? []
+  if (q.isPending) return null
+  if (writers.length === 0) return <p className="empty-note py-6">No writers confirmed for this song yet.</p>
+  return (
+    <div className="edit-form">
+      {writers.map((w, i) => (
+        <Field
+          key={w.id}
+          label={`Writer ${i + 1}`}
+          value={[w.full_name, w.cae_number || 'No CAE', w.share_split !== null ? `${Number(w.share_split)}%` : '']
+            .filter(Boolean)
+            .join('  ·  ')}
+        />
+      ))}
+    </div>
+  )
+}
 
 const TABS = ['Overview', 'Registration', 'Campaign', 'Writers', 'Creative', 'Notes'] as const
 type Tab = (typeof TABS)[number]
@@ -122,6 +231,7 @@ export default function Song() {
             <Field label="Duration" value={s.duration} />
             <Field label="Alternative Titles" value={s.alternative_titles} textarea />
             <Field label="Composer" value={s.composer} />
+            <ScheduleAPanel songId={s.id} />
           </div>
         )}
 
@@ -151,7 +261,7 @@ export default function Song() {
 
         {/* Empty markup on Track. The eight composer slots, their CAE numbers
             and their shares are all on the table and none of them is shown. */}
-        {tab === 'Writers' && null}
+        {tab === 'Writers' && <WritersPane songId={s.id} />}
 
         {tab === 'Creative' && (
           <p className="empty-note py-6">

@@ -61,6 +61,8 @@ export type SupplierPatch = {
   bio?: string | null
   strengths?: string | null
   brief_email?: string | null
+  /** Who receives and signs the Schedule A — new, Andy 16 Sep. */
+  contract_email?: string | null
   phone_number?: string | null
   website?: string | null
   city?: string | null

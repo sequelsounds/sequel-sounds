@@ -39,6 +39,7 @@ import {
   useProjectSongs,
 } from '../lib/xanoMirror'
 import type { Brief, Contract, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../lib/xanoMirror'
+import { NewSongModal } from '../components/staff/NewSong'
 
 /**
  * One project — Sequel Track's `/project`, rebuilt.
@@ -467,6 +468,7 @@ export default function Project() {
   const [briefShare, setBriefShare] = useState<ShareState | null>(null)
   const [briefView, setBriefView] = useState<Brief | null>(null)
   const [assetModal, setAssetModal] = useState<AssetModalMode | null>(null)
+  const [newSong, setNewSong] = useState(false)
   // row_flash: the row just saved blinks, then stops.
   const [flash, setFlash] = useState<string | null>(null)
   const flashRow = (uuid: string) => {
@@ -978,6 +980,7 @@ export default function Project() {
           <Rows<Song>
             title="Songs"
             action="+ NEW SONG"
+            onAction={edit && projectId !== undefined ? () => setNewSong(true) : undefined}
             empty="Nothing here yet."
             state={songs}
             variant="song"
@@ -988,6 +991,10 @@ export default function Project() {
               </>
             )}
           />
+        )}
+
+        {newSong && projectId !== undefined && (
+          <NewSongModal projectId={projectId} onClose={() => setNewSong(false)} />
         )}
 
         {tab === 'Contracting' && (

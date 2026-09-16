@@ -171,6 +171,12 @@ export default function Partner() {
         {tab === 'Contact' && (
           <div className="edit-form">
             <EditField label="Briefing Email" value={p.brief_email} onSave={text('brief_email')} />
+            {/* New, Andy 16 Sep: who receives and signs contracts. */}
+            <EditField
+              label="Contract Email"
+              value={p.contract_email}
+              onSave={text('contract_email')}
+            />
             <EditField
               label="Contact Number"
               value={p.phone_number}

@@ -4155,3 +4155,526 @@
     text-transform: uppercase;
   }
 }
+
+/* ========================================================== the new song modal
+ * `create_song_menu` on the old app's /project page, read 16 Sep: the combo
+ * boxes are `select_rights_combo` / `Combo_Wrapper` > `user field wrap` >
+ * `User project edit input field`, with `Results_List` > `Result_Item` >
+ * `result text` under them. ns- because nothing else may be restyled by it.
+ */
+@layer components {
+  /* Combo_Wrapper; select_rights_combo adds the 1rem under it. */
+  .ns-combo {
+    position: relative;
+    display: flex;
+    width: 100%;
+  }
+
+  .ns-rights {
+    margin-bottom: 1rem;
+  }
+
+  /* user field wrap */
+  .ns-field {
+    display: flex;
+    flex: 1 1 0%;
+    align-items: center;
+    max-height: 2rem;
+    border: 1px solid rgb(55 43 41 / 0.5);
+    background-color: transparent;
+  }
+
+  /* User project edit input field */
+  .ns-input {
+    display: block;
+    width: 100%;
+    max-height: 2rem;
+    padding: 0.5rem;
+    border: 0;
+    background-color: transparent;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    line-height: 0.8rem;
+    letter-spacing: 0;
+    color: rgb(55 43 41 / 0.7);
+    outline: none;
+  }
+
+  .ns-input:focus {
+    background-color: rgb(55 43 41 / 0.15);
+    color: var(--color-sequel-brown);
+  }
+
+  .ns-input::placeholder {
+    color: rgb(55 43 41 / 0.6);
+    font-style: italic;
+  }
+
+  .ns-input[readonly] {
+    cursor: pointer;
+  }
+
+  /* Results_List: under the box, three sides ruled. */
+  .ns-results {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    max-height: 16rem;
+    overflow: auto;
+    padding: 10px;
+    border: 1px solid var(--color-sequel-brown);
+    border-top: 0;
+    background-color: var(--color-sequel-silver);
+  }
+
+  /* Result_Item */
+  .ns-result {
+    display: flex;
+    flex: none;
+    align-items: center;
+    width: 100%;
+    padding: 10px;
+    border: 0;
+    background-color: var(--color-sequel-silver);
+    color: rgb(55 43 41 / 0.71);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .ns-result:hover {
+    background-color: rgb(55 43 41 / 0.05);
+  }
+
+  .ns-result.is-empty {
+    cursor: default;
+  }
+
+  .ns-result.is-empty:hover {
+    background-color: var(--color-sequel-silver);
+  }
+
+  /* result text; .email is the italic second line (the country here). */
+  .ns-result-text {
+    margin-right: 10px;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    letter-spacing: 0;
+    color: var(--color-sequel-brown);
+  }
+
+  .ns-result-text.is-sub {
+    font-style: italic;
+  }
+
+  /* modal-button-disabled: a faded label and border, not a faded button. */
+  .ns-button:disabled {
+    opacity: 1;
+    color: #372b2959;
+    border-color: #372b2959;
+    cursor: not-allowed;
+  }
+}
+
+/* ===================================================== the song confirmation
+ * `/song-confirmation` — the old app's song-confirm-* classes, every value read
+ * off the Webflow style records 16 Sep (`claude/sequel-track-song-
+ * confirmation.md` §5). sc- because nothing else may be restyled by it.
+ * Colours: Sequel Brown #372b29 on Composition Sage #d0dbcd.
+ * Type tokens: H2 2.83rem, Text LG 1.13rem, Text 1rem, Text SM 0.88rem, with
+ * the Typography collection's Tablet / Mobile (L) / Mobile modes below.
+ */
+@layer components {
+  .sc-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    width: 100%;
+    height: 6px;
+    overflow: hidden;
+    background-color: rgba(55, 43, 41, 0.12);
+  }
+
+  .sc-progress-fill {
+    height: 100%;
+    background-color: var(--color-sequel-brown);
+    transition: width 400ms cubic-bezier(0.645, 0.045, 0.355, 1);
+  }
+
+  .sc-body {
+    --sc-h2: 2.83rem;
+    --sc-lg: 1.13rem;
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+    background-color: #d0dbcd;
+    color: var(--color-sequel-brown);
+    font-family: var(--font-sans);
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  /* Image 23: the wordmark, pinned top left. */
+  .sc-logo {
+    position: fixed;
+    z-index: 999;
+    max-width: 9%;
+    height: auto;
+    margin-top: 2rem;
+    margin-left: 2rem;
+  }
+
+  .sc-state,
+  .sc-step-title {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100vh;
+    min-height: 100vh;
+    max-width: 34rem;
+    margin-right: auto;
+    margin-left: auto;
+    padding-right: 1.5rem;
+    padding-left: 1.5rem;
+    overflow-y: auto;
+  }
+
+  .sc-state {
+    align-items: flex-start;
+  }
+
+  .sc-intro {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    height: 100vh;
+    min-height: 100vh;
+  }
+
+  .sc-intro-image-col {
+    position: relative;
+    flex-shrink: 0;
+    width: 55%;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  .sc-intro-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 200ms ease;
+  }
+
+  .sc-intro-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 45%;
+    max-width: 32rem;
+    padding-right: 3rem;
+    padding-left: 5rem;
+  }
+
+  /* h2 keeps Webflow's own 20px above it. */
+  .sc-heading {
+    margin-top: 20px;
+    margin-bottom: 0.75rem;
+    font-family: var(--font-title);
+    font-size: var(--sc-h2);
+    font-weight: 400;
+    line-height: 1.15em;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+
+  .sc-subtext {
+    margin-top: 0;
+    margin-bottom: 2.5rem;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    font-weight: 300;
+    line-height: 1.5em;
+    opacity: 0.75;
+  }
+
+  .sc-field-group {
+    width: 100%;
+    margin-bottom: 2rem;
+  }
+
+  .sc-field-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.88rem;
+    font-weight: 400;
+    opacity: 0.6;
+  }
+
+  /* The underline is a box-shadow; focus thickens it. */
+  .sc-input {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0.5rem 0.5rem 0.75rem;
+    border: 0;
+    background-color: transparent;
+    box-shadow: 0 0.0625rem 0 0 #372b29;
+    color: var(--color-sequel-brown);
+    font-family: var(--font-sans);
+    font-size: var(--sc-lg);
+    font-weight: 300;
+    line-height: 1.4;
+    outline: none;
+    appearance: textfield;
+  }
+
+  .sc-input:focus {
+    box-shadow: 0 0.125rem 0 0 #372b29;
+  }
+
+  .sc-input::placeholder {
+    color: var(--color-sequel-brown);
+    opacity: 0.5;
+  }
+
+  .sc-input::-webkit-outer-spin-button,
+  .sc-input::-webkit-inner-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+  }
+
+  .sc-warning {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: #8b0000;
+    font-size: 0.88rem;
+    font-weight: 300;
+  }
+
+  .sc-nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .sc-button {
+    padding: 0.4rem 1.75rem;
+    border: 1px solid var(--color-sequel-brown);
+    border-radius: 0;
+    background-color: var(--color-sequel-brown);
+    color: #d0dbcd;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 300;
+    line-height: 20px;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 200ms cubic-bezier(0.645, 0.045, 0.355, 1),
+      box-shadow 200ms cubic-bezier(0.645, 0.045, 0.355, 1);
+  }
+
+  /* START on the intro: a block link in a column, so full width, its label
+     where the old page's inherited text-align leaves it. */
+  .sc-button.is-block {
+    display: block;
+    width: 100%;
+    text-align: left;
+  }
+
+  .sc-button:hover {
+    background-color: #2e2422;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  }
+
+  .sc-button:focus {
+    box-shadow: none;
+  }
+
+  .sc-button:disabled {
+    cursor: default;
+  }
+
+  .sc-back {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+    font-weight: 300;
+    opacity: 0.6;
+    cursor: pointer;
+  }
+
+  .sc-back:hover {
+    opacity: 1;
+  }
+
+  .sc-row-outer,
+  .sc-composer-row {
+    width: 100%;
+  }
+
+  .sc-summary-title {
+    margin-top: 1rem;
+    margin-bottom: 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 1.1rem;
+    font-weight: 300;
+  }
+
+  .sc-writers {
+    width: 100%;
+    margin-bottom: 2rem;
+    border-top: 1px solid rgba(55, 43, 41, 0.15);
+  }
+
+  .sc-writer-header {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 0.75rem;
+    padding-bottom: 0.4rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    opacity: 0.5;
+  }
+
+  .sc-writer-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid rgba(55, 43, 41, 0.1);
+  }
+
+  .sc-writer-name {
+    flex-grow: 1;
+    padding-right: 1rem;
+    font-weight: 400;
+  }
+
+  .sc-writer-cae {
+    flex-shrink: 0;
+    width: 8rem;
+    opacity: 0.7;
+  }
+
+  .sc-writer-share {
+    flex-shrink: 0;
+    width: 4rem;
+    font-weight: 500;
+    text-align: right;
+  }
+
+  .sc-total {
+    margin-bottom: 0.5rem;
+    font-size: var(--sc-lg);
+    font-weight: 400;
+  }
+
+  /* New (Andy, 16 Sep): the signing step. The old page has no equivalent, so
+     it borrows the state screen's column, widened for a document, with the
+     same type. Firma's page scrolls inside its own frame. */
+  .sc-sign {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: 56rem;
+    margin-right: auto;
+    margin-left: auto;
+    padding: 5.5rem 1.5rem 1.5rem;
+  }
+
+  .sc-sign .sc-subtext {
+    margin-bottom: 1.5rem;
+  }
+
+  .sc-sign-frame {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    border: 1px solid rgba(55, 43, 41, 0.15);
+    background-color: #fff;
+  }
+
+  .sc-sign-frame iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  .sc-sign-finishing {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(208, 219, 205, 0.9);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 991px) {
+    .sc-body {
+      --sc-h2: 2.26rem;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .sc-body {
+      --sc-h2: 1.81rem;
+      --sc-lg: 1.1rem;
+    }
+
+    .sc-writer-header {
+      display: none;
+    }
+
+    .sc-writer-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+      padding-top: 0.85rem;
+      padding-bottom: 0.85rem;
+    }
+
+    .sc-writer-name {
+      width: 100%;
+      padding-right: 0;
+      font-weight: 500;
+    }
+
+    .sc-writer-cae {
+      width: auto;
+      font-size: 0.75rem;
+    }
+
+    .sc-writer-share {
+      width: auto;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+  }
+
+  @media (max-width: 478px) {
+    .sc-body {
+      --sc-h2: 1.45rem;
+    }
+  }
+}

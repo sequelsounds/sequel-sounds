@@ -179,6 +179,13 @@ export default function RosterMember() {
             {/* "Contact Email" here, "Briefing Email" on the partner page.
                 Same column, Brief_Email. */}
             <EditField label="Contact Email" value={m.brief_email} onSave={text('brief_email')} />
+            {/* New, Andy 16 Sep: who a Schedule A goes to and is signed by.
+                Seeded from Contact Email for every roster team. */}
+            <EditField
+              label="Contract Email"
+              value={m.contract_email}
+              onSave={text('contract_email')}
+            />
             <EditField
               label="Contact Number"
               value={m.phone_number}

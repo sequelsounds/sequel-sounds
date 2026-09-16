@@ -761,6 +761,7 @@ export type PartnerDetail = Partner & {
   finance_email: string | null
   qbo_vendor_id: string | null
   default_currency_id: number | null
+  contract_email: string | null
   vat_registered: boolean | null
 }
 
@@ -817,6 +818,8 @@ export type RosterMember = {
   country_text: string | null
   region_id: number | null
   region_text: string | null
+  /** Who receives and signs the Schedule A (new, Andy 16 Sep). */
+  contract_email: string | null
 }
 
 /**
