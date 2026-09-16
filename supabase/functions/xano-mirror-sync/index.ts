@@ -261,10 +261,16 @@ Deno.serve(async (req) => {
   // reaches the mirror. `full` says the payload is the whole table, so anything
   // else in the mirror is gone from Xano. Deliberately opt-in — a partial push
   // with `full` set would empty the table.
+  //
+  // ⚠️ 16 Sep 2026: rows the new app creates (songs, their writers) are not in
+  // Xano, so this was deleting them within the hour. A table with an
+  // `app_created` column only loses rows where it is false. Xano never sends
+  // that column, so its upserts cannot clear it.
   let deleted: number | null = null
   if (full) {
     const ids = prepared.map((r) => r.id)
-    const query = admin.from(table).delete({ count: 'exact' })
+    let query = admin.from(table).delete({ count: 'exact' })
+    if (rules.has('app_created')) query = query.eq('app_created', false)
     const { count, error } = ids.length
       ? await query.not('id', 'in', `(${ids.join(',')})`)
       : await query.not('id', 'is', null)
