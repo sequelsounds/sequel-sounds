@@ -4396,14 +4396,14 @@
     text-transform: uppercase;
   }
 
+  /* Regular, not Webflow's Light: Andy, 16 Sep, wanted it heavier. */
   .sc-subtext {
     margin-top: 0;
     margin-bottom: 2.5rem;
     font-family: var(--font-sans);
     font-size: 1rem;
-    font-weight: 300;
+    font-weight: 400;
     line-height: 1.5em;
-    opacity: 0.75;
   }
 
   .sc-field-group {
@@ -4416,7 +4416,6 @@
     margin-bottom: 0.5rem;
     font-size: 0.88rem;
     font-weight: 400;
-    opacity: 0.6;
   }
 
   /* The underline is a box-shadow; focus thickens it. */
@@ -4441,9 +4440,10 @@
     box-shadow: 0 0.125rem 0 0 #372b29;
   }
 
+  /* Solid brown, told apart from typed text by italics, not by fading. */
   .sc-input::placeholder {
     color: var(--color-sequel-brown);
-    opacity: 0.5;
+    font-style: italic;
   }
 
   .sc-input::-webkit-outer-spin-button,
@@ -4513,13 +4513,12 @@
     color: inherit;
     font-family: var(--font-sans);
     font-size: 0.88rem;
-    font-weight: 300;
-    opacity: 0.6;
+    font-weight: 400;
     cursor: pointer;
   }
 
   .sc-back:hover {
-    opacity: 1;
+    text-decoration: underline;
   }
 
   .sc-row-outer,
@@ -4527,107 +4526,271 @@
     width: 100%;
   }
 
+  /* The summary, tidied (Andy, 16 Sep): the title gets a label like the
+     table's, the header reads as one muted line, the rows lose their rules,
+     and the total sits in the share column instead of a sentence below. */
+  .sc-summary-label,
+  .sc-writer-header {
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-sequel-brown);
+  }
+
+  .sc-summary-label {
+    margin-top: 1.5rem;
+  }
+
   .sc-summary-title {
-    margin-top: 1rem;
-    margin-bottom: 0.75rem;
+    margin-top: 0.35rem;
+    margin-bottom: 1.75rem;
     font-family: var(--font-sans);
-    font-size: 1.1rem;
-    font-weight: 300;
+    font-size: 1.45rem;
+    font-weight: 400;
+    line-height: 1.25;
   }
 
   .sc-writers {
     width: 100%;
     margin-bottom: 2rem;
-    border-top: 1px solid rgba(55, 43, 41, 0.15);
+    border-top: 1px solid var(--color-sequel-brown);
   }
 
   .sc-writer-header {
     display: flex;
     justify-content: space-between;
-    padding-top: 0.75rem;
-    padding-bottom: 0.4rem;
-    font-size: 0.7rem;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    opacity: 0.5;
+    padding-top: 1rem;
+    padding-bottom: 0.5rem;
   }
 
-  .sc-writer-row {
+  .sc-writer-row,
+  .sc-writer-total {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    padding-top: 0.65rem;
-    padding-bottom: 0.65rem;
-    border-bottom: 1px solid rgba(55, 43, 41, 0.1);
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .sc-writer-total {
+    margin-top: 0.75rem;
   }
 
   .sc-writer-name {
     flex-grow: 1;
+    min-width: 0;
     padding-right: 1rem;
-    font-weight: 400;
+    overflow-wrap: anywhere;
   }
 
   .sc-writer-cae {
     flex-shrink: 0;
-    width: 8rem;
-    opacity: 0.7;
+    width: 9rem;
+    overflow-wrap: anywhere;
   }
 
   .sc-writer-share {
     flex-shrink: 0;
-    width: 4rem;
-    font-weight: 500;
+    width: 4.5rem;
     text-align: right;
   }
 
-  .sc-total {
-    margin-bottom: 0.5rem;
-    font-size: var(--sc-lg);
-    font-weight: 400;
+  .sc-writer-total .sc-writer-name,
+  .sc-writer-total .sc-writer-share {
+    font-weight: 500;
   }
 
-  /* New (Andy, 16 Sep): the signing step. The old page has no equivalent, so
-     it borrows the state screen's column, widened for a document, with the
-     same type. Firma's page scrolls inside its own frame. */
+  @media screen and (max-width: 478px) {
+    .sc-writer-cae {
+      width: 6.5rem;
+    }
+  }
+
+  /* New (Andy, 16 Sep): the signing step. The old page has no equivalent.
+     It scrolls (the page body does not), keeps the state screen's type, and
+     shows the Schedule A as a sheet: a light panel with a thin rule, zero
+     radius, the same muted small-caps labels as the summary. */
   .sc-sign {
-    display: flex;
-    flex-direction: column;
     height: 100vh;
-    max-width: 56rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sc-sign-inner {
+    max-width: 44rem;
     margin-right: auto;
     margin-left: auto;
-    padding: 5.5rem 1.5rem 1.5rem;
+    padding: 7rem 1.5rem 5rem;
   }
 
   .sc-sign .sc-subtext {
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
   }
 
-  .sc-sign-frame {
-    position: relative;
-    flex: 1 1 auto;
-    min-height: 0;
-    border: 1px solid rgba(55, 43, 41, 0.15);
-    background-color: #fff;
+  .sc-doc {
+    border: 1px solid var(--color-sequel-brown);
   }
 
-  .sc-sign-frame iframe {
-    display: block;
-    width: 100%;
-    height: 100%;
-    border: 0;
+  .sc-doc-head {
+    padding: 2rem 2rem 1.5rem;
+    border-bottom: 1px solid var(--color-sequel-brown);
   }
 
-  .sc-sign-finishing {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(208, 219, 205, 0.9);
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
+  .sc-doc-title {
+    margin-bottom: 0.75rem;
+    font-family: var(--font-title);
+    font-size: 1.6rem;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
     text-transform: uppercase;
+  }
+
+  .sc-doc-terms {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 400;
+    line-height: 1.55;
+  }
+
+  .sc-doc-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin: 0;
+    padding: 0.5rem 2rem 1.75rem;
+    column-gap: 2rem;
+  }
+
+  .sc-doc-field {
+    padding-top: 1.25rem;
+  }
+
+  .sc-doc-field.is-wide {
+    grid-column: 1 / -1;
+  }
+
+  .sc-doc-field dt,
+  .sc-signoff .sc-field-label {
+    margin-bottom: 0.35rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-sequel-brown);
+  }
+
+  .sc-doc-field dd {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .sc-doc-field dd.sc-doc-value-lg {
+    font-size: 1.25rem;
+  }
+
+  /* The writers inside the sheet share the sheet's two columns: the name
+     under Brand, IPI/CAE under Production title, the share at the right
+     edge — so every column on the sheet lines up (Andy, 16 Sep). */
+  .sc-doc-writer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 2rem;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .sc-doc-writer.is-head {
+    padding-top: 0.25rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .sc-doc-writer-name {
+    overflow-wrap: anywhere;
+  }
+
+  .sc-doc-writer-right {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .sc-doc-writer-right > :first-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .sc-doc-writer-right > :last-child {
+    flex-shrink: 0;
+    text-align: right;
+  }
+
+  .sc-signoff {
+    margin-top: 2.5rem;
+  }
+
+  /* The typed name, previewed as it will sit on the PDF's dotted line. */
+  .sc-signature {
+    min-height: 4.25rem;
+    margin-bottom: 1.75rem;
+    padding: 0.5rem 0.25rem 0;
+    border-bottom: 1px dotted var(--color-sequel-brown);
+    font-family: 'Mrs Saint Delafield', cursive;
+    font-size: 3rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* A label wrapping its input, so it needs to be a block for its margin. */
+  .sc-signoff .sc-field-group {
+    display: block;
+  }
+
+  .sc-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1.75rem;
+    font-size: 0.95rem;
+    font-weight: 400;
+    line-height: 1.45;
+    cursor: pointer;
+  }
+
+  .sc-consent input {
+    flex-shrink: 0;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0.15rem 0 0;
+    border-radius: 0;
+    accent-color: var(--color-sequel-brown);
+    cursor: pointer;
+  }
+
+  @media (max-width: 767px) {
+    .sc-sign-inner {
+      padding-top: 5.5rem;
+    }
+
+    .sc-doc-head {
+      padding: 1.5rem 1.25rem 1.25rem;
+    }
+
+    .sc-doc-fields {
+      grid-template-columns: 1fr;
+      padding: 0.25rem 1.25rem 1.5rem;
+    }
+
+    .sc-doc-writer {
+      column-gap: 1rem;
+    }
+
+    .sc-signature {
+      font-size: 2.4rem;
+    }
   }
 
   @media (max-width: 991px) {

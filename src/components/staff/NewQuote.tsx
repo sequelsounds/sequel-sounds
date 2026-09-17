@@ -82,6 +82,18 @@ import { ONLINE_INCL_SOCIAL, SOCIAL_ONLY, type TerritoryStructure } from '../../
  * LOOK is this wizard's, not the old page's — Andy's call the same day: seven
  * paths through one wizard should not look like two products.
  *
+ * DEMOS is the eighth path, added to the old app on 17 Sep 2026 and copied
+ * here the same day (`claude/sequel-track-demos-estimate.md` in the project):
+ *
+ *    4  DEMOS                                       saved as Composition
+ *    5  Production                                  the only fee screen
+ *    6  Summary                                     → CREATE QUOTE
+ *
+ * No terms, no song, no track count. Terms, song and artist are sent BLANK and
+ * tracks as null, so the estimate's terms block hides itself and production is
+ * charged once — otherwise the project's terms, prefilled below, would land on
+ * a demos estimate.
+ *
  * ⚠️ A quote raised here is DELETED on the hour — `quotes` is still in the sync
  * and on the blocked side of it. See `lib/quoteWrites.ts`.
  */
@@ -126,6 +138,8 @@ type Answers = {
   /** Library (MCPS) and Library (Manual) are BOTH service 3, so the service id
       cannot tell them apart. This is what picks the flow. */
   isMcps: boolean
+  /** DEMOS is service 1, the same as Composition. This is what picks the flow. */
+  isDemos: boolean
   searchesOnly: boolean | null
   /** Rate card media names, NOT the button labels. See MEDIA_BUTTONS. */
   mcpsMedia: string[]
@@ -173,6 +187,11 @@ function hasOnline(media: string[]): boolean {
 
 function flowFor(a: Answers): StepKey[] {
   const steps: StepKey[] = ['description', 'client', 'currency', 'type']
+
+  if (a.isDemos) {
+    steps.push('fee:production', 'summary')
+    return steps
+  }
 
   if (a.isMcps) {
     steps.push('searches_only')
@@ -426,6 +445,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
     fees: emptyFees(),
 
     isMcps: false,
+    isDemos: false,
     searchesOnly: null,
     mcpsMedia: [],
     worldwide: null,
@@ -453,7 +473,9 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
   const key = flow[Math.min(step, flow.length - 1)]
   const patch = (next: Partial<Answers>) => setA((prev) => ({ ...prev, ...next }))
 
-  const tracks = a.tracks.trim() === '' ? null : Number(a.tracks)
+  // A demos estimate has no track count, even if one was typed on another
+  // path before BACK: production is charged once.
+  const tracks = a.isDemos || a.tracks.trim() === '' ? null : Number(a.tracks)
   const total = quoteTotal(a.fees, tracks)
 
   const currencyLabel =
@@ -622,14 +644,15 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
         currencyId: a.currencyId!,
         serviceId: a.serviceId!,
         description: a.description.trim(),
-        term: a.term.trim(),
-        territory: a.territory.trim(),
-        media: a.media.trim(),
-        scripts: a.scripts.trim(),
-        duration: a.duration.trim(),
-        cutdowns: a.cutdowns,
-        songName: a.hasSong ? a.songName.trim() : '',
-        artistName: a.hasSong ? a.artistName.trim() : '',
+        // DEMOS: terms, song and artist blank, cutdowns null — see the header.
+        term: a.isDemos ? '' : a.term.trim(),
+        territory: a.isDemos ? '' : a.territory.trim(),
+        media: a.isDemos ? '' : a.media.trim(),
+        scripts: a.isDemos ? '' : a.scripts.trim(),
+        duration: a.isDemos ? '' : a.duration.trim(),
+        cutdowns: a.isDemos ? null : a.cutdowns,
+        songName: !a.isDemos && a.hasSong ? a.songName.trim() : '',
+        artistName: !a.isDemos && a.hasSong ? a.artistName.trim() : '',
         tracksQuoted: tracks !== null && Number.isFinite(tracks) ? Math.trunc(tracks) : null,
         fees: a.fees,
       })
@@ -718,9 +741,9 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
                 <button
                   key={t.label}
                   type="button"
-                  className={`qw-choice${a.serviceId === t.id && t.label !== 'Library (Manual)' ? ' is-picked' : ''}`}
+                  className={`qw-choice${a.serviceId === t.id && !a.isDemos && t.label !== 'Library (Manual)' ? ' is-picked' : ''}`}
                   onClick={() => {
-                    patch({ serviceId: t.id, isMcps: false })
+                    patch({ serviceId: t.id, isMcps: false, isDemos: false })
                     void next()
                   }}
                 >
@@ -733,11 +756,29 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
                 type="button"
                 className={`qw-choice${a.isMcps ? ' is-picked' : ''}`}
                 onClick={() => {
-                  patch({ serviceId: MCPS_SERVICE_ID, isMcps: true })
+                  patch({ serviceId: MCPS_SERVICE_ID, isMcps: true, isDemos: false })
                   void next()
                 }}
               >
                 LIBRARY (MCPS)
+              </button>
+              {/* ⚠️ Service 1, the SAME id as Composition. Every fee category
+                  but production is cleared, as the old app does, so amounts
+                  typed on another path cannot ride along after BACK. */}
+              <button
+                type="button"
+                className={`qw-choice${a.isDemos ? ' is-picked' : ''}`}
+                onClick={() => {
+                  patch({
+                    serviceId: 1,
+                    isMcps: false,
+                    isDemos: true,
+                    fees: { ...emptyFees(), production: a.fees.production },
+                  })
+                  void next()
+                }}
+              >
+                DEMOS
               </button>
             </div>
             <p className="qw-note">Library (MCPS) prices itself from the MCPS rate card.</p>

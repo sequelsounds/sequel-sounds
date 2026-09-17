@@ -61,10 +61,15 @@ export function useQboVendors(enabled: boolean) {
   })
 }
 
-/** Starts the Intuit consent flow and comes back to this page afterwards. */
-export async function connectQuickBooks() {
+/**
+ * Starts the Intuit consent flow and comes back to this page afterwards.
+ * `sandbox` connects Intuit's test company instead of Sequel's books — the
+ * company raises go to until the switch-over.
+ */
+export async function connectQuickBooks(environment: 'production' | 'sandbox' = 'production') {
   const { url } = await callQuickBooks<{ url: string }>({
     action: 'connect',
+    environment,
     return_to: window.location.href,
   })
   window.location.assign(url)
@@ -152,6 +157,91 @@ export function useLinkQboVendor(uuid: string | undefined) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['mirror', 'partner', uuid] })
       void qc.invalidateQueries({ queryKey: ['mirror', 'roster-member', uuid] })
+    },
+  })
+}
+
+// ── Raising an invoice ─────────────────────────────────────────────────────
+// The old app's check_invoice_ready / raise_invoice / retry_invoice_bills,
+// through the `quickbooks` function (see its raise.ts). Finance only.
+
+export type RaiseCheck = {
+  connected: boolean
+  error?: string
+  environment?: 'production' | 'sandbox'
+  ok?: boolean
+  problems?: string[]
+  summary?: {
+    client_name: string
+    currency_code: string
+    total_to_invoice: number
+    line_count: number
+    bills_to_create: number
+    converted_bills: number
+  }
+}
+
+export type BillResult = {
+  supplier: string
+  currency: string
+  total: number
+  ok: boolean
+  qbo_bill_id: string
+  detail: string
+  qbo_error: string | null
+}
+
+export type RaiseResult = {
+  connected: boolean
+  error?: string
+  raised?: boolean
+  message?: string
+  problems?: string[]
+  created_not_recorded?: boolean
+  recovered?: boolean
+  environment?: 'production' | 'sandbox'
+  app_url?: string
+  qbo_invoice_id?: string
+  invoice_number?: string
+  po_attached?: boolean
+  attach_detail?: string
+  bills_created?: number
+  bills_failed?: number
+  bills_skipped?: { line_id: number; supplier: string; reason: string }[]
+  bill_results?: BillResult[]
+}
+
+export type RetryBillsResult = {
+  connected: boolean
+  error?: string
+  ok?: boolean
+  message?: string
+  app_url?: string
+  bills_created?: number
+  bills_failed?: number
+  bills_skipped?: { line_id: number; supplier: string; reason: string }[]
+  bill_results?: BillResult[]
+}
+
+export const raiseCheck = (uuid: string) => callQuickBooks<RaiseCheck>({ action: 'raise_check', uuid })
+
+export function useRaiseInvoice(uuid: string | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => callQuickBooks<RaiseResult>({ action: 'raise', uuid }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['mirror', 'invoice', uuid] })
+      void qc.invalidateQueries({ queryKey: ['mirror', 'invoice-lines', uuid] })
+    },
+  })
+}
+
+export function useRetryBills(uuid: string | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => callQuickBooks<RetryBillsResult>({ action: 'retry_bills', uuid }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['mirror', 'invoice-lines', uuid] })
     },
   })
 }

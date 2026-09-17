@@ -12,6 +12,12 @@
 // app "Sequel App New" and what `quickbooks` sent: Intuit refuses the exchange
 // on any difference, including a trailing slash.
 //
+// ⚠️ TWO COMPANIES since 17 Sep. The state row says which one this handshake
+// is for: 'production' (Sequel's books, production keys, realm checked) or
+// 'sandbox' (Intuit's test company, Development keys QBO_SANDBOX_CLIENT_ID /
+// _SECRET). Development keys cannot reach a real company, so the realm check
+// only applies to production.
+//
 // This app is "Sequel App New", NOT the old app's "Sequel App". The two are
 // separate connections on purpose — see migration 0025.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
@@ -60,11 +66,11 @@ Deno.serve(async (req) => {
     .delete()
     .eq('state', state)
     .gt('expires_at', new Date().toISOString())
-    .select('user_id, return_to')
+    .select('user_id, return_to, environment')
   if (stateError) {
     return back(null, { qbo_error: 'QuickBooks could not be connected (state lookup failed).' })
   }
-  const claimed = rows?.[0] as { user_id: string; return_to: string } | undefined
+  const claimed = rows?.[0] as { user_id: string; return_to: string; environment: string } | undefined
   if (!claimed) {
     return back(null, {
       qbo_error: 'This QuickBooks request was not recognised or has expired. Start again from the app.',
@@ -80,14 +86,15 @@ Deno.serve(async (req) => {
   if (!code || !realmId) {
     return back(claimed.return_to, { qbo_error: 'QuickBooks sent back an incomplete answer.' })
   }
-  if (realmId !== EXPECTED_REALM) {
+  const environment = claimed.environment === 'sandbox' ? 'sandbox' : 'production'
+  if (environment === 'production' && realmId !== EXPECTED_REALM) {
     return back(claimed.return_to, {
       qbo_error: 'That is not Sequel’s QuickBooks company. Connect again and pick the Sequel company.',
     })
   }
 
-  const clientId = Deno.env.get('QBO_CLIENT_ID') ?? ''
-  const clientSecret = Deno.env.get('QBO_CLIENT_SECRET') ?? ''
+  const clientId = Deno.env.get(environment === 'sandbox' ? 'QBO_SANDBOX_CLIENT_ID' : 'QBO_CLIENT_ID') ?? ''
+  const clientSecret = Deno.env.get(environment === 'sandbox' ? 'QBO_SANDBOX_CLIENT_SECRET' : 'QBO_CLIENT_SECRET') ?? ''
   if (!clientId || !clientSecret) {
     return back(claimed.return_to, { qbo_error: 'QuickBooks keys are not set on the server.' })
   }
@@ -110,7 +117,7 @@ Deno.serve(async (req) => {
 
   const now = Date.now()
   const { error: saveError } = await admin.from('qbo_connection').upsert({
-    environment: 'production',
+    environment,
     realm_id: realmId,
     access_token: body.access_token,
     refresh_token: body.refresh_token,
@@ -131,5 +138,5 @@ Deno.serve(async (req) => {
   // Old handshakes are dead weight; tidy them while we are here.
   await admin.from('qbo_oauth_state').delete().lt('expires_at', new Date().toISOString())
 
-  return back(claimed.return_to, { qbo: 'connected' })
+  return back(claimed.return_to, { qbo: environment === 'sandbox' ? 'sandbox_connected' : 'connected' })
 })

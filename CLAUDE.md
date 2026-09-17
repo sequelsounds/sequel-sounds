@@ -71,6 +71,9 @@ alphabetical, the way the generator emits it.
   `.btn-outline`). Add to that file rather than restating values in a route.
 - **Zero border radius.** The whole radius scale is zeroed in `@theme` and there
   are no `rounded*` classes in markup. Both, deliberately — see gotchas.
+- **Never fade text** with `opacity` or a translucent colour to make it
+  secondary (Andy, 16 Sep 2026: "lazy design … I don't ever want to see it").
+  Text is solid; hierarchy comes from size, weight, case and spacing.
 - Fonts are self-hosted in `public/fonts/`, never linked from a CDN. All use
   `font-display: block`, and the above-the-fold faces are preloaded in
   `index.html`.

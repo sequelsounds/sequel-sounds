@@ -6,11 +6,13 @@ import { mirror } from './xanoMirror'
 /**
  * A new song and its Schedule A — the old app's New_song, the composer's
  * /song-confirmation form, and (new, Andy 16 Sep) the Schedule A signed on the
- * same page through Firma instead of SharePoint and BoldSign.
+ * same page, on Sequel's own signing step, instead of SharePoint and BoldSign.
+ * (Firma's embedded signing was tried first the same evening and dropped.)
  *
- * Everything goes through the `song-schedule-a` edge function, because the
- * email (Resend) and the signing (Firma) both need keys the browser must never
- * hold. Spec: `claude/sequel-track-song-confirmation.md`.
+ * Everything goes through the `song-schedule-a` edge function: the emails need
+ * a key the browser must never hold, and the signature record (IP, time,
+ * details hash, the signed PDF) is only worth anything if the server makes it.
+ * Spec: `claude/sequel-track-song-confirmation.md`.
  *
  * ⚠️ `sequel_songs` is still in the hourly Xano sync. A song made here is test
  * data until the cutover.
@@ -73,19 +75,6 @@ export function resendSongLink(songId: number) {
   )
 }
 
-/** Asks Firma, through the server, whether the composer has signed. */
-export function refreshSigning(songId: number) {
-  return call<{ state: string; declined?: boolean }>(
-    { action: 'refresh', song_id: songId },
-    "Couldn't check the signature just now.",
-  )
-}
-
-/** After a decline: the composer's link makes a fresh signing request. */
-export function resetSigning(songId: number) {
-  return call<{ ok: boolean }>({ action: 'reset_signing', song_id: songId }, "Couldn't reset the signing.")
-}
-
 export async function openSignedScheduleA(songId: number): Promise<string> {
   const r = await call<{ url: string }>(
     { action: 'document', song_id: songId },
@@ -96,14 +85,30 @@ export async function openSignedScheduleA(songId: number): Promise<string> {
 
 /* --------------------------------------------------------- composer side */
 
-export type ConfirmState = 'invalid' | 'open' | 'sign' | 'done' | 'preparing'
+export type ConfirmState = 'invalid' | 'open' | 'sign' | 'done'
+
+/** What the signing step shows: the Schedule A as it will be signed. */
+export type Schedule = {
+  team: string
+  title: string
+  writers: { full_name: string; cae_number: string | null; share_split: number }[]
+  brand: string
+  productionTitle: string
+  commencementDate: string
+  ownership: string
+  /** Sent back on signing, so a signature is only ever for what was shown. */
+  details_hash: string
+  /** The wording of the tick box, word for word as it is recorded. */
+  consent: string
+  /** Where the signed copy goes. */
+  email: string | null
+}
 
 export type ConfirmResult = {
   state: ConfirmState
-  signing_url?: string | null
+  schedule?: Schedule
   /** A message for the composer, or a form error from the database. */
   error?: string
-  declined?: boolean
 }
 
 export type WriterInput = { full_name: string; cae_number: string; share_split: number }
@@ -114,14 +119,11 @@ export const songStatus = (uuid: string) =>
 export const submitSong = (uuid: string, trackTitle: string, writers: WriterInput[]) =>
   call<ConfirmResult>({ action: 'submit', uuid, track_title: trackTitle, writers }, 'submit_failed')
 
-export const openSigning = (uuid: string) =>
-  call<ConfirmResult>({ action: 'sign', uuid }, 'sign_failed')
-
-export const checkSigned = (uuid: string) =>
-  call<ConfirmResult>({ action: 'check', uuid }, 'check_failed')
-
-/** The only origin the signing frame may talk to us from. */
-export const FIRMA_ORIGIN = 'https://app.firma.dev'
+export const signSchedule = (uuid: string, name: string, consent: boolean, detailsHash: string) =>
+  call<ConfirmResult>(
+    { action: 'sign', uuid, name, consent, details_hash: detailsHash },
+    "We couldn't sign your Schedule A just now. Please try again in a minute, or contact Sequel if the problem continues.",
+  )
 
 /* ------------------------------------------------------ the song page's view */
 
@@ -136,6 +138,10 @@ export type SongSigning = {
   schedule_a_signed_at: string | null
   schedule_a_signer_name: string | null
   schedule_a_pdf_path: string | null
+  schedule_a_signer_ip: string | null
+  signed_copy_emailed_at: string | null
+  signed_copy_email_error: string | null
+  /** Despite the name: the last thing that went wrong signing, for staff. */
   firma_error: string | null
 }
 
@@ -151,7 +157,7 @@ export function useSongSigning(songId: number | undefined) {
         mirror
           .from('sequel_songs')
           .select(
-            'schedule_a_via, contract_email, composer_reg_form_status, link_emailed_at, link_email_error, confirmed_at, schedule_a_sent_at, schedule_a_signed_at, schedule_a_signer_name, schedule_a_pdf_path, firma_error',
+            'schedule_a_via, contract_email, composer_reg_form_status, link_emailed_at, link_email_error, confirmed_at, schedule_a_sent_at, schedule_a_signed_at, schedule_a_signer_name, schedule_a_pdf_path, schedule_a_signer_ip, signed_copy_emailed_at, signed_copy_email_error, firma_error',
           )
           .eq('id', songId!)
           .maybeSingle(),

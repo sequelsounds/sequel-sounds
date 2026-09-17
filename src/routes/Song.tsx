@@ -2,13 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { useSong } from '../lib/xanoMirror'
-import {
-  openSignedScheduleA,
-  refreshSigning,
-  resendSongLink,
-  resetSigning,
-  useSongSigning,
-} from '../lib/songSchedule'
+import { openSignedScheduleA, resendSongLink, useSongSigning } from '../lib/songSchedule'
 
 /**
  * One song — Sequel Track's `/song`, rebuilt.
@@ -27,8 +21,9 @@ import {
  *     songs confirmed through the form; older songs still show nothing here.
  *
  * New, Andy 16 Sep: a song made from + NEW SONG shows where its Schedule A
- * has got to on Overview — the link emailed, confirmed, signed — with the
- * signed copy, and says plainly if the email or the signing went wrong.
+ * has got to on Overview — the link emailed, confirmed, signed (and from
+ * where) — with the signed copy, and says plainly if an email or the signing
+ * went wrong.
  *
  * The Creative tab lists the song's creative links on Track. Those come from a
  * different table and are not in this view, so it is empty here for now and
@@ -53,20 +48,8 @@ function ScheduleAPanel({ songId }: { songId: number }) {
   const [note, setNote] = useState<string | null>(null)
   const sig = q.data?.signing
 
-  const run = async (fn: () => Promise<void>) => {
-    setBusy(true)
-    setNote(null)
-    try {
-      await fn()
-      await q.refetch()
-    } catch (e) {
-      setNote((e as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  if (!sig || sig.schedule_a_via !== 'firma') return null
+  // 'sequel' songs, and the two signed through Firma while it was tried.
+  if (!sig || (sig.schedule_a_via !== 'sequel' && sig.schedule_a_via !== 'firma')) return null
 
   const progress = sig.schedule_a_signed_at
     ? `Signed ${stamp(sig.schedule_a_signed_at)}${sig.schedule_a_signer_name ? ` by ${sig.schedule_a_signer_name}` : ''}`
@@ -75,12 +58,13 @@ function ScheduleAPanel({ songId }: { songId: number }) {
       : sig.link_emailed_at
         ? `Link emailed ${stamp(sig.link_emailed_at)} — waiting for the composer`
         : 'Link not sent'
-  const problem = sig.link_email_error || sig.firma_error
+  const problem = sig.link_email_error || sig.firma_error || sig.signed_copy_email_error
 
   return (
     <>
       <Field label="Schedule A" value={progress} />
       <Field label="Sent To (Contract Email)" value={sig.contract_email} />
+      {sig.schedule_a_signer_ip && <Field label="Signed From (IP Address)" value={sig.schedule_a_signer_ip} />}
       {problem && <p className="form-error">{problem}</p>}
       {note && <p className="form-error">{note}</p>}
       <div className="flex gap-4">
@@ -108,38 +92,8 @@ function ScheduleAPanel({ songId }: { songId: number }) {
             SIGNED COPY
           </button>
         )}
-        {sig.composer_reg_form_status === 'Confirmed' && !sig.schedule_a_signed_at && (
-          <button
-            type="button"
-            className="btn btn-mono btn-outline"
-            disabled={busy}
-            onClick={() =>
-              run(async () => {
-                await refreshSigning(songId)
-              })
-            }
-          >
-            CHECK SIGNATURE
-          </button>
-        )}
-        {/* Only offered once something has gone wrong — a decline, or a
-            request Firma lost — because it discards the signing link the
-            composer may already be using. */}
-        {sig.composer_reg_form_status === 'Confirmed' && !sig.schedule_a_signed_at && sig.firma_error && (
-          <button
-            type="button"
-            className="btn btn-mono btn-outline"
-            disabled={busy}
-            onClick={() =>
-              run(async () => {
-                await resetSigning(songId)
-              })
-            }
-          >
-            RESET SIGNING
-          </button>
-        )}
-        {sig.composer_reg_form_status === 'Pending' && (
+        {/* Until it is signed: the same link covers the form and the signing. */}
+        {!sig.schedule_a_signed_at && (
           <button
             type="button"
             className="btn btn-mono btn-outline"

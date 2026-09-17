@@ -7,6 +7,17 @@
 //   { action: "bills" }               -> { connected, bills? }
 //   { action: "invoice", doc_number } -> { connected, invoices? }  read only
 //   { action: "orphans" }             -> { connected, orphans? }   read only
+//   { action: "raise_check", uuid }   -> { connected, environment, ok, problems, summary }
+//   { action: "raise", uuid }         -> { connected, raised, ... }  see raise.ts
+//   { action: "retry_bills", uuid }   -> { connected, ok, bill_results, ... }
+//   { action: "sandbox_lists" }       -> the test company's items, taxes, terms, accounts
+//   { action: "sandbox_link", kind, sequel_id, currency? } -> copies a client or supplier into the test company
+//
+// ⚠️ TWO COMPANIES (17 Sep). Raises go to Intuit's SANDBOX until the
+// switch-over (Andy): QBO_RAISE_ENV must be set to "production" to change
+// that. Every read (vendors, bills, payment times, orphans) stays on the
+// real company. A "connect" with environment "sandbox" connects the test
+// company with the Development keys, QBO_SANDBOX_CLIENT_ID / _SECRET.
 //
 // Talks to QuickBooks through the Intuit app "Sequel App New", a separate
 // connection from the old app's (Xano table 65), so nothing here can rotate or
@@ -19,10 +30,25 @@
 //
 // ⚠️ The connection row is a credential. Nothing here returns or logs it.
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
+import { raiseCheck, raiseInvoice, retryBills, type Conn, type Env } from './raise.ts'
 
 const AUTHORISE_URL = 'https://appcenter.intuit.com/connect/oauth2'
 const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 const API_BASE = 'https://quickbooks.api.intuit.com'
+const API_BASES: Record<Env, string> = {
+  production: API_BASE,
+  sandbox: 'https://sandbox-quickbooks.api.intuit.com',
+}
+
+/** Where raises go. The test company until the switch-over (Andy, 17 Sep). */
+const RAISE_ENV: Env = Deno.env.get('QBO_RAISE_ENV') === 'production' ? 'production' : 'sandbox'
+
+/** Development keys only reach sandbox companies; production keys only the real one. */
+function intuitKeys(env: Env) {
+  return env === 'sandbox'
+    ? { id: Deno.env.get('QBO_SANDBOX_CLIENT_ID') ?? '', secret: Deno.env.get('QBO_SANDBOX_CLIENT_SECRET') ?? '' }
+    : { id: Deno.env.get('QBO_CLIENT_ID') ?? '', secret: Deno.env.get('QBO_CLIENT_SECRET') ?? '' }
+}
 const REDIRECT_URI = 'https://sveirphsppyfhulymjiu.supabase.co/functions/v1/qbo-callback'
 const SCOPE = 'com.intuit.quickbooks.accounting'
 const REVOKE_URL = 'https://developer.api.intuit.com/v2/oauth2/tokens/revoke'
@@ -87,7 +113,7 @@ function randomState(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-type Conn = {
+type ConnRow = {
   realm_id: string
   access_token: string | null
   access_expires_at: string | null
@@ -97,16 +123,16 @@ type Conn = {
 
 class NotConnected extends Error {}
 
-async function readConn(admin: SupabaseClient): Promise<Conn | null> {
+async function readConn(admin: SupabaseClient, env: Env = 'production'): Promise<ConnRow | null> {
   const { data } = await admin
     .from('qbo_connection')
     .select('realm_id, access_token, access_expires_at, refresh_token, status')
-    .eq('environment', 'production')
+    .eq('environment', env)
     .maybeSingle()
-  return (data as Conn | null) ?? null
+  return (data as ConnRow | null) ?? null
 }
 
-async function markBroken(admin: SupabaseClient, reason: string) {
+async function markBroken(admin: SupabaseClient, reason: string, env: Env = 'production') {
   await admin
     .from('qbo_connection')
     .update({
@@ -118,26 +144,31 @@ async function markBroken(admin: SupabaseClient, reason: string) {
       refresh_lock_until: null,
       updated_at: new Date().toISOString(),
     })
-    .eq('environment', 'production')
+    .eq('environment', env)
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-const isFresh = (c: Conn | null) =>
+const isFresh = (c: ConnRow | null) =>
   !!c?.access_token && !!c.access_expires_at && Date.parse(c.access_expires_at) > Date.now() + 120_000
 
 /** A usable access token and realm, refreshing through the lock if needed. */
-async function accessToken(admin: SupabaseClient): Promise<{ token: string; realm: string }> {
+async function accessToken(admin: SupabaseClient, env: Env = 'production'): Promise<Conn> {
   const lock = crypto.randomUUID()
+  const base = API_BASES[env]
 
   for (let attempt = 0; attempt < 12; attempt++) {
-    const { data: claim, error } = await admin.rpc('qbo_claim_refresh', { p_lock: lock, p_seconds: 30 })
+    const { data: claim, error } = await admin.rpc('qbo_claim_refresh', {
+      p_lock: lock,
+      p_seconds: 30,
+      p_environment: env,
+    })
     if (error) throw new Error('Could not read the QuickBooks connection.')
 
     if (claim === 'none') throw new NotConnected('QuickBooks is not connected.')
 
     if (claim === 'fresh') {
-      const c = await readConn(admin)
-      if (isFresh(c)) return { token: c!.access_token!, realm: c!.realm_id }
+      const c = await readConn(admin, env)
+      if (isFresh(c)) return { token: c!.access_token!, realm: c!.realm_id, base }
       continue
     }
 
@@ -147,11 +178,10 @@ async function accessToken(admin: SupabaseClient): Promise<{ token: string; real
     }
 
     // claimed: this call alone refreshes.
-    const c = await readConn(admin)
+    const c = await readConn(admin, env)
     if (!c?.refresh_token) throw new NotConnected('QuickBooks is not connected.')
 
-    const clientId = Deno.env.get('QBO_CLIENT_ID') ?? ''
-    const clientSecret = Deno.env.get('QBO_CLIENT_SECRET') ?? ''
+    const { id: clientId, secret: clientSecret } = intuitKeys(env)
     const res = await fetch(TOKEN_URL, {
       method: 'POST',
       headers: {
@@ -168,13 +198,13 @@ async function accessToken(admin: SupabaseClient): Promise<{ token: string; real
       if (reason === 'invalid_grant') {
         // The refresh token is dead — revoked, expired or rotated away. Only a
         // person can fix that, by connecting again.
-        await markBroken(admin, 'QuickBooks refused the saved connection (invalid_grant). Reconnect.')
+        await markBroken(admin, 'QuickBooks refused the saved connection (invalid_grant). Reconnect.', env)
         throw new NotConnected('The QuickBooks connection has expired. Connect it again.')
       }
       await admin
         .from('qbo_connection')
         .update({ last_error: `refresh failed: ${reason}`, refresh_lock_id: null, refresh_lock_until: null })
-        .eq('environment', 'production')
+        .eq('environment', env)
         .eq('refresh_lock_id', lock)
       throw new Error(`QuickBooks did not refresh the connection (${reason}).`)
     }
@@ -200,11 +230,11 @@ async function accessToken(admin: SupabaseClient): Promise<{ token: string; real
     const { error: saveError } = await admin
       .from('qbo_connection')
       .update(update)
-      .eq('environment', 'production')
+      .eq('environment', env)
       .eq('refresh_lock_id', lock)
     if (saveError) throw new Error('QuickBooks refreshed but the new token could not be saved.')
 
-    return { token: body.access_token, realm: c.realm_id }
+    return { token: body.access_token, realm: c.realm_id, base }
   }
 
   throw new Error('QuickBooks is busy. Try again in a moment.')
@@ -264,15 +294,17 @@ async function queryAll(
   admin: SupabaseClient,
   select: string,
   entity: string,
+  env: Env = 'production',
 ): Promise<Record<string, unknown>[]> {
+  const base = API_BASES[env]
   const out: Record<string, unknown>[] = []
   const PAGE = 1000
   for (let start = 1; ; start += PAGE) {
     const query = `${select} startposition ${start} maxresults ${PAGE}`
-    const url = `${API_BASE}/v3/company/${realm}/query?minorversion=75&query=${encodeURIComponent(query)}`
+    const url = `${base}/v3/company/${realm}/query?minorversion=75&query=${encodeURIComponent(query)}`
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
     if (res.status === 401) {
-      await markBroken(admin, 'QuickBooks rejected the access token (401). Reconnect.')
+      await markBroken(admin, 'QuickBooks rejected the access token (401). Reconnect.', env)
       throw new NotConnected('The QuickBooks connection was rejected. Connect it again.')
     }
     const body = (await res.json().catch(() => ({}))) as {
@@ -528,7 +560,16 @@ Deno.serve(async (req) => {
   const userId = await financeUser(req)
   if (!userId) return json({ error: 'Only finance can use QuickBooks from here.' }, 403, origin)
 
-  let body: { action?: string; return_to?: unknown; doc_number?: unknown }
+  let body: {
+    action?: string
+    return_to?: unknown
+    doc_number?: unknown
+    environment?: unknown
+    uuid?: unknown
+    kind?: unknown
+    sequel_id?: unknown
+    currency?: unknown
+  }
   try {
     body = await req.json()
   } catch {
@@ -539,16 +580,20 @@ Deno.serve(async (req) => {
     auth: { persistSession: false },
   })
 
+  const bodyEnv: Env = body.environment === 'sandbox' ? 'sandbox' : 'production'
+
   if (body.action === 'connect') {
-    const clientId = Deno.env.get('QBO_CLIENT_ID') ?? ''
-    if (!clientId || !Deno.env.get('QBO_CLIENT_SECRET')) {
-      return json({ error: 'QuickBooks keys are not set on the server.' }, 500, origin)
+    const { id: clientId, secret } = intuitKeys(bodyEnv)
+    if (!clientId || !secret) {
+      return json({ error: `QuickBooks ${bodyEnv} keys are not set on the server.` }, 500, origin)
     }
     const returnTo = safeReturnTo(body.return_to)
     if (!returnTo) return json({ error: 'return_to is not one of this app’s pages.' }, 400, origin)
 
     const state = randomState()
-    const { error } = await admin.from('qbo_oauth_state').insert({ state, user_id: userId, return_to: returnTo })
+    const { error } = await admin
+      .from('qbo_oauth_state')
+      .insert({ state, user_id: userId, return_to: returnTo, environment: bodyEnv })
     if (error) return json({ error: 'Could not start the QuickBooks connection.' }, 500, origin)
 
     const url = new URL(AUTHORISE_URL)
@@ -627,13 +672,12 @@ Deno.serve(async (req) => {
     const { data } = await admin
       .from('qbo_connection')
       .select('refresh_token, access_token')
-      .eq('environment', 'production')
+      .eq('environment', bodyEnv)
       .maybeSingle()
     const token = (data?.refresh_token ?? data?.access_token) as string | null | undefined
     let revoked = false
     if (token) {
-      const clientId = Deno.env.get('QBO_CLIENT_ID') ?? ''
-      const clientSecret = Deno.env.get('QBO_CLIENT_SECRET') ?? ''
+      const { id: clientId, secret: clientSecret } = intuitKeys(bodyEnv)
       const res = await fetch(REVOKE_URL, {
         method: 'POST',
         headers: {
@@ -645,9 +689,105 @@ Deno.serve(async (req) => {
       })
       revoked = res.ok
     }
-    const { error } = await admin.from('qbo_connection').delete().eq('environment', 'production')
+    const { error } = await admin.from('qbo_connection').delete().eq('environment', bodyEnv)
     if (error) return json({ error: 'Could not remove the QuickBooks connection.' }, 500, origin)
     return json({ ok: true, revoked }, 200, origin)
+  }
+
+  // ── the raise ──────────────────────────────────────────────────────────
+  if (body.action === 'raise_check' || body.action === 'raise' || body.action === 'retry_bills') {
+    const uuid = typeof body.uuid === 'string' ? body.uuid : ''
+    if (!/^[0-9a-f-]{36}$/i.test(uuid)) return json({ error: 'uuid is not valid' }, 400, origin)
+    const { data: inv } = await admin.schema('xano_mirror').from('invoices').select('id').eq('uuid', uuid).maybeSingle()
+    if (!inv) return json({ error: 'Invoice not found.' }, 404, origin)
+    const invoiceId = (inv as { id: number }).id
+
+    try {
+      if (body.action === 'raise_check') {
+        return json({ connected: true, environment: RAISE_ENV, ...(await raiseCheck(admin, invoiceId, RAISE_ENV)) }, 200, origin)
+      }
+      const conn = await accessToken(admin, RAISE_ENV)
+      if (body.action === 'raise') {
+        return json({ connected: true, ...(await raiseInvoice(admin, conn, RAISE_ENV, invoiceId, userId)) }, 200, origin)
+      }
+      return json({ connected: true, ...(await retryBills(admin, conn, RAISE_ENV, invoiceId)) }, 200, origin)
+    } catch (e) {
+      if (e instanceof NotConnected) {
+        const which = RAISE_ENV === 'sandbox' ? 'The QuickBooks test company' : 'QuickBooks'
+        return json({ connected: false, error: `${which} is not connected.` }, 200, origin)
+      }
+      console.error(body.action, invoiceId, (e as Error).message)
+      return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
+    }
+  }
+
+  // ── setting up the test company ─────────────────────────────────────────
+  // Sandbox only, by construction: these never touch the real books.
+  if (body.action === 'sandbox_lists') {
+    try {
+      const conn = await accessToken(admin, 'sandbox')
+      const lists: Record<string, unknown> = {}
+      for (const entity of ['Item', 'TaxCode', 'Term', 'Account', 'Customer', 'Vendor']) {
+        lists[entity] = await queryAll(conn.token, conn.realm, admin, `select * from ${entity}`, entity, 'sandbox')
+      }
+      // Preferences is a single object and does not page; read it on its own.
+      const pref = await fetch(`${conn.base}/v3/company/${conn.realm}/preferences?minorversion=75`, {
+        headers: { Authorization: `Bearer ${conn.token}`, Accept: 'application/json' },
+      })
+      lists.Preferences = await pref.json().catch(() => null)
+      return json({ connected: true, realm: conn.realm, lists }, 200, origin)
+    } catch (e) {
+      if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
+      return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
+    }
+  }
+
+  if (body.action === 'sandbox_link') {
+    const kind = body.kind === 'vendor' ? 'vendor' : body.kind === 'customer' ? 'customer' : null
+    const sequelId = Number(body.sequel_id)
+    if (!kind || !Number.isInteger(sequelId) || sequelId <= 0) return json({ error: 'kind and sequel_id are required' }, 400, origin)
+    try {
+      const conn = await accessToken(admin, 'sandbox')
+      const mirror = admin.schema('xano_mirror')
+      let name = ''
+      let currency = ''
+      if (kind === 'customer') {
+        // A customer's currency is fixed in QuickBooks and must match the
+        // invoices raised to it, and a client has no currency of its own here,
+        // so the caller names it.
+        const { data: c } = await mirror.from('clients').select('company').eq('id', sequelId).maybeSingle()
+        name = (c as { company?: string } | null)?.company ?? ''
+        currency = typeof body.currency === 'string' ? body.currency : ''
+      } else {
+        const { data: v } = await mirror.from('supplier_list').select('title, default_currency_id').eq('id', sequelId).maybeSingle()
+        name = (v as { title?: string } | null)?.title ?? ''
+        const cid = (v as { default_currency_id?: number } | null)?.default_currency_id
+        if (cid) {
+          const { data: cur } = await mirror.from('currencies_bank_accounts').select('currency').eq('id', cid).maybeSingle()
+          currency = (cur as { currency?: string } | null)?.currency ?? ''
+        }
+      }
+      if (!name) return json({ error: `No ${kind} ${sequelId}.` }, 404, origin)
+      const entity = kind === 'customer' ? 'customer' : 'vendor'
+      const payload: Record<string, unknown> = { DisplayName: `${name} (${sequelId})` }
+      if (currency) payload.CurrencyRef = { value: currency === 'EURO' ? 'EUR' : currency }
+      const res = await fetch(`${conn.base}/v3/company/${conn.realm}/${entity}?minorversion=75`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${conn.token}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const out = (await res.json().catch(() => ({}))) as Record<string, { Id?: string } | unknown>
+      const created = (out[kind === 'customer' ? 'Customer' : 'Vendor'] as { Id?: string } | undefined)?.Id
+      if (!res.ok || !created) return json({ error: 'QuickBooks would not create it.', detail: out }, 502, origin)
+      const { error } = await admin
+        .from('qbo_id_map')
+        .upsert({ environment: 'sandbox', kind, sequel_id: sequelId, qbo_id: created })
+      if (error) return json({ error: 'Created in the test company but not saved here.' }, 500, origin)
+      return json({ connected: true, kind, sequel_id: sequelId, qbo_id: created, name: payload.DisplayName }, 200, origin)
+    } catch (e) {
+      if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
+      return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
+    }
   }
 
   return json({ error: 'unknown action' }, 400, origin)

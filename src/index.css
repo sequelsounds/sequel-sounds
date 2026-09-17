@@ -1,6 +1,16 @@
 @import 'tailwindcss';
 @import './styles/design-system.css';
 
+/* The Schedule A signature (OFL). Swap, not block: it only ever shows a
+   preview of a typed name, which should never be invisible. */
+@font-face {
+  font-family: 'Mrs Saint Delafield';
+  src: url('/fonts/MrsSaintDelafield-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Creato Display (Zetafonts), self-hosted so nothing depends on an external
    CDN staying up. Converted to woff2 from the licensed OTFs on the Webflow
    site — about 19 KB per weight, and a browser only fetches the weights a page
@@ -1995,5 +2005,126 @@
   .finance-row:hover {
     background-color: var(--color-sequel-brown);
     color: var(--color-sequel-silver);
+  }
+}
+
+@layer components {
+  /* ── The raise modal: the old app's invoice_modal_* (staging stylesheet,
+     17 Sep), on the app's own modal box. Its eyebrow, intro and warning were
+     faded with opacity; here they are solid (CLAUDE.md). */
+  .rm-message.rv-card {
+    max-width: 34rem;
+  }
+
+  .rv-eyebrow {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .rv-heading {
+    margin-top: 0.25rem;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 1.75rem;
+    font-weight: 300;
+    line-height: 1.2;
+  }
+
+  .rv-sandbox {
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.875rem;
+    border: 1px solid var(--color-sequel-brown);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+
+  .rv-intro {
+    margin-top: 0.75rem;
+    font-size: 0.9375rem;
+    font-weight: 300;
+    line-height: 1.5;
+  }
+
+  .rv-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    column-gap: 1.5rem;
+    margin-top: 1.75rem;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--color-sequel-brown);
+    border-bottom: 1px solid var(--color-sequel-brown);
+  }
+
+  .rv-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .rv-value {
+    margin-top: 0.25rem;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .rv-problems {
+    display: flex;
+    flex-direction: column;
+    row-gap: 0.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .rv-problem {
+    padding: 0.5rem 0 0.5rem 0.875rem;
+    border-left: 2px solid #a4462e;
+    font-size: 0.9375rem;
+    font-weight: 300;
+  }
+
+  .rv-warning {
+    margin-top: 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 300;
+    line-height: 1.5;
+  }
+
+  .rv-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .rv-cancel {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-sequel-brown);
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .rv-confirm {
+    padding: 0.75rem 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-sequel-silver);
+    background-color: var(--color-sequel-brown);
+    border: 0;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .rv-confirm:disabled,
+  .rv-cancel:disabled {
+    cursor: default;
+    opacity: 0.4;
   }
 }

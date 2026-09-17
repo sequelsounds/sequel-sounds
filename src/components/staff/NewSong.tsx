@@ -15,7 +15,8 @@ import { Modal } from './RowActions'
  * combo, the composition team search, SEND SCHEDULE A and CANCEL.
  *
  * Changed from the old app, Andy 16 Sep:
- *  - rights default to Master & Publishing rather than blank;
+ *  - rights start blank ("Select rights...") and must be picked — Andy,
+ *    16 Sep, after first trying a Master & Publishing default;
  *  - SEND SCHEDULE A asks to confirm, naming who the link goes to (the team's
  *    Contract Email), before anything is created or sent;
  *  - a song that is made but whose email fails says so, with a way to retry,
@@ -27,7 +28,7 @@ export function NewSongModal({ projectId, onClose }: { projectId: number; onClos
   const roster = useRoster()
   const create = useCreateSong(projectId)
 
-  const [ownership, setOwnership] = useState<Ownership>('Master & Publishing')
+  const [ownership, setOwnership] = useState<Ownership | ''>('')
   const [rightsOpen, setRightsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [teamsOpen, setTeamsOpen] = useState(false)
@@ -48,18 +49,21 @@ export function NewSongModal({ projectId, onClose }: { projectId: number; onClos
   const email = team?.contract_email?.trim() || null
   const ready = !!team && !!ownership
 
-  const send = () => {
-    if (!team || create.isPending) return
-    create.mutate(
-      { supplierId: team.id, ownership },
-      {
-        onSuccess: (r) => {
-          setCreated(r)
-          if (r.emailed) onClose()
-          else setStage('sent')
-        },
-      },
-    )
+  // mutateAsync, not mutate's own onSuccess: that callback is dropped if the
+  // modal remounts mid-request (a dev hot reload did exactly that, 16 Sep),
+  // leaving the modal open after the song was made and emailed. The promise
+  // still resolves, and onClose is the page's setter, so it still closes.
+  const send = async () => {
+    if (!team || !ownership || create.isPending) return
+    let r: CreatedSong
+    try {
+      r = await create.mutateAsync({ supplierId: team.id, ownership })
+    } catch {
+      return // create.error shows on the confirm step
+    }
+    if (r.emailed) return onClose()
+    setCreated(r)
+    setStage('sent')
   }
 
   const retry = async () => {
@@ -82,7 +86,7 @@ export function NewSongModal({ projectId, onClose }: { projectId: number; onClos
 
       {stage === 'pick' && (
         <>
-          <div className="rm-header">Select Composition Team</div>
+          <div className="rm-header">Start New Song Registration</div>
           <div className="rm-subheader">
             Choose the rights Sequel is acquiring, then select the composition team to send a
             Schedule A.
@@ -205,7 +209,7 @@ export function NewSongModal({ projectId, onClose }: { projectId: number; onClos
               type="button"
               className="wizard-btn rm-button ns-button"
               disabled={!email || create.isPending}
-              onClick={send}
+              onClick={() => void send()}
             >
               {create.isPending ? 'SENDING…' : 'YES, SEND'}
             </button>

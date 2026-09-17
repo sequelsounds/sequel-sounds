@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
 import { NewQuote } from '../components/staff/NewQuote'
@@ -447,7 +447,12 @@ export default function Project() {
   const { id } = useParams()
   const projectId = Number(id)
   const project = useProject(projectId)
-  const [tab, setTab] = useState<Tab>('Overview')
+  // ?tab=briefs (the brief-submitted email) or ?tab=playlists opens that tab.
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<Tab>(() => {
+    const wanted = (params.get('tab') ?? '').toLowerCase()
+    return TABS.find((t) => t.toLowerCase() === wanted) ?? 'Overview'
+  })
 
   const quotes = useProjectQuotes(projectId)
   const invoices = useProjectInvoices(projectId)

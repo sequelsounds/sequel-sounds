@@ -14,6 +14,7 @@ import {
   useUpdateInvoiceLine,
 } from '../lib/invoiceEdits'
 import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
+import { RaiseInvoiceButton } from '../components/staff/RaiseInvoice'
 import type { InvoiceDetail, InvoiceLine } from '../lib/xanoMirror'
 
 /**
@@ -288,9 +289,18 @@ export default function Invoice() {
           {/* Where the invoice stands, in one of the app's button squares —
               Andy, 15 Sep, in place of the old "Raised in QuickBooks" banner.
               RAISED keys off the same single flag every write refuses on. */}
-          <span className="btn btn-mono btn-outline invoice-state">
-            {v.status === 'Paid' ? 'PAID' : v.locked ? 'RAISED' : 'NOT RAISED'}
-          </span>
+          {/* The state square and RAISE INVOICE sit together on the right; the
+              title row spreads its children, so they share one. */}
+          <div className="flex items-center gap-4">
+            <span className="btn btn-mono btn-outline invoice-state">
+              {v.status === 'Paid' ? 'PAID' : v.locked ? 'RAISED' : 'NOT RAISED'}
+            </span>
+            {/* The old app's raise_invoice_button: finance only, and only while the
+                invoice is still with them. The function refuses independently. */}
+            {finance.data === true && uuid && (
+              <RaiseInvoiceButton uuid={uuid} canRaise={!v.locked && v.status === 'Submitted'} />
+            )}
+          </div>
         </div>
         <div className="page-subtitle">
           {v.project_master_list_id ? (

@@ -1,16 +1,17 @@
 // The Schedule A as a PDF, filled in.
 //
-// Drawn rather than converted: Andy's template is a Word file, and Firma turns
-// Word into PDF itself but drops images on the way (the Sequel mark) and
-// re-wraps text. So the page is laid out here to match the template, measured
+// Drawn rather than converted: Andy's template is a Word file, and converting
+// Word to PDF on a server drops images (the Sequel mark) and re-wraps text.
+// So the page is laid out here to match the template, measured
 // off a LibreOffice render of "Schedule A Boldsign Template.docx" (16 Sep 2026)
 // with its own fonts installed. Every number below is from that render, in PDF
 // points from the TOP of a US Letter page (612 x 792), as a PDF reader reports
 // them. Change the template, re-measure.
 //
-// The two places the signer fills in are marked with anchor strings, which
-// Firma finds in the PDF and turns into fields (see ANCHORS). They are drawn in
-// the page colour and Firma removes them as well.
+// Signed on Sequel's own page (Andy, 16 Sep 2026 — Firma was tried first and
+// dropped): the signer's typed name goes on the dotted line in a handwriting
+// face and again after "For and on behalf of", with a line saying when and
+// how it was signed, and a second page carries the signature record.
 
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'npm:pdf-lib@1.17.1'
 import fontkit from 'npm:@pdf-lib/fontkit@1.1.1'
@@ -25,20 +26,32 @@ export type ScheduleAInput = {
   ownership: string
 }
 
-export type Fonts = { body: Uint8Array; heading: Uint8Array }
+export type Signature = {
+  name: string
+  signedAt: Date
+  /** Who the link was sent to: the team's contract email. */
+  email: string
+  ip: string
+  userAgent: string
+  consent: string
+  /** SHA-256 (hex) of the details the signer was shown. */
+  detailsHash: string
+  /** The song's uuid: the document's reference. */
+  reference: string
+  team: string
+}
 
-export const ANCHORS = {
-  signature: '{{sq_signature}}',
-  name: '{{sq_signer_name}}',
-} as const
+export type Fonts = { body: Uint8Array; heading: Uint8Array; signature: Uint8Array }
 
 // Fonts come from jsDelivr, pinned, and are kept for the life of the worker.
 // Roboto Condensed is the template's body face (the full font, so accented
-// names print), Fahkwang Medium its heading. Both Google Fonts: Apache 2.0 and
-// OFL 1.1 respectively.
+// names print), Fahkwang Medium its heading, Mrs Saint Delafield the signature.
+// All Google Fonts: Apache 2.0, OFL 1.1 and OFL 1.1.
 const FONT_URLS = {
   body: 'https://cdn.jsdelivr.net/npm/@expo-google-fonts/roboto-condensed@0.4.2/400Regular/RobotoCondensed_400Regular.ttf',
   heading: 'https://cdn.jsdelivr.net/npm/@expo-google-fonts/fahkwang@0.4.1/500Medium/Fahkwang_500Medium.ttf',
+  signature:
+    'https://cdn.jsdelivr.net/npm/@expo-google-fonts/mrs-saint-delafield@0.4.1/400Regular/MrsSaintDelafield_400Regular.ttf',
 }
 let fontCache: Promise<Fonts> | null = null
 
@@ -50,8 +63,12 @@ export function loadFonts(): Promise<Fonts> {
         if (!res.ok) throw new Error(`font download failed (${res.status})`)
         return new Uint8Array(await res.arrayBuffer())
       }
-      const [body, heading] = await Promise.all([get(FONT_URLS.body), get(FONT_URLS.heading)])
-      return { body, heading }
+      const [body, heading, signature] = await Promise.all([
+        get(FONT_URLS.body),
+        get(FONT_URLS.heading),
+        get(FONT_URLS.signature),
+      ])
+      return { body, heading, signature }
     })()
     // A failed download is not cached, so the next request tries again.
     fontCache.catch(() => {
@@ -103,6 +120,16 @@ const COL = { name: VALUE_X, cae: 401.9, share: 482.9 }
 const COL_RIGHT = 511 // the cell's inner right edge
 const COMPOSER_BOTTOM = 375
 
+// The template's footer line, with Sequel's registered address and company
+// number added (Andy, 16 Sep) — the same details as the quote page's footer.
+const FOOTER =
+  'TBPB Ltd trading as Sequel · 20-22 Wenlock Rd, London N1 7GU · Company Reg No. 13803490'
+
+function footer(page: PDFPage, body: PDFFont, pageNo: number) {
+  put(page, body, drawable(body, FOOTER), LEFT, 721.25)
+  put(page, body, String(pageNo), 516.05, 721.25)
+}
+
 const PARAGRAPH = [
   { top: 132.3, text: 'Musical Works created by the Composer for the Company shall be subject to the Terms and Definitions of this' },
   { top: 144.0, text: 'Agreement. In the case that the Company successfully places a Musical Work created by the Composer for' },
@@ -153,9 +180,55 @@ function fit(font: PDFFont, text: string, maxWidth: number, size = BODY_SIZE): {
   return { text: t + '…', size: s }
 }
 
-function put(page: PDFPage, font: PDFFont, text: string, x: number, top: number, size = BODY_SIZE) {
+function put(page: PDFPage, font: PDFFont, text: string, x: number, top: number, size = BODY_SIZE, color = INK) {
   if (!text) return
-  page.drawText(text, { x, y: baseline(font, size, top), size, font, color: INK })
+  page.drawText(text, { x, y: baseline(font, size, top), size, font, color })
+}
+
+/** Word-wraps, breaking inside a word only when it is wider than the line. */
+function wrap(font: PDFFont, text: string, size: number, maxWidth: number): string[] {
+  const lines: string[] = []
+  let line = ''
+  const push = (w: string) => {
+    let word = w
+    while (font.widthOfTextAtSize(word, size) > maxWidth) {
+      let i = word.length - 1
+      while (i > 1 && font.widthOfTextAtSize(word.slice(0, i), size) > maxWidth) i--
+      if (line) {
+        lines.push(line)
+        line = ''
+      }
+      lines.push(word.slice(0, i))
+      word = word.slice(i)
+    }
+    const next = line ? `${line} ${word}` : word
+    if (font.widthOfTextAtSize(next, size) <= maxWidth) line = next
+    else {
+      lines.push(line)
+      line = word
+    }
+  }
+  for (const w of text.split(/\s+/).filter(Boolean)) push(w)
+  if (line) lines.push(line)
+  return lines
+}
+
+const LONDON = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/London',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  timeZoneName: 'short',
+})
+
+export function londonTime(d: Date): string {
+  // "16 September 2026 at 22:16:05 BST"
+  const parts = LONDON.formatToParts(d)
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
+  return `${get('day')} ${get('month')} ${get('year')} at ${get('hour')}:${get('minute')}:${get('second')} ${get('timeZoneName')}`
 }
 
 function putFitted(page: PDFPage, font: PDFFont, raw: string, x: number, top: number, maxWidth: number) {
@@ -168,7 +241,11 @@ export function formatShare(n: number): string {
   return `${Number(n.toFixed(2))}%`
 }
 
-export async function buildScheduleA(input: ScheduleAInput, fonts: Fonts): Promise<Uint8Array> {
+export async function buildScheduleA(
+  input: ScheduleAInput,
+  fonts: Fonts,
+  signature?: Signature,
+): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
   doc.registerFontkit(fontkit)
   doc.setTitle(`Schedule A — ${input.title}`)
@@ -179,6 +256,7 @@ export async function buildScheduleA(input: ScheduleAInput, fonts: Fonts): Promi
   const body = await doc.embedFont(fonts.body, { subset: true })
   const heading = await doc.embedFont(fonts.heading, { subset: true })
   dropFor.set(heading, HEADING_DROP)
+  const script = signature ? await doc.embedFont(fonts.signature, { subset: true }) : null
 
   const page = doc.addPage([PAGE_W, PAGE_H])
   page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: SAGE })
@@ -245,16 +323,73 @@ export async function buildScheduleA(input: ScheduleAInput, fonts: Fonts): Promi
   put(page, body, 'For and on behalf of', LEFT, 606.4)
   put(page, body, '(the “Composer”)', LEFT, 641.5)
 
-  // The anchors: the signature sits on the dotted line, the typed name after
-  // "For and on behalf of". Page-coloured, tiny, and removed by Firma.
-  const anchor = (text: string, x: number, top: number) =>
-    page.drawText(text, { x, y: baseline(body, 4, top), size: 4, font: body, color: SAGE })
-  anchor(ANCHORS.signature, LEFT + 2, 566)
-  anchor(ANCHORS.name, 186, 607)
+  // The dotted line runs 90 to about 300. The signature sits on it, the name
+  // follows "For and on behalf of", and a small line under "(the Composer)"
+  // says how it was signed.
+  if (signature && script) {
+    const sigText = drawable(script, signature.name)
+    let sigSize = 30
+    while (sigSize > 14 && script.widthOfTextAtSize(sigText, sigSize) > 200) sigSize -= 1
+    page.drawText(sigText, { x: LEFT + 4, y: PAGE_H - 596.5, size: sigSize, font: script, color: INK })
+    putFitted(page, body, signature.name, 186, 606.4, COL_RIGHT - 186)
+    const note = `Signed electronically by ${signature.name} on ${londonTime(signature.signedAt)}. Signature record on page 2.`
+    wrap(body, drawable(body, note), 8, COL_RIGHT - LEFT).forEach((line, i) =>
+      put(page, body, line, LEFT, 660 + i * 10, 8),
+    )
+  }
 
-  // Footer: the template's, with its page number on the right.
-  put(page, body, 'TBPB Ltd trading as Sequel', LEFT, 721.25)
-  put(page, body, '1', 516.05, 721.25)
+  footer(page, body, 1)
+
+  if (signature) drawRecord(doc.addPage([PAGE_W, PAGE_H]), body, heading, input, signature)
 
   return await doc.save()
+}
+
+/** Page 2: what happened, in plain words, for anyone who ever needs to check. */
+function drawRecord(page: PDFPage, body: PDFFont, heading: PDFFont, input: ScheduleAInput, sig: Signature) {
+  page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: SAGE })
+  // The same heading as page 1: same face, size and position (Andy, 16 Sep).
+  // No rules and no grey on this page either.
+  put(page, heading, 'SIGNATURE RECORD', LEFT, 88.72, HEADING_SIZE)
+
+  const intro =
+    'This page was added by Sequel when the Schedule A on page 1 was signed on Sequel’s website. ' +
+    'It records who signed, when, and from where, and identifies the details they were shown.'
+  let top = 150
+  for (const line of wrap(body, intro, BODY_SIZE, COL_RIGHT - LEFT)) {
+    put(page, body, line, LEFT, top)
+    top += 13
+  }
+  top += 14
+
+  const rows: [string, string][] = [
+    ['Document', `Schedule A — ${input.title}`],
+    ['Reference', sig.reference],
+    ['Composer', sig.team],
+    ['Signed by', sig.name],
+    ['Link sent to', sig.email],
+    ['Signed at', `${londonTime(sig.signedAt)} (${sig.signedAt.toISOString()})`],
+    ['IP address', sig.ip || 'not available'],
+    ['Browser', sig.userAgent || 'not available'],
+    ['Consent', `The signer ticked: “${sig.consent}”`],
+    ['Details shown (SHA-256)', sig.detailsHash],
+  ]
+  const valueX = 210
+  for (const [label, value] of rows) {
+    put(page, body, label.toUpperCase(), LEFT, top + 1, 8.5)
+    const lines = wrap(body, drawable(body, value), BODY_SIZE, COL_RIGHT - valueX)
+    lines.forEach((line, i) => put(page, body, line, valueX, top + i * 13))
+    top += Math.max(1, lines.length) * 13 + 12
+  }
+
+  const foot =
+    'The details hash is taken from the title, writers, brand, production title, commencement date, rights and ' +
+    'composer exactly as shown on the signing page. Sequel keeps its own copy of this file and a SHA-256 of it.'
+  top += 10
+  for (const line of wrap(body, foot, 8, COL_RIGHT - LEFT)) {
+    put(page, body, line, LEFT, top, 8)
+    top += 10
+  }
+
+  footer(page, body, 2)
 }

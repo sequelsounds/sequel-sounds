@@ -5,47 +5,64 @@
 //        -> { song_id, uuid, emailed, email_error? }
 //   { action: "resend_link", song_id }        -> { emailed, email_error? }
 //   { action: "document", song_id }           -> { url }  signed copy, 10 minutes
-//   { action: "refresh", song_id }            -> { state }  ask Firma if it is signed
-//   { action: "reset_signing", song_id }      -> { ok }     after a decline: the
-//        composer's link makes a fresh signing request next time it is opened
 //
 // Public (the composer; the song's uuid is the only credential, as in the old
 // app's /song-confirmation):
-//   { action: "status", uuid }  -> { state }
-//   { action: "submit", uuid, track_title, writers }
-//        -> { state: "sign", signing_url } | { state, error }
-//   { action: "sign", uuid }    -> { state, signing_url? }   re-opening the link
-//   { action: "check", uuid }   -> { state }                 after Firma says done
+//   { action: "status", uuid }  -> { state, schedule? }
+//   { action: "submit", uuid, track_title, writers }  -> { state, schedule?, error? }
+//   { action: "sign", uuid, name, consent, details_hash }  -> { state, error?, schedule? }
 //
-// state is one of: invalid · open · sign · done · preparing
+// state is one of: invalid · open · sign · done. `schedule` (with state
+// "sign") is what the page shows: the Schedule A's details, their hash, the
+// consent wording and where the signed copy will go.
 //
 // What changed from the old app (Andy, 16 Sep 2026): the email goes to the
 // supplier's contract email; the confirmation saves in one transaction; and
-// the page then shows the Schedule A, filled in, to be signed in place through
-// Firma — replacing the SharePoint + BoldSign second half.
+// the page then shows the Schedule A, filled in, to be signed right there —
+// replacing the SharePoint + BoldSign second half. Signing is Sequel's own:
+// Firma's embedded signing was tried the same evening and dropped (slow, its
+// own terms to accept, its styling in a frame, a long wait after signing).
 //
-// Secrets this needs: RESEND_API_KEY (the email — the same Resend account and
-// template the old app's Xano trigger uses) and FIRMA_API_KEY (signing). If
-// either is missing, the function says so; it never fails silently.
+// A signature here is a typed name plus a ticked consent. What makes it
+// stand up is the record: the signed PDF carries a second page saying who
+// signed, when, from which IP and browser, and a hash of the details they
+// were shown; the same is kept on the song, with a hash of the stored file.
+//
+// Secrets: RESEND_API_KEY (the link email and the signed copy). Optional:
+// SCHEDULE_A_COPY_TO, comma-separated addresses that get a copy of every
+// signed Schedule A. If a secret is missing the function says so; it never
+// fails silently.
 //
 // ⚠️ Nothing here returns or logs a key.
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
-import { ANCHORS, buildScheduleA, loadFonts } from './pdf.ts'
+import { buildScheduleA, loadFonts, londonTime } from './pdf.ts'
 
 // deno-lint-ignore no-explicit-any
 type Client = SupabaseClient<any, any, any>
 
-const FIRMA_API = 'https://api.firma.dev/functions/v1/signing-request-api'
-const FIRMA_SIGNING_ORIGIN = 'https://app.firma.dev'
+/**
+ * Work that may finish after the response: Supabase's runtime keeps the
+ * worker alive for it. Where that is missing (local runs), it is awaited.
+ */
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined
+async function inBackground(p: Promise<unknown>): Promise<void> {
+  const settled = p.catch((e) => console.error('background task failed', (e as Error).message))
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(settled)
+  else await settled
+}
+
 const RESEND_API = 'https://api.resend.com/emails'
 // The old app's own: Xano table trigger 11, read 16 Sep.
 const EMAIL_FROM = 'Sequel <registrations@sequelsounds.com>'
 const EMAIL_SUBJECT = 'Action needed | Confirm song registration details'
 const EMAIL_TEMPLATE_ID = '9a24f397-9f6f-4e27-a7dc-0a7a13749b0f'
 const BUCKET = 'schedule-a'
-// Two minutes to create a signing request before another attempt may start.
-const CLAIM_MS = 2 * 60 * 1000
+const SIGNED_SUBJECT = 'Your signed Schedule A'
+
+/** The wording the signer ticks. Stored with the signature, word for word. */
+const CONSENT =
+  'I agree to sign this Schedule A electronically, and that typing my name here is my signature.'
 
 const ALLOWED_ORIGINS = [
   /^http:\/\/localhost:\d+$/,
@@ -54,7 +71,7 @@ const ALLOWED_ORIGINS = [
 ]
 
 const PUBLIC_ERROR =
-  "We couldn't prepare your Schedule A just now. Please try again in a minute, or contact Sequel if the problem continues."
+  "We couldn't sign your Schedule A just now. Please try again in a minute, or contact Sequel if the problem continues."
 
 function corsHeaders(origin: string | null) {
   const allowed = origin && ALLOWED_ORIGINS.some((re) => re.test(origin)) ? origin : ''
@@ -110,15 +127,11 @@ type Song = {
   contract_email: string | null
   project_master_list_id: number | null
   supplier_list_id: number | null
-  firma_request_id: string | null
-  firma_signer_id: string | null
-  firma_signing_url: string | null
-  schedule_a_sent_at: string | null
   schedule_a_pdf_path: string | null
 }
 
 const SONG_COLS =
-  'id, uuid, track_title, composer, brand, project, ownership, commencement_date, commencement_date_dup2, composer_reg_form_status, schedule_a_status, schedule_a_via, contract_email, project_master_list_id, supplier_list_id, firma_request_id, firma_signer_id, firma_signing_url, schedule_a_sent_at, schedule_a_pdf_path'
+  'id, uuid, track_title, composer, brand, project, ownership, commencement_date, commencement_date_dup2, composer_reg_form_status, schedule_a_status, schedule_a_via, contract_email, project_master_list_id, supplier_list_id, schedule_a_pdf_path'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -138,14 +151,17 @@ async function songById(db: Client, id: unknown): Promise<Song | null> {
 /**
  * Which screen the composer sees.
  *  - Pending: the form.
- *  - Confirmed, a new-app song, not yet signed: the signing step.
+ *  - Confirmed, a new-app song ('sequel', or one of the two Firma test
+ *    songs), not yet signed: the signing step.
  *  - Anything else confirmed (older songs went through BoldSign): all set.
  */
 function stateOf(s: Song | null): 'invalid' | 'open' | 'sign' | 'done' {
   if (!s) return 'invalid'
   if (s.composer_reg_form_status === 'Pending') return 'open'
   if (s.composer_reg_form_status === 'Confirmed') {
-    if (s.schedule_a_via === 'firma' && s.schedule_a_status !== 'Complete') return 'sign'
+    if ((s.schedule_a_via === 'sequel' || s.schedule_a_via === 'firma') && s.schedule_a_status !== 'Complete') {
+      return 'sign'
+    }
     return 'done'
   }
   return 'invalid'
@@ -208,19 +224,7 @@ async function sendLinkEmail(db: Client, song: Song, origin: string): Promise<st
   return error
 }
 
-// ------------------------------------------------------------------ Firma
-
-async function firma(path: string, init: RequestInit = {}): Promise<unknown> {
-  const key = Deno.env.get('FIRMA_API_KEY')
-  if (!key) throw new Error('FIRMA_API_KEY is not set on the server.')
-  const res = await fetch(`${FIRMA_API}${path}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', Authorization: key, ...(init.headers ?? {}) },
-  })
-  const text = await res.text()
-  if (!res.ok) throw new Error(`Firma ${res.status}: ${text.slice(0, 300)}`)
-  return text ? JSON.parse(text) : null
-}
+// ------------------------------------------------------------ the Schedule A
 
 function bytesToB64(bytes: Uint8Array): string {
   let bin = ''
@@ -229,9 +233,10 @@ function bytesToB64(bytes: Uint8Array): string {
   return btoa(bin)
 }
 
-function signingUrl(signerId: string | null, link: string | null): string | null {
-  if (link && link.startsWith(FIRMA_SIGNING_ORIGIN + '/')) return link
-  return signerId ? `${FIRMA_SIGNING_ORIGIN}/signing/${signerId}` : null
+async function sha256Hex(data: Uint8Array | string): Promise<string> {
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data
+  const digest = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes))
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 function ukDate(s: Song): string {
@@ -241,221 +246,203 @@ function ukDate(s: Song): string {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : ''
 }
 
-/**
- * Makes the Schedule A and the signing request, once. The claim on
- * schedule_a_sent_at stops two tabs (or a double click) from paying for two
- * envelopes; a claim older than two minutes is taken to have died.
- */
-async function startSigning(db: Client, song: Song): Promise<{ url: string | null; preparing?: boolean }> {
-  if (song.firma_request_id) return { url: signingUrl(song.firma_signer_id, song.firma_signing_url) }
+type Details = {
+  team: string
+  title: string
+  writers: { full_name: string; cae_number: string | null; share_split: number }[]
+  brand: string
+  productionTitle: string
+  commencementDate: string
+  ownership: string
+}
 
-  const stale = new Date(Date.now() - CLAIM_MS).toISOString()
-  const { data: claimed } = await db
-    .from('sequel_songs')
-    .update({ schedule_a_sent_at: new Date().toISOString(), firma_error: null })
-    .eq('id', song.id)
-    .is('firma_request_id', null)
-    .or(`schedule_a_sent_at.is.null,schedule_a_sent_at.lt.${stale}`)
-    .select('id')
-  if (!claimed || claimed.length === 0) return { url: null, preparing: true }
-
-  // Once Firma has made the request, the claim is never released: a second
-  // attempt would pay for a second envelope. What went wrong is recorded.
-  let requestId: string | null = null
-  try {
-    const { data: writers, error } = await db
-      .from('sequel_song_writer')
-      .select('full_name, cae_number, share_split')
-      .eq('song_id', song.id)
-      .order('id')
-    if (error) throw new Error(`writers: ${error.message}`)
-
-    const pdf = await buildScheduleA(
-      {
-        title: song.track_title ?? '',
-        writers: (writers ?? []).map((w) => ({
-          full_name: String(w.full_name ?? ''),
-          cae_number: w.cae_number ? String(w.cae_number) : null,
-          share_split: Number(w.share_split ?? 0),
-        })),
-        brand: song.brand ?? '',
-        productionTitle: song.project ?? '',
-        commencementDate: ukDate(song),
-        ownership: song.ownership ?? '',
-      },
-      await loadFonts(),
-    )
-
-    const team = (song.composer ?? '').trim() || 'Composer'
-    const created = (await firma('/signing-requests/create-and-send', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: `Schedule A – ${song.track_title ?? ''}`.slice(0, 255),
-        description: projectName(song.brand, song.project),
-        document: bytesToB64(pdf),
-        expiration_hours: 24 * 30,
-        recipients: [
-          {
-            id: 'temp_1',
-            first_name: team.slice(0, 100),
-            email: song.contract_email,
-            designation: 'Signer',
-            order: 1,
-            company: team.slice(0, 100),
-          },
-        ],
-        anchor_tags: [
-          {
-            anchor_string: ANCHORS.signature,
-            type: 'signature',
-            recipient_id: 'temp_1',
-            required: true,
-            width: 26,
-            height: 4,
-            remove_anchor_text: true,
-          },
-          {
-            anchor_string: ANCHORS.name,
-            type: 'text',
-            recipient_id: 'temp_1',
-            required: true,
-            width: 32,
-            height: 2.2,
-            remove_anchor_text: true,
-          },
-        ],
-        settings: {
-          // The page embeds the signing, so Firma does not email a link; it
-          // does email the signed copy when it is done.
-          send_signing_email: false,
-          send_finish_email: true,
-          attach_pdf_on_finish: true,
-          allow_download: true,
-          send_expiration_email: false,
-        },
-        completion_title: "You're all set",
-        completion_message: "Thanks — your Schedule A is signed. We'll email you a copy.",
-      }),
-    })) as {
-      id: string
-      first_signer?: { id?: string; signing_link?: string }
-      recipients?: { id: string; designation?: string }[]
-    }
-
-    requestId = created.id
-    const signerId =
-      created.first_signer?.id ?? created.recipients?.find((r) => r.designation === 'Signer')?.id ?? null
-    const link = created.first_signer?.signing_link ?? null
-    const url = signingUrl(signerId, link)
-    const { error: saveErr } = await db
-      .from('sequel_songs')
-      .update({
-        firma_request_id: created.id,
-        firma_signer_id: signerId,
-        firma_signing_url: link,
-        firma_error: url ? null : 'Firma made the signing request but returned no signing link.',
-      })
-      .eq('id', song.id)
-    if (saveErr) throw new Error(`signing request ${created.id} was made but not saved: ${saveErr.message}`)
-    if (!url) throw new Error('Firma returned no signing link.')
-    return { url }
-  } catch (e) {
-    const message = (e as Error).message
-    console.error('signing request failed', song.id, message)
-    await db
-      .from('sequel_songs')
-      .update(
-        requestId
-          ? { firma_error: message }
-          : // Nothing was made, so release the claim and let the next try start at once.
-            { schedule_a_sent_at: null, firma_error: message },
-      )
-      .eq('id', song.id)
-    throw e
+/** What the Schedule A says, read fresh from the database. */
+async function detailsOf(db: Client, song: Song): Promise<Details> {
+  const { data: writers, error } = await db
+    .from('sequel_song_writer')
+    .select('full_name, cae_number, share_split')
+    .eq('song_id', song.id)
+    .order('id')
+  if (error) throw new Error(`writers: ${error.message}`)
+  return {
+    team: (song.composer ?? '').trim(),
+    title: song.track_title ?? '',
+    writers: (writers ?? []).map((w) => ({
+      full_name: String(w.full_name ?? ''),
+      cae_number: w.cae_number ? String(w.cae_number) : null,
+      share_split: Number(w.share_split ?? 0),
+    })),
+    brand: song.brand ?? '',
+    productionTitle: song.project ?? '',
+    commencementDate: ukDate(song),
+    ownership: song.ownership ?? '',
   }
 }
 
 /**
- * Asks Firma whether it is signed; if so, keeps our own copy of the signed PDF
- * (Firma is young — Andy, 16 Sep) and marks the Schedule A Complete.
+ * The hash of exactly what the page showed. Keys in a fixed order, so the
+ * same details always give the same hash.
  */
-async function finaliseIfSigned(db: Client, song: Song): Promise<'done' | 'sign' | 'declined'> {
-  if (song.schedule_a_status === 'Complete') return 'done'
-  if (!song.firma_request_id) return 'sign'
-  const id = encodeURIComponent(song.firma_request_id)
-  const req = (await firma(`/signing-requests/${id}`)) as {
-    status?: { finished?: boolean; declined_on?: string | null; cancelled_on?: string | null; finished_on?: string | null }
-    expires_at?: string | null
-    final_document_download_url?: string | null
-  }
-  if (req.status?.declined_on || req.status?.cancelled_on) {
-    await db
-      .from('sequel_songs')
-      .update({
-        firma_error: req.status.declined_on
-          ? 'The composer declined the Schedule A. Reset the signing to send a fresh one.'
-          : 'The signing request was cancelled in Firma. Reset the signing to send a fresh one.',
-      })
-      .eq('id', song.id)
-    return 'declined'
-  }
-  if (!req.status?.finished && req.expires_at && new Date(req.expires_at) < new Date()) {
-    // Lapsed unsigned: forget it, so the link makes a fresh one when opened.
-    await resetSigning(db, song.id, 'The last signing request expired unsigned; a new one is made when the link is opened.')
-    return 'sign'
-  }
-  if (!req.status?.finished || !req.final_document_download_url) return 'sign'
+function detailsHash(d: Details): Promise<string> {
+  return sha256Hex(
+    JSON.stringify([
+      d.team,
+      d.title,
+      d.writers.map((w) => [w.full_name, w.cae_number ?? '', w.share_split]),
+      d.brand,
+      d.productionTitle,
+      d.commencementDate,
+      d.ownership,
+    ]),
+  )
+}
 
-  const file = await fetch(req.final_document_download_url)
-  if (!file.ok) throw new Error(`signed copy download failed (${file.status})`)
-  const bytes = new Uint8Array(await file.arrayBuffer())
-  const path = `${song.uuid}/schedule-a-${song.firma_request_id}.pdf`
+/** The signing screen's payload. */
+async function scheduleFor(db: Client, song: Song) {
+  // Fetch the fonts now, while the composer reads, so signing is quick.
+  void inBackground(loadFonts())
+  const details = await detailsOf(db, song)
+  return {
+    ...details,
+    details_hash: await detailsHash(details),
+    consent: CONSENT,
+    email: song.contract_email,
+  }
+}
+
+function clientIp(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  return (req.headers.get('cf-connecting-ip') ?? forwarded ?? req.headers.get('x-real-ip') ?? '').slice(0, 100)
+}
+
+const escapeHtml = (s: string) =>
+  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
+
+/** The signed copy to the signer, and to anyone in SCHEDULE_A_COPY_TO. */
+async function emailSignedCopy(db: Client, song: Song, d: Details, signer: string, signedAt: Date, pdf: Uint8Array) {
+  const key = Deno.env.get('RESEND_API_KEY')
+  let error: string | null = null
+  if (!key) error = 'The signed copy was not emailed: RESEND_API_KEY is not set on the server.'
+  else if (!song.contract_email) error = 'The signed copy was not emailed: this song has no contract email.'
+  else {
+    const copies = (Deno.env.get('SCHEDULE_A_COPY_TO') ?? '')
+      .split(',')
+      .map((a) => a.trim())
+      .filter((a) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a))
+    const project = projectName(d.brand, d.productionTitle)
+    const html = `<div style="font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#372b29">
+<p>Hi ${escapeHtml(d.team || 'there')},</p>
+<p>Thanks for signing. Your Schedule A for <strong>${escapeHtml(d.title)}</strong> (${escapeHtml(project)}) is attached.</p>
+<p>Signed by ${escapeHtml(signer)} on ${escapeHtml(londonTime(signedAt))}.</p>
+<p>Sequel</p>
+</div>`
+    const safeTitle = d.title.replace(/[^\p{L}\p{N} ()&.,'-]+/gu, '').trim().slice(0, 80) || 'Song'
+    try {
+      const res = await fetch(RESEND_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          from: EMAIL_FROM,
+          to: [song.contract_email],
+          ...(copies.length ? { bcc: copies } : {}),
+          subject: `${SIGNED_SUBJECT} | ${d.title}`.slice(0, 200),
+          html,
+          text: `Hi ${d.team || 'there'},\n\nThanks for signing. Your Schedule A for ${d.title} (${project}) is attached.\n\nSigned by ${signer} on ${londonTime(signedAt)}.\n\nSequel`,
+          attachments: [{ filename: `Schedule A - ${safeTitle}.pdf`, content: bytesToB64(pdf) }],
+        }),
+      })
+      if (!res.ok) {
+        const detail = (await res.text()).slice(0, 300)
+        console.error('signed copy email failed', res.status, detail)
+        error = `The signed copy was not emailed (Resend ${res.status}): ${detail}`
+      }
+    } catch (e) {
+      error = `The signed copy was not emailed: ${(e as Error).message}`
+    }
+  }
+  await db
+    .from('sequel_songs')
+    .update(
+      error
+        ? { signed_copy_email_error: error }
+        : { signed_copy_emailed_at: new Date().toISOString(), signed_copy_email_error: null },
+    )
+    .eq('id', song.id)
+}
+
+type SignResult = { state: 'done' } | { state: 'sign'; error: string }
+
+async function sign(db: Client, req: Request, song: Song, body: Record<string, unknown>): Promise<SignResult> {
+  const name = typeof body.name === 'string' ? body.name.replace(/\s+/g, ' ').trim() : ''
+  if (name.length < 2 || name.length > 120 || !/\p{L}/u.test(name)) {
+    return { state: 'sign', error: 'Please type your full name to sign.' }
+  }
+  if (body.consent !== true) {
+    return { state: 'sign', error: 'Please tick the box to agree to sign electronically.' }
+  }
+
+  const details = await detailsOf(db, song)
+  const hash = await detailsHash(details)
+  if (body.details_hash !== hash) {
+    return {
+      state: 'sign',
+      error: 'The details of this Schedule A have changed since the page loaded. Please check them again, then sign.',
+    }
+  }
+
+  const signedAt = new Date()
+  const ip = clientIp(req)
+  const userAgent = (req.headers.get('user-agent') ?? '').slice(0, 500)
+  const pdf = await buildScheduleA(details, await loadFonts(), {
+    name,
+    signedAt,
+    email: song.contract_email ?? '',
+    ip,
+    userAgent,
+    consent: CONSENT,
+    detailsHash: hash,
+    reference: song.uuid,
+    team: details.team,
+  })
+  const pdfHash = await sha256Hex(pdf)
+
+  // A fresh name every time, never overwritten: a double click stores two
+  // files, and only the one the update below accepts is the record.
+  const path = `${song.uuid}/schedule-a-signed-${signedAt.getTime()}.pdf`
   const { error: upErr } = await db.storage
     .from(BUCKET)
-    .upload(path, bytes, { contentType: 'application/pdf', upsert: true })
+    .upload(path, pdf, { contentType: 'application/pdf', upsert: false })
   if (upErr) throw new Error(`storing the signed copy failed: ${upErr.message}`)
 
-  // The name typed next to "For and on behalf of".
-  let signerName: string | null = null
-  try {
-    const fields = (await firma(`/signing-requests/${id}/fields`)) as {
-      results?: { type?: string; field_type?: string; value?: unknown; final_value?: unknown }[]
-    }
-    const text = fields.results?.find((f) => (f.type ?? f.field_type) === 'text')
-    const v = text?.final_value ?? text?.value
-    signerName = typeof v === 'string' && v.trim() ? v.trim().slice(0, 200) : null
-  } catch (e) {
-    console.error('reading the signer name failed', (e as Error).message)
-  }
-
-  const { error: doneErr } = await db
+  const { data: marked, error: markErr } = await db
     .from('sequel_songs')
     .update({
       schedule_a_status: 'Complete',
-      schedule_a_signed_at: req.status?.finished_on ?? new Date().toISOString(),
-      schedule_a_signer_name: signerName,
+      schedule_a_signed_at: signedAt.toISOString(),
+      schedule_a_signer_name: name,
+      schedule_a_signer_ip: ip || null,
+      schedule_a_signer_agent: userAgent || null,
+      schedule_a_consent: CONSENT,
+      schedule_a_details_sha256: hash,
+      schedule_a_pdf_sha256: pdfHash,
       schedule_a_pdf_path: path,
       firma_error: null,
     })
     .eq('id', song.id)
-  if (doneErr) throw new Error(`signed, but marking it complete failed: ${doneErr.message}`)
-  return 'done'
-}
-
-async function resetSigning(db: Client, songId: number, note: string | null) {
-  const { error } = await db
-    .from('sequel_songs')
-    .update({
-      firma_request_id: null,
-      firma_signer_id: null,
-      firma_signing_url: null,
-      schedule_a_sent_at: null,
-      firma_error: note,
-    })
-    .eq('id', songId)
+    .eq('composer_reg_form_status', 'Confirmed')
     // Not .neq(): that drops NULL rows as well (mirror trap 4).
     .or('schedule_a_status.is.null,schedule_a_status.neq.Complete')
-  if (error) throw new Error(`reset failed: ${error.message}`)
+    .select('id')
+  if (markErr) throw new Error(`signed, but saving it failed: ${markErr.message}`)
+  if (!marked || marked.length === 0) {
+    // Someone (another tab) signed first. Theirs stands; this file is spare.
+    await db.storage.from(BUCKET).remove([path])
+    return { state: 'done' }
+  }
+
+  // The signer sees "done" straight away; the email follows.
+  await inBackground(emailSignedCopy(db, song, details, name, signedAt, pdf))
+  return { state: 'done' }
 }
 
 // ------------------------------------------------------------------ handler
@@ -478,13 +465,7 @@ Deno.serve(async (req) => {
 
   try {
     // ---------------------------------------------------------- staff
-    if (
-      action === 'create' ||
-      action === 'resend_link' ||
-      action === 'document' ||
-      action === 'refresh' ||
-      action === 'reset_signing'
-    ) {
+    if (action === 'create' || action === 'resend_link' || action === 'document') {
       const caller = asCaller(req)
       if (!caller || !(await isStaff(caller))) return json({ error: 'Staff only.' }, 403, origin)
 
@@ -510,31 +491,11 @@ Deno.serve(async (req) => {
       if (!song) return json({ error: 'Song not found.' }, 404, origin)
 
       if (action === 'resend_link') {
-        if (song.composer_reg_form_status !== 'Pending') {
-          return json({ error: 'The composer has already confirmed this song.' }, 400, origin)
+        if (stateOf(song) !== 'open' && stateOf(song) !== 'sign') {
+          return json({ error: 'This Schedule A is already signed.' }, 400, origin)
         }
         const emailError = await sendLinkEmail(db, song, appOrigin(req))
         return json({ emailed: !emailError, email_error: emailError ?? undefined }, 200, origin)
-      }
-
-      if (action === 'refresh') {
-        if (stateOf(song) !== 'sign' || !song.firma_request_id) return json({ state: stateOf(song) }, 200, origin)
-        try {
-          const now = await finaliseIfSigned(db, song)
-          return json({ state: now === 'done' ? 'done' : 'sign', declined: now === 'declined' }, 200, origin)
-        } catch (e) {
-          const message = (e as Error).message
-          await db.from('sequel_songs').update({ firma_error: message }).eq('id', song.id)
-          return json({ error: message }, 502, origin)
-        }
-      }
-
-      if (action === 'reset_signing') {
-        if (song.schedule_a_status === 'Complete') {
-          return json({ error: 'This Schedule A is already signed.' }, 400, origin)
-        }
-        await resetSigning(db, song.id, null)
-        return json({ ok: true }, 200, origin)
       }
 
       // document
@@ -547,14 +508,19 @@ Deno.serve(async (req) => {
     // --------------------------------------------------------- public
     if (action === 'status') {
       const song = await songByUuid(db, body.uuid)
-      return json({ state: stateOf(song) }, 200, origin)
+      const state = stateOf(song)
+      if (song && state === 'sign') return json({ state, schedule: await scheduleFor(db, song) }, 200, origin)
+      return json({ state }, 200, origin)
     }
 
     if (action === 'submit') {
       const song = await songByUuid(db, body.uuid)
       const state = stateOf(song)
       if (!song || state === 'invalid') return json({ state: 'invalid' }, 200, origin)
-      if (state !== 'open') return json({ state }, 200, origin)
+      if (state !== 'open') {
+        if (state === 'sign') return json({ state, schedule: await scheduleFor(db, song) }, 200, origin)
+        return json({ state }, 200, origin)
+      }
 
       const writers = Array.isArray(body.writers) ? (body.writers as Writer[]) : []
       const { data, error } = await db.schema('public').rpc('song_confirm_details', {
@@ -571,46 +537,34 @@ Deno.serve(async (req) => {
         return json({ state: 'open', error: 'submit_failed' }, 200, origin)
       }
       const result = data as { success?: boolean; error?: string }
-      if (!result?.success) {
-        if (result?.error === 'already_submitted') {
-          const again = await songByUuid(db, song.uuid)
-          return json({ state: stateOf(again) }, 200, origin)
-        }
+      if (!result?.success && result?.error !== 'already_submitted') {
         if (result?.error === 'not_found') return json({ state: 'invalid' }, 200, origin)
         return json({ state: 'open', error: result?.error ?? 'submit_failed' }, 200, origin)
       }
 
       const fresh = await songByUuid(db, song.uuid)
-      if (!fresh || stateOf(fresh) !== 'sign') return json({ state: stateOf(fresh) }, 200, origin)
-      try {
-        const started = await startSigning(db, fresh)
-        if (started.preparing) return json({ state: 'preparing' }, 200, origin)
-        return json({ state: 'sign', signing_url: started.url }, 200, origin)
-      } catch {
-        return json({ state: 'sign', error: PUBLIC_ERROR }, 200, origin)
-      }
+      const now = stateOf(fresh)
+      if (fresh && now === 'sign') return json({ state: now, schedule: await scheduleFor(db, fresh) }, 200, origin)
+      return json({ state: now }, 200, origin)
     }
 
-    if (action === 'sign' || action === 'check') {
+    if (action === 'sign') {
       const song = await songByUuid(db, body.uuid)
       const state = stateOf(song)
       if (!song || state !== 'sign') return json({ state }, 200, origin)
+      let result: SignResult
       try {
-        if (song.firma_request_id) {
-          const now = await finaliseIfSigned(db, song)
-          if (now === 'done') return json({ state: 'done' }, 200, origin)
-          if (now === 'declined') return json({ state: 'sign', declined: true }, 200, origin)
-          if (action === 'check') return json({ state: 'sign' }, 200, origin)
-        }
-        // Read again: finaliseIfSigned may just have cleared a lapsed request.
-        const current = (await songByUuid(db, song.uuid)) ?? song
-        const started = await startSigning(db, current)
-        if (started.preparing) return json({ state: 'preparing' }, 200, origin)
-        return json({ state: 'sign', signing_url: started.url }, 200, origin)
+        result = await sign(db, req, song, body)
       } catch (e) {
-        console.error(`${action} failed`, song.id, (e as Error).message)
-        return json({ state: 'sign', error: PUBLIC_ERROR }, 200, origin)
+        console.error('sign failed', song.id, (e as Error).message)
+        await db.from('sequel_songs').update({ firma_error: (e as Error).message }).eq('id', song.id)
+        result = { state: 'sign', error: PUBLIC_ERROR }
       }
+      if (result.state === 'sign') {
+        // Send the details again: if they changed, the page shows the new ones.
+        return json({ ...result, schedule: await scheduleFor(db, song) }, 200, origin)
+      }
+      return json(result, 200, origin)
     }
 
     return json({ error: 'unknown action' }, 400, origin)

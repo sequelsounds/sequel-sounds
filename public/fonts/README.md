@@ -14,3 +14,11 @@ To re-convert after a licence update, fetch the OTFs and run:
 
     npm install --no-save wawoff2
     node -e "const w=require('wawoff2'),f=require('fs');(async()=>{for(const n of f.readdirSync('.').filter(x=>x.endsWith('.otf')))f.writeFileSync(n.replace(/\.otf$/,'.woff2'),Buffer.from(await w.compress(f.readFileSync(n))))})()"
+
+# Mrs Saint Delafield
+
+Google Fonts, SIL Open Font License 1.1 (free to self-host and embed). The
+handwriting face for the Schedule A signature: the signing page previews the
+typed name in it, and the song-schedule-a edge function draws the same face
+on the signed PDF (it fetches the TTF from jsDelivr, pinned). Converted to
+woff2 from `@expo-google-fonts/mrs-saint-delafield@0.4.1` with fontTools.

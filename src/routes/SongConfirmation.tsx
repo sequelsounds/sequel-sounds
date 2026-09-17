@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import {
-  checkSigned,
-  FIRMA_ORIGIN,
-  openSigning,
-  songStatus,
-  submitSong,
-  type ConfirmResult,
-} from '../lib/songSchedule'
+import { signSchedule, songStatus, submitSong, type ConfirmResult, type Schedule } from '../lib/songSchedule'
 
 /**
  * `/song-confirmation?uuid=…` — the composer's form, the old app's page of the
@@ -21,7 +14,10 @@ import {
  * 16 Sep — `claude/sequel-track-song-confirmation.md` §3–§5. The wizard is
  * the old one step for step:
  *   1 intro · 2 title · 3 how many · 4..3+N one composer each · 4+N summary
- * and then, new, the signing step, which embeds Firma's signing page.
+ * and then, new, the signing step: the Schedule A as it will be signed, a
+ * typed name, a consent tick and SIGN. Sequel's own — Firma's embedded
+ * signing was tried first and dropped (Andy, 16 Sep: slow, a third party's
+ * terms, its own styling in a frame, a long wait after signing).
  */
 
 type Composer = { full_name: string; cae_number: string; share_split: string }
@@ -63,16 +59,13 @@ export default function SongConfirmation() {
   const [submitting, setSubmitting] = useState(false)
 
   // The signing step.
-  const [signingUrl, setSigningUrl] = useState<string | null>(null)
+  const [schedule, setSchedule] = useState<Schedule | null>(null)
+  const [signerName, setSignerName] = useState('')
+  const [consent, setConsent] = useState(false)
+  const [signing, setSigning] = useState(false)
   const [signError, setSignError] = useState<string | null>(null)
-  const [preparing, setPreparing] = useState(false)
-  const [declined, setDeclined] = useState(false)
-  const [finishing, setFinishing] = useState(false)
-  const [slowFinish, setSlowFinish] = useState(false)
-  // Bumped on every "still preparing" answer, so the retry runs again even
-  // when `preparing` was already true.
-  const [prepTick, setPrepTick] = useState(0)
-  const finishingRef = useRef(false)
+  // Set when this visit did the signing, so "all set" can say so.
+  const [justSigned, setJustSigned] = useState(false)
 
   useEffect(() => {
     document.title = 'Sequel | Song Confirmation'
@@ -83,118 +76,44 @@ export default function SongConfirmation() {
     if (r.state === 'invalid') return setScreen('invalid')
     if (r.state === 'done') return setScreen('done')
     if (r.state === 'open') return setScreen('form')
+    if (!r.schedule) return setScreen('invalid')
+    setSchedule(r.schedule)
     setScreen('sign')
-    setPreparing(r.state === 'preparing')
-    if (r.state === 'preparing') setPrepTick((t) => t + 1)
-    setDeclined(!!r.declined)
-    setSignError(r.error ?? null)
-    if (r.signing_url) setSigningUrl(r.signing_url)
-    else if (r.state === 'sign' && !r.error && !r.declined) {
-      setSignError(
-        "We couldn't prepare your Schedule A just now. Please try again in a minute, or contact Sequel if the problem continues.",
-      )
-    }
   }, [])
-
-  const openSign = useCallback(async () => {
-    if (!uuid) return
-    setSignError(null)
-    try {
-      apply(await openSigning(uuid))
-    } catch {
-      setSignError(
-        "We couldn't prepare your Schedule A just now. Please try again in a minute, or contact Sequel if the problem continues.",
-      )
-    }
-  }, [uuid, apply])
 
   // Check_Song_Link_Status: anything but a good answer is "not valid".
   useEffect(() => {
     if (!uuid) return
     let live = true
     songStatus(uuid)
-      .then((r) => {
-        if (!live) return
-        if (r.state === 'sign' || r.state === 'preparing') {
-          setScreen('sign')
-          void openSign()
-        } else apply(r)
-      })
+      .then((r) => live && apply(r))
       .catch(() => live && setScreen('invalid'))
     return () => {
       live = false
     }
-  }, [uuid, apply, openSign])
+  }, [uuid, apply])
 
-  // A signing request another tab is still making: ask again shortly.
-  useEffect(() => {
-    if (screen !== 'sign' || !preparing) return
-    const t = window.setTimeout(() => void openSign(), 3000)
-    return () => window.clearTimeout(t)
-  }, [screen, preparing, prepTick, openSign])
-
-  // Firma's frame says it is done: ask the server, which asks Firma, until the
-  // signed copy is ready. It usually is within seconds.
-  const finish = useCallback(async () => {
-    if (!uuid || finishingRef.current) return
-    finishingRef.current = true
-    setFinishing(true)
-    for (let i = 0; i < 30; i++) {
-      try {
-        const r = await checkSigned(uuid)
-        if (r.state === 'done') {
-          finishingRef.current = false
-          setFinishing(false)
-          setScreen('done')
-          return
-        }
-        if (r.declined) {
-          finishingRef.current = false
-          setFinishing(false)
-          setDeclined(true)
-          return
-        }
-      } catch {
-        /* try again */
-      }
-      await new Promise((res) => window.setTimeout(res, 2000))
+  const sign = async () => {
+    if (!schedule || signing) return
+    if (signerName.trim().length < 2) return setSignError('Please type your full name to sign.')
+    if (!consent) return setSignError('Please tick the box to agree to sign electronically.')
+    setSigning(true)
+    setSignError(null)
+    try {
+      const r = await signSchedule(uuid, signerName.trim(), consent, schedule.details_hash)
+      if (r.state === 'done') {
+        setJustSigned(true)
+        setScreen('done')
+      } else if (r.state === 'sign') {
+        if (r.schedule) setSchedule(r.schedule)
+        setSignError(r.error ?? null)
+      } else apply(r)
+    } catch (e) {
+      setSignError((e as Error).message)
+    } finally {
+      setSigning(false)
     }
-    // Still not there: say so, and let the slow poll below carry on.
-    finishingRef.current = false
-    setFinishing(false)
-    setSlowFinish(true)
-  }, [uuid])
-
-  useEffect(() => {
-    if (screen !== 'sign') return
-    const onMessage = (e: MessageEvent) => {
-      if (e.origin !== FIRMA_ORIGIN) return
-      const d = e.data as unknown
-      const kind =
-        typeof d === 'string'
-          ? d
-          : d && typeof d === 'object'
-            ? String((d as { type?: unknown; event?: unknown }).type ?? (d as { event?: unknown }).event ?? '')
-            : ''
-      if (kind.includes('completed') || kind.includes('declined')) void finish()
-    }
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
-  }, [screen, finish])
-
-  // And in case the frame's message never comes: look every 20 seconds.
-  useEffect(() => {
-    if (screen !== 'sign' || !signingUrl || finishing || declined) return
-    const t = window.setInterval(() => {
-      checkSigned(uuid)
-        .then((r) => {
-          if (r.state === 'done') setScreen('done')
-          if (r.declined) setDeclined(true)
-        })
-        .catch(() => {})
-    }, 20000)
-    return () => window.clearInterval(t)
-  }, [screen, signingUrl, finishing, declined, uuid])
+  }
 
   // ---- the wizard
   const n = composers.length
@@ -304,10 +223,18 @@ export default function SongConfirmation() {
         {screen === 'done' && (
           <div className="sc-state">
             <h2 className="sc-heading">You're all set</h2>
-            <p className="sc-subtext">
-              Thanks — this song's writer details have been confirmed. If you need to make any changes,
-              contact Sequel.
-            </p>
+            {justSigned ? (
+              <p className="sc-subtext">
+                Thanks — your Schedule A is signed.
+                {schedule?.email ? ` We've emailed a copy to ${schedule.email}.` : ''} If anything needs
+                changing, contact Sequel.
+              </p>
+            ) : (
+              <p className="sc-subtext">
+                Thanks — this song's writer details have been confirmed. If you need to make any changes,
+                contact Sequel.
+              </p>
+            )}
           </div>
         )}
 
@@ -456,6 +383,7 @@ export default function SongConfirmation() {
         {screen === 'form' && step === summaryStep && n > 0 && (
           <div className="sc-state">
             <h2 className="sc-heading">Check everything looks right</h2>
+            <div className="sc-summary-label">Track title</div>
             <p className="sc-summary-title">{title.trim()}</p>
             <div className="sc-writers">
               <div className="sc-writer-header">
@@ -470,8 +398,11 @@ export default function SongConfirmation() {
                   <div className="sc-writer-share">{formatTotal(parseFloat(c.share_split) || 0)}%</div>
                 </div>
               ))}
+              <div className="sc-writer-total">
+                <div className="sc-writer-name">Total</div>
+                <div className="sc-writer-share">{formatTotal(total)}%</div>
+              </div>
             </div>
-            <div className="sc-total">The share total is {formatTotal(total)}%</div>
             {Math.abs(total - 100) > 0.001 && (
               <p className="sc-warning">
                 Typically, this value should equal 100%. Please double check before submitting.
@@ -490,46 +421,118 @@ export default function SongConfirmation() {
         )}
 
         {/* New, Andy 16 Sep: the Schedule A, filled in, signed here. */}
-        {screen === 'sign' && (
+        {screen === 'sign' && schedule && (
           <div className="sc-sign">
-            <h2 className="sc-heading">
-              {declined ? 'This Schedule A was declined' : 'Sign your Schedule A'}
-            </h2>
-            {declined ? (
-              <p className="sc-subtext">Contact Sequel if you think this is a mistake.</p>
-            ) : slowFinish ? (
+            <div className="sc-sign-inner">
+              <h2 className="sc-heading">Sign your Schedule A</h2>
               <p className="sc-subtext">
-                Thanks — we're finishing your Schedule A and will email you a copy. You can close this page.
+                Check the details below, then type your full name to sign.
+                {schedule.email ? ` We'll email a signed copy to ${schedule.email}.` : ''}
               </p>
-            ) : (
-              <p className="sc-subtext">
-                Check the details, then add your name and signature where marked. We'll email you a signed
-                copy.
-              </p>
-            )}
-            {signError && !declined && (
-              <>
-                <p className="sc-warning">{signError}</p>
+
+              <section className="sc-doc" aria-label="Schedule A">
+                <div className="sc-doc-head">
+                  <div className="sc-doc-title">Schedule A</div>
+                  <p className="sc-doc-terms">
+                    Musical Works created by the Composer for the Company shall be subject to the Terms and
+                    Definitions of this Agreement. In the case that the Company successfully places a Musical
+                    Work created by the Composer for any Production, said Musical Work shall be added to this
+                    Schedule.
+                  </p>
+                </div>
+
+                <dl className="sc-doc-fields">
+                  <div className="sc-doc-field is-wide">
+                    <dt>Musical work title</dt>
+                    <dd className="sc-doc-value-lg">{schedule.title}</dd>
+                  </div>
+                  <div className="sc-doc-field is-wide">
+                    <dt>Composer(s)</dt>
+                    <dd>
+                      <div className="sc-doc-writer is-head">
+                        <div>Name</div>
+                        <div className="sc-doc-writer-right">
+                          <span>IPI/CAE</span>
+                          <span>Share</span>
+                        </div>
+                      </div>
+                      {schedule.writers.map((w, i) => (
+                        <div className="sc-doc-writer" key={i}>
+                          <div className="sc-doc-writer-name">{w.full_name}</div>
+                          <div className="sc-doc-writer-right">
+                            <span>{w.cae_number || '—'}</span>
+                            <span>{formatTotal(w.share_split)}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </dd>
+                  </div>
+                  <div className="sc-doc-field">
+                    <dt>Brand</dt>
+                    <dd>{schedule.brand || '—'}</dd>
+                  </div>
+                  <div className="sc-doc-field">
+                    <dt>Production title</dt>
+                    <dd>{schedule.productionTitle || '—'}</dd>
+                  </div>
+                  <div className="sc-doc-field">
+                    <dt>Commencement date</dt>
+                    <dd>{schedule.commencementDate || '—'}</dd>
+                  </div>
+                  <div className="sc-doc-field">
+                    <dt>Ownership</dt>
+                    <dd>{schedule.ownership || '—'}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <div className="sc-signoff">
+                <div className="sc-field-label">Accepted and agreed, for and on behalf of {schedule.team}</div>
+                <div className="sc-signature" aria-hidden="true">
+                  {signerName.trim() || '\u00a0'}
+                </div>
+                <label className="sc-field-group" htmlFor="sc-signer">
+                  <span className="sc-field-label">Your full name</span>
+                  <input
+                    id="sc-signer"
+                    className="sc-input"
+                    placeholder="e.g. Alex Morgan"
+                    autoComplete="name"
+                    maxLength={120}
+                    value={signerName}
+                    onChange={(e) => {
+                      setSignerName(e.target.value)
+                      setSignError(null)
+                    }}
+                    onKeyDown={onEnter(() => void sign())}
+                  />
+                </label>
+                <label className="sc-consent">
+                  <input
+                    type="checkbox"
+                    checked={consent}
+                    onChange={(e) => {
+                      setConsent(e.target.checked)
+                      setSignError(null)
+                    }}
+                  />
+                  <span>{schedule.consent}</span>
+                </label>
+                {signError && <p className="sc-warning">{signError}</p>}
                 <div className="sc-nav">
-                  <button type="button" className="sc-button" onClick={() => void openSign()}>
-                    Try again
+                  {/* The brief form's button (Andy, 16 Sep). Never dimmed: pressed
+                      too early, it says what is missing. */}
+                  <button
+                    type="button"
+                    className="bp-button"
+                    disabled={signing}
+                    onClick={() => void sign()}
+                  >
+                    {signing ? 'SIGNING…' : 'SIGN'}
                   </button>
                 </div>
-              </>
-            )}
-            {!signError && !declined && !slowFinish && !signingUrl && (
-              <p className="sc-subtext">Preparing your Schedule A…</p>
-            )}
-            {!signError && !declined && !slowFinish && signingUrl && (
-              <div className="sc-sign-frame">
-                <iframe
-                  src={signingUrl}
-                  title="Document Signing"
-                  allow="camera;microphone;clipboard-write"
-                />
-                {finishing && <div className="sc-sign-finishing">Finishing up…</div>}
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>
