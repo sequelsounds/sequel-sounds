@@ -41,8 +41,11 @@ const EMAIL_TTL_SECONDS = 604800
 const PUT_TTL_SECONDS = 900
 /** A single PUT tops out at 5 GB. */
 const MAX_BYTES = 5 * 1024 * 1024 * 1024
-/** Belt and braces: only this prefix is ever signed, whatever the row says. */
+/** Belt and braces: only these prefixes are ever signed, whatever the row says. */
 const KEY_RE = /^project-assets\/[0-9a-f-]{36}_[^/\\]+$/
+/** Contracts share through /link too (17 Sep), and their staff actions live in
+ *  sign-contract — this prefix is signed on the SHARE PATH ONLY. */
+const CONTRACT_KEY_RE = /^contracts\/[0-9a-f-]{36}_[^/\\]+$/
 
 const ALLOWED_ORIGINS = [
   /^http:\/\/localhost:\d+$/,
@@ -155,7 +158,9 @@ Deno.serve(async (req) => {
     })
     if (error) return json({ error: 'server' }, 500, origin)
     if (data?.error) return json({ error: data.error }, data.error === 'busy' ? 429 : 404, origin)
-    if (!KEY_RE.test(data.key)) return json({ error: 'invalid' }, 404, origin)
+    if (!KEY_RE.test(data.key) && !CONTRACT_KEY_RE.test(data.key)) {
+      return json({ error: 'invalid' }, 404, origin)
+    }
     const fileName = data.file_name || nameFromKey(data.key)
     return json(
       {
@@ -163,6 +168,7 @@ Deno.serve(async (req) => {
         file_type: data.file_type,
         file_size: data.file_size,
         expires_at: data.expires_at,
+        kind: data.kind ?? 'asset',
         peaks: data.peaks ?? null,
         url: await sign(data.key, 'GET', READ_TTL_SECONDS),
         download_url: await sign(data.key, 'GET', READ_TTL_SECONDS, fileName),

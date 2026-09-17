@@ -36,6 +36,9 @@ const LINKS: { label: string; to: string | null; also?: string[] }[] = [
   { label: 'Clients', to: '/clients' },
   { label: 'Users', to: '/users' },
   { label: 'Finance', to: '/invoices', also: ['/invoices'] },
+  // Not in Track's nav either: the renewal dates existed with nowhere to show
+  // them (Andy, 17 Sep).
+  { label: 'Contracts', to: '/contracts' },
   // Not in Track's nav — its /reporting page was reached by URL only. Shown
   // to finance only, because the page is finance only.
   { label: 'Reporting', to: '/reporting' },

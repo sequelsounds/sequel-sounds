@@ -9,6 +9,7 @@ import SharedFile from './routes/SharedFile'
 import SongConfirmation from './routes/SongConfirmation'
 import Client from './routes/Client'
 import Clients from './routes/Clients'
+import Contracts from './routes/Contracts'
 import Library from './routes/Library'
 import Login from './routes/Login'
 import Partner from './routes/Partner'
@@ -117,6 +118,7 @@ export default function App() {
         <Route path="/invoices" element={<Finance />} />
         <Route path="/invoices/:uuid" element={<Invoice />} />
         <Route path="/reporting" element={<Reporting />} />
+        <Route path="/contracts" element={<Contracts />} />
         <Route path="/playlists" element={<Playlists />} />
         <Route path="/playlists/:id" element={<PlaylistRoute />} />
         <Route path="/library" element={<Library />} />

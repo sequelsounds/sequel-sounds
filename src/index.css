@@ -2160,3 +2160,71 @@
     margin-left: auto;
   }
 }
+
+/* Contracts — the upload/edit modal's two columns, and the renewals list.
+   17 Sep 2026. */
+@layer components {
+  .cm-box {
+    max-width: 44rem;
+  }
+
+  .cm-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .cm-wide {
+    grid-column: 1 / -1;
+  }
+
+  /* What the reader could not settle, said plainly rather than left blank. */
+  .cm-note {
+    padding: 0.5rem 0;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    color: var(--color-sequel-brown);
+  }
+
+  .cm-summary {
+    padding: 0.5rem 0;
+    font-size: 0.75rem;
+    line-height: 1.1rem;
+    font-weight: 300;
+    color: var(--color-sequel-brown);
+  }
+
+  /* Required and empty: a border, never a fade (CLAUDE.md). */
+  .am-input.needs-input {
+    border-color: var(--color-sequel-error);
+  }
+
+  .renewal-grid {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 1.1fr 0.7fr 1fr 1.2fr 0.8fr 0.9fr 0.8fr;
+    gap: 16px;
+    padding: 0 2rem;
+    align-items: center;
+  }
+
+  .renewal-days {
+    font-weight: 500;
+  }
+
+  /* Dealt with: lighter weight, not faded out. */
+  .renewal-grid.is-seen .project-list-title {
+    font-weight: 300;
+  }
+
+  .renewal-tick {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.04em;
+    color: inherit;
+    cursor: pointer;
+    border: 1px solid currentColor;
+    padding: 0.2rem 0.5rem;
+  }
+}

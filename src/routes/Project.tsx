@@ -31,14 +31,15 @@ import {
   useIsStaff,
   useProject,
   useProjectBriefs,
-  useProjectContracts,
   useProjectCreativeLinks,
   useProjectFiles,
   useProjectInvoices,
   useProjectQuotes,
   useProjectSongs,
 } from '../lib/xanoMirror'
-import type { Brief, Contract, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../lib/xanoMirror'
+import type { Brief, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../lib/xanoMirror'
+import { useProjectContracts, type ContractRow } from '../lib/contracts'
+import { ContractModal, ContractRowActions, type ContractModalMode } from '../components/staff/ContractActions'
 import { NewSongModal } from '../components/staff/NewSong'
 
 /**
@@ -473,6 +474,7 @@ export default function Project() {
   const [briefShare, setBriefShare] = useState<ShareState | null>(null)
   const [briefView, setBriefView] = useState<Brief | null>(null)
   const [assetModal, setAssetModal] = useState<AssetModalMode | null>(null)
+  const [contractModal, setContractModal] = useState<ContractModalMode | null>(null)
   const [newSong, setNewSong] = useState(false)
   // row_flash: the row just saved blinks, then stops.
   const [flash, setFlash] = useState<string | null>(null)
@@ -1003,19 +1005,39 @@ export default function Project() {
         )}
 
         {tab === 'Contracting' && (
-          <Rows<Contract>
+          <Rows<ContractRow>
             title="Contracting"
             action="+ New CONTRACT"
+            onAction={edit ? () => setContractModal({ kind: 'upload' }) : undefined}
             empty="Nothing here yet.  Upload a file or create a contract to get started"
             state={contracts}
             variant="contract"
+            // The row opens the edit form, as in the old app; open, share and
+            // archive are their own targets on the right.
+            open={(c) => (edit ? () => setContractModal({ kind: 'edit', contract: c }) : null)}
+            rowClass={(c) => (c.uuid === flash ? ' is-flashing' : '')}
             row={(c) => (
               <>
-                <Title>{c.supplier}</Title>
+                <Title>{c.supplier || c.file_name}</Title>
                 <Cell>{c.contract_type}</Cell>
-                <Cell>{fmt(longDate, c.created_at)}</Cell>
+                <Cell>{c.song_name || c.artist}</Cell>
+                {/* What it is worth knowing at a glance: when the licence
+                    stops. Perpetual says so; a blank expiry is the gap the
+                    renewals page lists. */}
+                <Cell>{c.perpetual ? 'Perpetual' : c.end_date ? fmt(shortDate, c.end_date) : '—'}</Cell>
+                <Cell>{fmt(shortDate, c.created_at)}</Cell>
+                {edit && <ContractRowActions contract={c} projectId={projectId} />}
               </>
             )}
+          />
+        )}
+
+        {contractModal && projectId !== undefined && (
+          <ContractModal
+            mode={contractModal}
+            projectId={projectId}
+            onClose={() => setContractModal(null)}
+            onSaved={(uuid) => setFlash(uuid)}
           />
         )}
 

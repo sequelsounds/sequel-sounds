@@ -251,23 +251,6 @@ export type Invoice = {
   qbo_invoice_id: string | null
 }
 
-export type Contract = {
-  id: number
-  file_name: string | null
-  description: string | null
-  contract_type: string | null
-  supplier: string | null
-  artist: string | null
-  song_name: string | null
-  status: string | null
-  confirmed: boolean | null
-  start_date: string | null
-  end_date: string | null
-  perpetual: boolean | null
-  url: string | null
-  created_at: string | null
-}
-
 export type Brief = {
   id: number
   name: string | null
@@ -438,14 +421,6 @@ export function useProjectInvoices(id: number | undefined) {
       if (error) throw error
       return (data ?? []) as Invoice[]
     },
-  })
-}
-
-export function useProjectContracts(id: number | undefined) {
-  return useQuery({
-    enabled: Number.isFinite(id),
-    queryKey: ['mirror', 'contracts', id],
-    queryFn: () => rows<Contract>('project_contracts', id!, 'id'),
   })
 }
 
