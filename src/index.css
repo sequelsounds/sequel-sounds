@@ -2128,3 +2128,35 @@
     opacity: 0.4;
   }
 }
+
+/* The Unilever report — /reporting, 17 Sep 2026. The Finance list row on its
+   own columns; the last column names what Unilever expect and the row lacks. */
+@layer components {
+  .report-grid {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 0.6fr 0.6fr 0.9fr 1fr 1.3fr 0.8fr 0.8fr 2fr;
+    gap: 16px;
+    padding: 0 2rem;
+    align-items: center;
+  }
+
+  /* Weight, not colour or fade, marks a row with gaps (CLAUDE.md). */
+  .report-issues {
+    font-weight: 500;
+  }
+
+  /* The year toggle's own bottom margin would lift it off Export's line. */
+  .report-actions .year-toggle {
+    margin-bottom: 0;
+  }
+
+  /* Count and EUR total on one line, as the other bands' single values are. */
+  .report-stat .stat-value {
+    white-space: nowrap;
+  }
+
+  .report-attention-tab {
+    margin-left: auto;
+  }
+}

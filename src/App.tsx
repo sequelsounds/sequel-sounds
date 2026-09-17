@@ -27,6 +27,7 @@ import Finance from './routes/Finance'
 import Project from './routes/Project'
 import Projects from './routes/Projects'
 import Quote from './routes/Quote'
+import Reporting from './routes/Reporting'
 import SharedPlaylist from './routes/SharedPlaylist'
 import SharedTrack from './routes/SharedTrack'
 import StaffLayout from './routes/StaffLayout'
@@ -115,6 +116,7 @@ export default function App() {
             project invoice rows all want somewhere to go. */}
         <Route path="/invoices" element={<Finance />} />
         <Route path="/invoices/:uuid" element={<Invoice />} />
+        <Route path="/reporting" element={<Reporting />} />
         <Route path="/playlists" element={<Playlists />} />
         <Route path="/playlists/:id" element={<PlaylistRoute />} />
         <Route path="/library" element={<Library />} />

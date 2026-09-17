@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { useIsManagement } from '../../lib/xanoMirror'
+import { useIsFinance, useIsManagement } from '../../lib/xanoMirror'
 import SequelLogo from '../SequelLogo'
 
 /**
@@ -36,6 +36,9 @@ const LINKS: { label: string; to: string | null; also?: string[] }[] = [
   { label: 'Clients', to: '/clients' },
   { label: 'Users', to: '/users' },
   { label: 'Finance', to: '/invoices', also: ['/invoices'] },
+  // Not in Track's nav — its /reporting page was reached by URL only. Shown
+  // to finance only, because the page is finance only.
+  { label: 'Reporting', to: '/reporting' },
   { label: 'Settings', to: null },
 ]
 
@@ -43,7 +46,12 @@ export default function Rail() {
   // Track hides this link from anyone who is not management, so this does
   // too. The database is what actually refuses — see useIsManagement.
   const management = useIsManagement()
-  const links = LINKS.filter((l) => l.label !== 'Management' || management.data === true)
+  const finance = useIsFinance()
+  const links = LINKS.filter(
+    (l) =>
+      (l.label !== 'Management' || management.data === true) &&
+      (l.label !== 'Reporting' || finance.data === true),
+  )
   const { pathname } = useLocation()
   const inAlso = (also?: string[]) =>
     (also ?? []).some((p) => pathname === p || pathname.startsWith(`${p}/`))
