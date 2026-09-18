@@ -2203,7 +2203,7 @@
   .renewal-grid {
     display: grid;
     width: 100%;
-    grid-template-columns: 1.1fr 0.7fr 1fr 1.2fr 0.8fr 0.9fr 0.8fr;
+    grid-template-columns: 1.4fr 0.8fr 0.9fr 0.8fr 1fr 1.1fr;
     gap: 16px;
     padding: 0 2rem;
     align-items: center;
@@ -2226,5 +2226,27 @@
     cursor: pointer;
     border: 1px solid currentColor;
     padding: 0.2rem 0.5rem;
+  }
+}
+
+/* Renewals: a project's line opens out into its contracts. 18 Sep 2026. */
+@layer components {
+  .renewal-sub {
+    min-height: 2.5rem;
+    color: var(--color-sequel-brown);
+    font-size: 0.75rem;
+    /* Indented under its project, and quieter by size — never by fade. */
+    padding-left: 3.5rem;
+  }
+
+  /* Supplier and type share the first cell, so the song gets the next two. */
+  .renewal-sub-wide {
+    grid-column: span 2;
+  }
+
+  .renewal-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
   }
 }

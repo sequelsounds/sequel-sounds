@@ -38,8 +38,12 @@ import {
   useProjectSongs,
 } from '../lib/xanoMirror'
 import type { Brief, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../lib/xanoMirror'
-import { useProjectContracts, type ContractRow } from '../lib/contracts'
-import { ContractModal, ContractRowActions, type ContractModalMode } from '../components/staff/ContractActions'
+import { licenceExpiry, useProjectContracts, type ContractRow } from '../lib/contracts'
+import {
+  ContractModal,
+  ContractRowActions,
+  type ContractModalMode,
+} from '../components/staff/ContractActions'
 import { NewSongModal } from '../components/staff/NewSong'
 
 /**
@@ -121,8 +125,7 @@ function ageInDays(created: string | null, closed: string | null) {
   return `${days} days`
 }
 
-const yesNo = (v: boolean | null | undefined) =>
-  v === null || v === undefined ? '' : v ? 'Yes' : 'No'
+const yesNo = (v: boolean | null | undefined) => (v === null || v === undefined ? '' : v ? 'Yes' : 'No')
 
 /** A stat in the strip: Stats_txt over Status_value. */
 function Stat({
@@ -418,12 +421,8 @@ function Rows<T>({
   )
 }
 
-const Title = ({ children }: { children: React.ReactNode }) => (
-  <span className="row-title">{children}</span>
-)
-const Cell = ({ children }: { children: React.ReactNode }) => (
-  <span className="row-field">{children}</span>
-)
+const Title = ({ children }: { children: React.ReactNode }) => <span className="row-title">{children}</span>
+const Cell = ({ children }: { children: React.ReactNode }) => <span className="row-field">{children}</span>
 
 /** brief_row_col1 and brief_row_col2, which say more than the raw status. */
 function briefSummary(b: Brief) {
@@ -458,6 +457,15 @@ export default function Project() {
   const quotes = useProjectQuotes(projectId)
   const invoices = useProjectInvoices(projectId)
   const contracts = useProjectContracts(projectId)
+  const licence = licenceExpiry(contracts.data)
+  const licenceLine =
+    licence === null
+      ? 'No contracts yet'
+      : licence.kind === 'perpetual'
+        ? `Perpetual (${licence.of === 1 ? '1 contract' : `${licence.of} contracts`})`
+        : licence.kind === 'unknown'
+          ? 'Not set — no dates on the contracts'
+          : `${fmt(longDate, licence.date)}${licence.of > 1 ? ` (earliest of ${licence.of})` : ''}`
   const briefs = useProjectBriefs(projectId)
   const files = useProjectFiles(projectId)
   const songs = useProjectSongs(projectId)
@@ -538,11 +546,7 @@ export default function Project() {
     return <p className="form-error px-8 py-4">{project.error.message}</p>
   }
   if (!project.data) {
-    return (
-      <p className="empty-note py-6">
-        No project with that id, or you do not have access to it.
-      </p>
-    )
+    return <p className="empty-note py-6">No project with that id, or you do not have access to it.</p>
   }
 
   const p = project.data
@@ -578,11 +582,7 @@ export default function Project() {
       <div className="tab-band">
         <Stat label="Started" value={fmt(longDate, p.created_at)} className="mx-0" />
         <div className="mx-8 h-px w-6 flex-none bg-sequel-line" />
-        <Stat
-          label="Active"
-          value={ageInDays(p.created_at, p.closed_cancelled_date)}
-          className="ml-0 mr-8"
-        />
+        <Stat label="Active" value={ageInDays(p.created_at, p.closed_cancelled_date)} className="ml-0 mr-8" />
         <div className="tab-band-divider" />
         <Stat label="Type" value={p.service} />
         <div className="tab-band-divider" />
@@ -742,14 +742,13 @@ export default function Project() {
           <>
             <PaneBar title="Terms" />
             <Form>
+              {/* Worked out from the contracts, never stored on the project: a
+                  copy of a date that lives on the contract drifts the moment
+                  someone corrects one (Andy, 18 Sep). The earliest live expiry
+                  is the answer, because that is when cover actually stops. */}
+              <Field label="Licence expires" value={licenceLine} />
               <TextField label="Term" value={p.term} column="term" edit={edit} save={save} />
-              <TextField
-                label="Territory"
-                value={p.territory}
-                column="territory"
-                edit={edit}
-                save={save}
-              />
+              <TextField label="Territory" value={p.territory} column="territory" edit={edit} save={save} />
               {/* Media and Scripts are the two textareas on Track. */}
               <TextField label="Media" value={p.media} column="media" textarea edit={edit} save={save} />
               <TextField
@@ -760,13 +759,7 @@ export default function Project() {
                 edit={edit}
                 save={save}
               />
-              <TextField
-                label="Durations"
-                value={p.durations}
-                column="durations"
-                edit={edit}
-                save={save}
-              />
+              <TextField label="Durations" value={p.durations} column="durations" edit={edit} save={save} />
               <BoolField label="Cutdowns" value={p.cutdowns} column="cutdowns" edit={edit} save={save} />
               <BoolField
                 label="Extension"

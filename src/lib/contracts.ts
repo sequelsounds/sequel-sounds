@@ -265,35 +265,50 @@ export function useSuppliersForPicker() {
   })
 }
 
-export type Renewal = {
+/** One contract inside a project's renewal line. */
+export type RenewalContract = {
   id: number
   uuid: string
   file_name: string | null
-  end_date: string
-  start_date: string | null
-  days_left: number
-  seen: boolean
-  contract_type: string | null
   supplier: string | null
+  contract_type: string | null
+  song_name: string | null
+  artist: string | null
+  end_date: string | null
+  start_date: string | null
+  days_left: number | null
+  seen: boolean
+}
+
+/** A project with something expiring — the unit the page chases. */
+export type Renewal = {
   project_id: number | null
   sequel_no: string | null
   project_title: string | null
   brand: string | null
-  artist: string | null
-  song_name: string | null
+  /** The EARLIEST expiry on the project; the rest travel with it. */
+  end_date: string
+  days_left: number
+  contract_count: number
+  all_seen: boolean
+  contracts: RenewalContract[]
 }
 
 export type Unresolved = {
-  id: number
-  uuid: string
-  file_name: string | null
-  created_at: string | null
-  contract_type: string | null
-  supplier: string | null
   project_id: number | null
   sequel_no: string | null
   project_title: string | null
   brand: string | null
+  latest: string | null
+  contract_count: number
+  contracts: {
+    id: number
+    uuid: string
+    file_name: string | null
+    supplier: string | null
+    contract_type: string | null
+    created_at: string | null
+  }[]
 }
 
 export function useRenewals() {
@@ -307,14 +322,33 @@ export function useRenewals() {
   })
 }
 
-/** Ticking one off the list, and putting it back. */
+/** Ticking a project off the list, and putting it back: every contract behind
+ *  that line at once, so it cannot return half-ticked. */
 export function useMarkRenewalSeen() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ uuid, seen }: { uuid: string; seen: boolean }) => {
-      const { error } = await rpc('track_mark_renewal_seen', { p_uuid: uuid, p_seen: seen })
+    mutationFn: async ({ uuids, seen }: { uuids: string[]; seen: boolean }) => {
+      const { error } = await rpc('track_mark_renewals_seen', { p_uuids: uuids, p_seen: seen })
       if (error) throw error
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['contract-renewals'] }),
   })
+}
+
+/**
+ * When a project's licence runs out, worked out from its contracts rather than
+ * stored on the project (Andy, 18 Sep). A stored field would be a second copy
+ * of a date that lives on the contract, and it drifts the moment someone
+ * corrects one — which happens, because these dates come from an AI reading a
+ * PDF. The earliest live expiry is the answer; all-perpetual says so; contracts
+ * with no dates at all say "not set", which is the renewals page's failure
+ * bucket showing up where the work is.
+ */
+export function licenceExpiry(contracts: ContractRow[] | undefined) {
+  const live = (contracts ?? []).filter((c) => c.status !== 'Archived')
+  if (!live.length) return null
+  const dated = live.filter((c) => !c.perpetual && c.end_date).map((c) => c.end_date as string)
+  if (dated.length) return { kind: 'date' as const, date: dated.sort()[0], of: live.length }
+  if (live.every((c) => c.perpetual)) return { kind: 'perpetual' as const, of: live.length }
+  return { kind: 'unknown' as const, of: live.length }
 }
