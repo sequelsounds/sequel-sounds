@@ -31,14 +31,19 @@ import {
   useIsStaff,
   useProject,
   useProjectBriefs,
-  useProjectContracts,
   useProjectCreativeLinks,
   useProjectFiles,
   useProjectInvoices,
   useProjectQuotes,
   useProjectSongs,
 } from '../lib/xanoMirror'
-import type { Brief, Contract, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../lib/xanoMirror'
+import type { Brief, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../lib/xanoMirror'
+import { useProjectContracts, type ContractRow } from '../lib/contracts'
+import {
+  ContractArchiveAction,
+  ContractModal,
+  type ContractModalMode,
+} from '../components/staff/ContractActions'
 import { NewSongModal } from '../components/staff/NewSong'
 
 /**
@@ -120,8 +125,7 @@ function ageInDays(created: string | null, closed: string | null) {
   return `${days} days`
 }
 
-const yesNo = (v: boolean | null | undefined) =>
-  v === null || v === undefined ? '' : v ? 'Yes' : 'No'
+const yesNo = (v: boolean | null | undefined) => (v === null || v === undefined ? '' : v ? 'Yes' : 'No')
 
 /** A stat in the strip: Stats_txt over Status_value. */
 function Stat({
@@ -417,12 +421,8 @@ function Rows<T>({
   )
 }
 
-const Title = ({ children }: { children: React.ReactNode }) => (
-  <span className="row-title">{children}</span>
-)
-const Cell = ({ children }: { children: React.ReactNode }) => (
-  <span className="row-field">{children}</span>
-)
+const Title = ({ children }: { children: React.ReactNode }) => <span className="row-title">{children}</span>
+const Cell = ({ children }: { children: React.ReactNode }) => <span className="row-field">{children}</span>
 
 /** brief_row_col1 and brief_row_col2, which say more than the raw status. */
 function briefSummary(b: Brief) {
@@ -473,6 +473,7 @@ export default function Project() {
   const [briefShare, setBriefShare] = useState<ShareState | null>(null)
   const [briefView, setBriefView] = useState<Brief | null>(null)
   const [assetModal, setAssetModal] = useState<AssetModalMode | null>(null)
+  const [contractModal, setContractModal] = useState<ContractModalMode | null>(null)
   const [newSong, setNewSong] = useState(false)
   // row_flash: the row just saved blinks, then stops.
   const [flash, setFlash] = useState<string | null>(null)
@@ -536,11 +537,7 @@ export default function Project() {
     return <p className="form-error px-8 py-4">{project.error.message}</p>
   }
   if (!project.data) {
-    return (
-      <p className="empty-note py-6">
-        No project with that id, or you do not have access to it.
-      </p>
-    )
+    return <p className="empty-note py-6">No project with that id, or you do not have access to it.</p>
   }
 
   const p = project.data
@@ -576,11 +573,7 @@ export default function Project() {
       <div className="tab-band">
         <Stat label="Started" value={fmt(longDate, p.created_at)} className="mx-0" />
         <div className="mx-8 h-px w-6 flex-none bg-sequel-line" />
-        <Stat
-          label="Active"
-          value={ageInDays(p.created_at, p.closed_cancelled_date)}
-          className="ml-0 mr-8"
-        />
+        <Stat label="Active" value={ageInDays(p.created_at, p.closed_cancelled_date)} className="ml-0 mr-8" />
         <div className="tab-band-divider" />
         <Stat label="Type" value={p.service} />
         <div className="tab-band-divider" />
@@ -741,13 +734,7 @@ export default function Project() {
             <PaneBar title="Terms" />
             <Form>
               <TextField label="Term" value={p.term} column="term" edit={edit} save={save} />
-              <TextField
-                label="Territory"
-                value={p.territory}
-                column="territory"
-                edit={edit}
-                save={save}
-              />
+              <TextField label="Territory" value={p.territory} column="territory" edit={edit} save={save} />
               {/* Media and Scripts are the two textareas on Track. */}
               <TextField label="Media" value={p.media} column="media" textarea edit={edit} save={save} />
               <TextField
@@ -758,13 +745,7 @@ export default function Project() {
                 edit={edit}
                 save={save}
               />
-              <TextField
-                label="Durations"
-                value={p.durations}
-                column="durations"
-                edit={edit}
-                save={save}
-              />
+              <TextField label="Durations" value={p.durations} column="durations" edit={edit} save={save} />
               <BoolField label="Cutdowns" value={p.cutdowns} column="cutdowns" edit={edit} save={save} />
               <BoolField
                 label="Extension"
@@ -1003,19 +984,42 @@ export default function Project() {
         )}
 
         {tab === 'Contracting' && (
-          <Rows<Contract>
+          <Rows<ContractRow>
             title="Contracting"
             action="+ New CONTRACT"
+            // contract-btn-swap: the button gives way to the two choices, as on
+            // Track. CREATE CONTRACT was never built over there either, so it
+            // is drawn and disabled rather than invented (Andy, 18 Sep).
+            menu={[
+              {
+                label: 'UPLOAD CONTRACT',
+                onClick: edit ? () => setContractModal({ kind: 'upload' }) : undefined,
+              },
+              { label: 'CREATE CONTRACT', onClick: undefined },
+            ]}
             empty="Nothing here yet.  Upload a file or create a contract to get started"
             state={contracts}
             variant="contract"
+            // The row opens the edit form, as on Track.
+            open={(c) => (edit ? () => setContractModal({ kind: 'edit', contract: c }) : null)}
+            rowClass={(c) => (c.uuid === flash ? ' is-flashing' : '')}
             row={(c) => (
               <>
                 <Title>{c.supplier}</Title>
                 <Cell>{c.contract_type}</Cell>
                 <Cell>{fmt(longDate, c.created_at)}</Cell>
+                {edit && <ContractArchiveAction contract={c} projectId={projectId} />}
               </>
             )}
+          />
+        )}
+
+        {contractModal && projectId !== undefined && (
+          <ContractModal
+            mode={contractModal}
+            projectId={projectId}
+            onClose={() => setContractModal(null)}
+            onSaved={(uuid) => flashRow(uuid)}
           />
         )}
 

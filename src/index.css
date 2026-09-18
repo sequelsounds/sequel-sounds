@@ -1418,6 +1418,31 @@
     display: flex;
     align-items: center;
     gap: 16px;
+    animation: pane-menu-in 320ms ease-out;
+  }
+
+  /* The buttons start off to the right of where they land, so the bar must not
+     scroll sideways while they travel. */
+  .pane-bar {
+    overflow: hidden;
+  }
+
+  @keyframes pane-menu-in {
+    from {
+      transform: translateX(8rem);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  /* Reduced motion: the buttons still arrive, they just do not travel. */
+  @media (prefers-reduced-motion: reduce) {
+    .pane-menu {
+      animation: none;
+    }
   }
 
   .project-row.is-openable {
@@ -2158,5 +2183,89 @@
 
   .report-attention-tab {
     margin-left: auto;
+  }
+}
+
+/* The contract modal — 17 Sep 2026. */
+@layer components {
+  /* The details step is twelve fields; on a short window it must scroll inside
+     the modal rather than run off the top and bottom of the screen. */
+  .cm-box {
+    display: flex;
+    max-height: calc(100dvh - 4rem);
+    flex-direction: column;
+    max-width: 44rem;
+  }
+
+  .cm-box .am-form {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* Two columns, each holding its own six fields in order — Track's layout,
+     read off Andy's screenshot, 18 Sep. */
+  .cm-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 24px;
+  }
+
+  .cm-col {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* The yes/no pair fills its column, as over there, rather than sitting at
+     the 20% width the asset tags use. */
+  .cm-tags .am-tag {
+    width: 50%;
+  }
+
+  /* The supplier search, when nothing has been picked yet. */
+  .ns-field.needs-input {
+    border-color: var(--color-sequel-error);
+  }
+
+  /* What the reader could not settle, said plainly rather than left blank. */
+  .cm-note {
+    padding: 0.5rem 0;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    color: var(--color-sequel-brown);
+  }
+
+  .cm-summary {
+    padding: 0.5rem 0;
+    font-size: 0.75rem;
+    line-height: 1.1rem;
+    font-weight: 300;
+    color: var(--color-sequel-brown);
+  }
+
+  /* Required and empty: a border, never a fade (CLAUDE.md). */
+  .am-input.needs-input {
+    border-color: var(--color-sequel-error);
+  }
+
+}
+
+/* The contract modal's edit footer — 18 Sep 2026. */
+@layer components {
+  .cm-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  /* With no save button this line is the only thing saying an edit landed. */
+  .cm-status {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 300;
+    color: var(--color-sequel-brown);
   }
 }
