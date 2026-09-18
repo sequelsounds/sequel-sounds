@@ -31,19 +31,14 @@ import {
   useIsStaff,
   useProject,
   useProjectBriefs,
+  useProjectContracts,
   useProjectCreativeLinks,
   useProjectFiles,
   useProjectInvoices,
   useProjectQuotes,
   useProjectSongs,
 } from '../lib/xanoMirror'
-import type { Brief, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../lib/xanoMirror'
-import { licenceExpiry, useProjectContracts, type ContractRow } from '../lib/contracts'
-import {
-  ContractModal,
-  ContractRowActions,
-  type ContractModalMode,
-} from '../components/staff/ContractActions'
+import type { Brief, Contract, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../lib/xanoMirror'
 import { NewSongModal } from '../components/staff/NewSong'
 
 /**
@@ -125,7 +120,8 @@ function ageInDays(created: string | null, closed: string | null) {
   return `${days} days`
 }
 
-const yesNo = (v: boolean | null | undefined) => (v === null || v === undefined ? '' : v ? 'Yes' : 'No')
+const yesNo = (v: boolean | null | undefined) =>
+  v === null || v === undefined ? '' : v ? 'Yes' : 'No'
 
 /** A stat in the strip: Stats_txt over Status_value. */
 function Stat({
@@ -421,8 +417,12 @@ function Rows<T>({
   )
 }
 
-const Title = ({ children }: { children: React.ReactNode }) => <span className="row-title">{children}</span>
-const Cell = ({ children }: { children: React.ReactNode }) => <span className="row-field">{children}</span>
+const Title = ({ children }: { children: React.ReactNode }) => (
+  <span className="row-title">{children}</span>
+)
+const Cell = ({ children }: { children: React.ReactNode }) => (
+  <span className="row-field">{children}</span>
+)
 
 /** brief_row_col1 and brief_row_col2, which say more than the raw status. */
 function briefSummary(b: Brief) {
@@ -457,15 +457,6 @@ export default function Project() {
   const quotes = useProjectQuotes(projectId)
   const invoices = useProjectInvoices(projectId)
   const contracts = useProjectContracts(projectId)
-  const licence = licenceExpiry(contracts.data)
-  const licenceLine =
-    licence === null
-      ? 'No contracts yet'
-      : licence.kind === 'perpetual'
-        ? `Perpetual (${licence.of === 1 ? '1 contract' : `${licence.of} contracts`})`
-        : licence.kind === 'unknown'
-          ? 'Not set — no dates on the contracts'
-          : `${fmt(longDate, licence.date)}${licence.of > 1 ? ` (earliest of ${licence.of})` : ''}`
   const briefs = useProjectBriefs(projectId)
   const files = useProjectFiles(projectId)
   const songs = useProjectSongs(projectId)
@@ -482,7 +473,6 @@ export default function Project() {
   const [briefShare, setBriefShare] = useState<ShareState | null>(null)
   const [briefView, setBriefView] = useState<Brief | null>(null)
   const [assetModal, setAssetModal] = useState<AssetModalMode | null>(null)
-  const [contractModal, setContractModal] = useState<ContractModalMode | null>(null)
   const [newSong, setNewSong] = useState(false)
   // row_flash: the row just saved blinks, then stops.
   const [flash, setFlash] = useState<string | null>(null)
@@ -546,7 +536,11 @@ export default function Project() {
     return <p className="form-error px-8 py-4">{project.error.message}</p>
   }
   if (!project.data) {
-    return <p className="empty-note py-6">No project with that id, or you do not have access to it.</p>
+    return (
+      <p className="empty-note py-6">
+        No project with that id, or you do not have access to it.
+      </p>
+    )
   }
 
   const p = project.data
@@ -582,7 +576,11 @@ export default function Project() {
       <div className="tab-band">
         <Stat label="Started" value={fmt(longDate, p.created_at)} className="mx-0" />
         <div className="mx-8 h-px w-6 flex-none bg-sequel-line" />
-        <Stat label="Active" value={ageInDays(p.created_at, p.closed_cancelled_date)} className="ml-0 mr-8" />
+        <Stat
+          label="Active"
+          value={ageInDays(p.created_at, p.closed_cancelled_date)}
+          className="ml-0 mr-8"
+        />
         <div className="tab-band-divider" />
         <Stat label="Type" value={p.service} />
         <div className="tab-band-divider" />
@@ -742,13 +740,14 @@ export default function Project() {
           <>
             <PaneBar title="Terms" />
             <Form>
-              {/* Worked out from the contracts, never stored on the project: a
-                  copy of a date that lives on the contract drifts the moment
-                  someone corrects one (Andy, 18 Sep). The earliest live expiry
-                  is the answer, because that is when cover actually stops. */}
-              <Field label="Licence expires" value={licenceLine} />
               <TextField label="Term" value={p.term} column="term" edit={edit} save={save} />
-              <TextField label="Territory" value={p.territory} column="territory" edit={edit} save={save} />
+              <TextField
+                label="Territory"
+                value={p.territory}
+                column="territory"
+                edit={edit}
+                save={save}
+              />
               {/* Media and Scripts are the two textareas on Track. */}
               <TextField label="Media" value={p.media} column="media" textarea edit={edit} save={save} />
               <TextField
@@ -759,7 +758,13 @@ export default function Project() {
                 edit={edit}
                 save={save}
               />
-              <TextField label="Durations" value={p.durations} column="durations" edit={edit} save={save} />
+              <TextField
+                label="Durations"
+                value={p.durations}
+                column="durations"
+                edit={edit}
+                save={save}
+              />
               <BoolField label="Cutdowns" value={p.cutdowns} column="cutdowns" edit={edit} save={save} />
               <BoolField
                 label="Extension"
@@ -998,39 +1003,19 @@ export default function Project() {
         )}
 
         {tab === 'Contracting' && (
-          <Rows<ContractRow>
+          <Rows<Contract>
             title="Contracting"
             action="+ New CONTRACT"
-            onAction={edit ? () => setContractModal({ kind: 'upload' }) : undefined}
             empty="Nothing here yet.  Upload a file or create a contract to get started"
             state={contracts}
             variant="contract"
-            // The row opens the edit form, as in the old app; open, share and
-            // archive are their own targets on the right.
-            open={(c) => (edit ? () => setContractModal({ kind: 'edit', contract: c }) : null)}
-            rowClass={(c) => (c.uuid === flash ? ' is-flashing' : '')}
             row={(c) => (
               <>
-                <Title>{c.supplier || c.file_name}</Title>
+                <Title>{c.supplier}</Title>
                 <Cell>{c.contract_type}</Cell>
-                <Cell>{c.song_name || c.artist}</Cell>
-                {/* What it is worth knowing at a glance: when the licence
-                    stops. Perpetual says so; a blank expiry is the gap the
-                    renewals page lists. */}
-                <Cell>{c.perpetual ? 'Perpetual' : c.end_date ? fmt(shortDate, c.end_date) : '—'}</Cell>
-                <Cell>{fmt(shortDate, c.created_at)}</Cell>
-                {edit && <ContractRowActions contract={c} projectId={projectId} />}
+                <Cell>{fmt(longDate, c.created_at)}</Cell>
               </>
             )}
-          />
-        )}
-
-        {contractModal && projectId !== undefined && (
-          <ContractModal
-            mode={contractModal}
-            projectId={projectId}
-            onClose={() => setContractModal(null)}
-            onSaved={(uuid) => setFlash(uuid)}
           />
         )}
 

@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { useProjectContracts } from '../lib/contracts'
 import { Loader } from '../components/Loader'
 import { formatBytes, formatDate, formatMoney } from '../lib/format'
 import {
   useProject,
   useProjectBriefs,
+  useProjectContracts,
   useProjectCreativeLinks,
   useProjectFiles,
   useProjectInvoices,
