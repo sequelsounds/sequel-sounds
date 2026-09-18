@@ -2294,3 +2294,202 @@
     color: var(--color-sequel-brown);
   }
 }
+
+
+/* ---------------------------------------------------------------------------
+   /contracts/:uuid — the old app's `/contract`, rebuilt.
+
+   ⚠️ EVERY NUMBER BELOW WAS READ OFF THE WEBFLOW PAGE'S OWN STYLES
+   (6a80e40403ff3bd567be8389), not chosen:
+
+     Contract header          flex, space-between, padding 0 40px, 1px bottom
+     Image 21                 margin 20px 0 — the band is 5rem in total
+     contract_header          1rem, w400, capitalize; .bold is w500
+     contract_header_spacer   margin 0 .5rem
+     contract_split_wrap      flex, overflow hidden, calc(100vh - 5rem)
+     contract_ai_panel        45%, padding 40 40 20 40, 1px right rule, column
+     contract_ai_scroll       flex 1, min-height 0, overflow-y auto
+     contract_ai_header       1.3rem / 1.4rem, w500, .25rem below
+     contract_ai_disclaimer   .75rem / 1.5, letter-spacing .01em, 1.5rem below
+     contract_ai_state        .8rem / 1rem, w400, padding 1rem 0
+     contract_ai_body         .8rem / 1.55
+     download quote button    100% x 2rem, 1px, Azeret Mono .8rem uppercase
+       + contract_download_pin  padding .75rem, border-top, no shrink, w300
+     contract_pdf_panel       55%, relative, overflow hidden
+
+   ⚠️ `min-height: 0` on the scroller is load-bearing. A flex child defaults to
+   `min-height: auto` and refuses to shrink below its content, so without it
+   the panel clips instead of scrolling and DOWNLOAD walks off the bottom of
+   the screen. The old app lost an afternoon to exactly this. */
+@layer components {
+  .ct-page {
+    display: flex;
+    min-height: 100dvh;
+    flex-direction: column;
+  }
+
+  .ct-logo-link {
+    display: block;
+  }
+
+  .ct-meta {
+    display: flex;
+    align-items: center;
+  }
+
+  .ct-meta-item {
+    color: var(--color-sequel-brown);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.25rem;
+    text-transform: capitalize;
+  }
+
+  .ct-meta-item.is-bold {
+    font-weight: 500;
+  }
+
+  .ct-meta-sep {
+    margin: 0 0.5rem;
+    color: var(--color-sequel-brown);
+    font-size: 1rem;
+    line-height: 1.25rem;
+  }
+
+  .ct-split {
+    display: flex;
+    width: 100%;
+    /* The bar above is .qw-head's 4.5rem. */
+    height: calc(100dvh - 4.5rem);
+    overflow: hidden;
+  }
+
+  .ct-ai {
+    display: flex;
+    width: 45%;
+    height: 100%;
+    flex: none;
+    flex-direction: column;
+    padding: 40px 40px 20px;
+    border-right: 1px solid var(--color-sequel-brown);
+  }
+
+  .ct-ai-scroll {
+    min-height: 0;
+    flex: 1 1 0%;
+    overflow-y: auto;
+  }
+
+  /* #3B2E2A, not the brown variable — the panel's text is its own colour over
+     there and sits a shade warmer than the rules around it. */
+  .ct-ai-head {
+    margin-bottom: 0.25rem;
+    color: #3b2e2a;
+    font-size: 1.3rem;
+    font-weight: 500;
+    line-height: 1.4rem;
+  }
+
+  .ct-ai-note {
+    margin-bottom: 1.5rem;
+    color: var(--color-sequel-brown);
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+  }
+
+  .ct-ai-state {
+    padding: 1rem 0;
+    color: #3b2e2a;
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1rem;
+  }
+
+  /* TRY AGAIN is a button here rather than the old app's clickable div, so it
+     needs the div's own neutral appearance back. */
+  .ct-retry {
+    background: none;
+    border: 0;
+    cursor: pointer;
+    text-align: left;
+    text-decoration: underline;
+  }
+
+  .ct-ai-body {
+    color: #3b2e2a;
+    font-size: 0.8rem;
+    line-height: 1.55;
+  }
+
+  .ct-heading {
+    margin-top: 1.25rem;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+  }
+
+  .ct-para {
+    margin-bottom: 0.75rem;
+  }
+
+  .ct-list {
+    margin-bottom: 0.75rem;
+    padding-left: 1.1rem;
+    list-style: disc;
+  }
+
+  /* The quote page's download bar, pinned to the foot of the panel. */
+  .ct-download {
+    display: flex;
+    width: 100%;
+    min-height: 2rem;
+    max-height: 2rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.2rem;
+    border: 1px solid var(--color-sequel-brown);
+    /* Silver, not transparent: the pin combo paints it so the panel's text
+       cannot show through as it scrolls underneath. */
+    background-color: var(--color-sequel-silver);
+    color: var(--color-sequel-brown);
+    font-family: 'Azeret Mono', ui-monospace, monospace;
+    font-size: 0.8rem;
+    font-weight: 300;
+    line-height: 1.25rem;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .ct-download:hover {
+    background-color: var(--color-sequel-brown);
+    color: var(--color-sequel-silver);
+  }
+
+  .ct-pdf {
+    position: relative;
+    width: 55%;
+    height: 100%;
+    flex: none;
+    overflow: hidden;
+  }
+
+  /* The pages themselves scroll — there is no viewer chrome to scroll them. */
+  .ct-frame {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    background-color: var(--color-sequel-silver);
+  }
+
+  .pdfv-page {
+    display: block;
+    width: 100%;
+  }
+
+  .pdfv-page + .pdfv-page {
+    margin-top: 1px;
+  }
+}

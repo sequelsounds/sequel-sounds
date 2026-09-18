@@ -110,11 +110,10 @@ export function Shell({
               className="viewer-logo"
             />
           ) : (
-            <img
-              src="/sequel-wordmark.png"
-              alt="Sequel"
-              className="viewer-logo"
-            />
+            /* .qw-logo, not .viewer-logo: that rule sizes by height, which is
+               right for a client's own logo of unknown shape and wrong for our
+               wordmark, which is 80px wide everywhere else. */
+            <img src="/sequel-wordmark.png" alt="Sequel" className="qw-logo" />
           )}
         </header>
         <div>

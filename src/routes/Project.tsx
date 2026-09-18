@@ -40,7 +40,7 @@ import {
 import type { Brief, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../lib/xanoMirror'
 import { useProjectContracts, type ContractRow } from '../lib/contracts'
 import {
-  ContractArchiveAction,
+  ContractRowActions,
   ContractModal,
   type ContractModalMode,
 } from '../components/staff/ContractActions'
@@ -1007,8 +1007,12 @@ export default function Project() {
               <>
                 <Title>{c.supplier}</Title>
                 <Cell>{c.contract_type}</Cell>
+                {/* Where the invoice row puts its number: after what the record
+                    is, before when it happened. The string is the database's
+                    (`track_ref`), never rebuilt here. */}
+                <Cell>{c.ref}</Cell>
                 <Cell>{fmt(longDate, c.created_at)}</Cell>
-                {edit && <ContractArchiveAction contract={c} projectId={projectId} />}
+                {edit && <ContractRowActions contract={c} projectId={projectId} />}
               </>
             )}
           />

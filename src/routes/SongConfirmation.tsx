@@ -209,7 +209,13 @@ export default function SongConfirmation() {
         <div className="sc-progress-fill" style={{ width: `${progress}%` }} />
       </div>
       <div className="sc-body">
-        <img className="sc-logo" src="/sequel-wordmark.png" alt="Written Sequel Logo" width={425} height={96} />
+        <img
+        className="sc-logo qw-logo"
+        src="/sequel-wordmark.png"
+        alt="Written Sequel Logo"
+        width={425}
+        height={96}
+      />
 
         {screen === 'invalid' && (
           <div className="sc-state">

@@ -108,7 +108,7 @@ export function SupplierArchiveAction({ id }: { id: number }) {
   )
 }
 
-type Archive = {
+export type Archive = {
   mutate: (id: number, opts?: { onSuccess?: () => void }) => void
   isPending: boolean
   error: Error | null
@@ -224,16 +224,22 @@ export function Modal({
   )
 }
 
-function ShareModal({
+/** Shared by every row that hands out a 7-day link. `link` is null while one
+ *  is still being generated — contracts mint theirs on the click, invoices and
+ *  quotes already hold one. */
+export function ShareModal({
   link,
   header,
   subheader,
   onClose,
+  status,
 }: {
-  link: string
+  link: string | null
   header: string
   subheader: string
   onClose: () => void
+  /** What to show in place of the link until there is one. */
+  status?: string
 }) {
   const [copied, setCopied] = useState(false)
   return (
@@ -242,11 +248,13 @@ function ShareModal({
       <div className="rm-header">{header}</div>
       <div className="rm-subheader">{subheader}</div>
       <div className="rm-buttons">
-        <div className="rm-link">{link}</div>
+        <div className="rm-link">{link ?? status ?? 'Generating link…'}</div>
         <button
           type="button"
           className="wizard-btn rm-copy"
+          disabled={!link}
           onClick={() => {
+            if (!link) return
             navigator.clipboard.writeText(link).then(
               () => {
                 setCopied(true)
@@ -275,7 +283,7 @@ function ShareModal({
   )
 }
 
-function ArchiveModal({
+export function ArchiveModal({
   header,
   subheader,
   archive,
@@ -284,7 +292,9 @@ function ArchiveModal({
 }: {
   header: string
   subheader: string
-  archive: Archive
+  /* Only the two things the modal draws. `onConfirm` does the mutating, so
+     this does not care whether the row is keyed by id or by uuid. */
+  archive: { isPending: boolean; error: Error | null }
   onConfirm: () => void
   onClose: () => void
 }) {

@@ -2119,8 +2119,14 @@
     gap: 16px;
   }
 
+  /* Supplier, type, uploaded, then share and archive - the last two on the
+     same 0.25fr each as an asset row, and summing to the same 3fr, so the two
+     tabs' icons sit in one column down the page. */
+  /* Four equal columns then the two icons — supplier, type, reference and
+     date all get the same width, so the row reads evenly across rather than
+     bunching at one end (Andy, 18 Sep). */
   .project-row-contract {
-    grid-template-columns: 0.75fr 0.75fr 0.5fr 0.5fr 0.5fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr 0.3fr 0.3fr;
     gap: 16px;
   }
 
@@ -3531,13 +3537,13 @@
   }
 
   /* brief_logo, and .on_dark over the welcome photo */
+  /* Position only. The size is .qw-logo's, so the wordmark is the same on
+     every page it appears on (Andy, 18 Sep). */
   .bp-logo {
     position: absolute;
     top: 2rem;
     left: 2rem;
     z-index: 10;
-    width: 80px;
-    height: auto;
   }
 
   .bp-logo.is-on-dark {
@@ -4320,11 +4326,11 @@
   }
 
   /* Image 23: the wordmark, pinned top left. */
+  /* Position only — it used to be 9% of the viewport, so it grew and shrank
+     with the window while every other page's stayed put. */
   .sc-logo {
     position: fixed;
     z-index: 999;
-    max-width: 9%;
-    height: auto;
     margin-top: 2rem;
     margin-left: 2rem;
   }

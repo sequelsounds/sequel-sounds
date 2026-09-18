@@ -1,0 +1,11 @@
+-- 0048_project_contracts_grant
+--
+-- ⚠️ DROP VIEW TAKES THE GRANTS WITH IT. 0047 recreated project_contracts to
+-- append `ref` and the view came back owned by postgres with SELECT for
+-- postgres and service_role only, so the Contracting tab read nothing at all
+-- and showed neither rows nor an error - the list simply never arrived.
+--
+-- ANY migration that drops and recreates a view in this schema must re-grant.
+-- `create or replace view` keeps grants; only a drop loses them, and a drop is
+-- unavoidable when a column is added in the middle or a name changes.
+grant select on xano_mirror.project_contracts to authenticated;

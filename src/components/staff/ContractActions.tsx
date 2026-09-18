@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
-  contractUrl,
   discardContract,
   extractContract,
   TERM_UNITS,
   uploadContract,
+  shareContract,
   useArchiveContract,
   useContractTypes,
   useSaveContract,
@@ -14,7 +15,7 @@ import {
   type Suggested,
 } from '../../lib/contracts'
 import { pickedSize } from '../../lib/assets'
-import { ArchiveIcon, Modal } from './RowActions'
+import { ArchiveIcon, ArchiveModal, Modal, ShareIcon, ShareModal } from './RowActions'
 
 /**
  * The Contracting tab's modal and row actions, rebuilt from the old app's
@@ -83,6 +84,7 @@ export function ContractModal({
   onSaved?: (uuid: string) => void
 }) {
   const editing = mode.kind === 'edit' ? mode.contract : null
+  const navigate = useNavigate()
   const types = useContractTypes()
   const suppliers = useSuppliersForPicker()
   const save = useSaveContract(projectId)
@@ -320,14 +322,11 @@ export function ContractModal({
     })
   }
 
-  const view = async () => {
+  // VIEW CONTRACT goes to the contract's own page - the document beside Coda's
+  // read of it - rather than straight to the raw PDF, as on Track.
+  const view = () => {
     if (!uuid) return
-    try {
-      const url = await contractUrl(uuid)
-      window.open(url, '_blank', 'noopener')
-    } catch (e) {
-      setReadNote((e as Error).message)
-    }
+    navigate(`/contracts/${uuid}`)
   }
 
   // Track's own wording, step for step.
@@ -647,7 +646,13 @@ export function ContractModal({
                       ? 'Could not save that change. Check your connection and try again.'
                       : ''}
               </span>
-              <button type="button" className="am-submit" onClick={() => void view()}>
+              {/* The app's own button, not the asset modal's SUBMIT: this one
+                  leaves the modal rather than committing anything. */}
+              <button
+                type="button"
+                className="btn btn-mono btn-outline"
+                onClick={() => void view()}
+              >
                 VIEW CONTRACT
               </button>
             </div>
@@ -670,8 +675,11 @@ export function ContractModal({
 
 /* ------------------------------------------------------------ the row cell */
 
-/** The row's archive mark, with the confirm the old app shows. */
-export function ContractArchiveAction({
+/** The row's share and archive cells — the same pair, in the same order and
+ *  the same modals, as an asset, an invoice and a quote row. The contract's
+ *  link is minted on the click (`track_share_contract`), so the modal opens on
+ *  "Generating link..." and fills in. */
+export function ContractRowActions({
   contract,
   projectId,
 }: {
@@ -679,7 +687,13 @@ export function ContractArchiveAction({
   projectId: number | undefined
 }) {
   const archive = useArchiveContract(projectId)
+  const [sharing, setSharing] = useState<{ link: string | null; status?: string } | null>(null)
   const [open, setOpen] = useState(false)
+
+  const stop = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
 
   return (
     <>
@@ -687,10 +701,26 @@ export function ContractArchiveAction({
         <button
           type="button"
           className="row-action-button"
+          aria-label="Share this contract"
+          onClick={(e) => {
+            stop(e)
+            setSharing({ link: null })
+            shareContract(contract.uuid).then(
+              (s) => setSharing({ link: s.link }),
+              (err: Error) => setSharing({ link: null, status: err.message }),
+            )
+          }}
+        >
+          <ShareIcon />
+        </button>
+      </span>
+      <span className="row-action">
+        <button
+          type="button"
+          className="row-action-button"
           aria-label="Archive this contract"
           onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
+            stop(e)
             archive.reset()
             setOpen(true)
           }}
@@ -699,33 +729,25 @@ export function ContractArchiveAction({
         </button>
       </span>
 
+      {sharing && (
+        <ShareModal
+          link={sharing.link}
+          status={sharing.status}
+          header="Shareable Link Generated"
+          subheader="This link will remain active for 7 days and will then expire."
+          onClose={() => setSharing(null)}
+        />
+      )}
       {open && (
-        <Modal onClose={() => setOpen(false)}>
-          <button
-            type="button"
-            className="wizard-close rm-close"
-            aria-label="Close"
-            onClick={() => setOpen(false)}
-          />
-          <div className="rm-header">Are you sure you want to archive this contract?</div>
-          {/* Said plainly: the document is kept, because it is the evidence of
-              the right to use the music. */}
-          <div className="rm-subheader">It leaves the list. The document itself is kept.</div>
-          {archive.error && <div className="form-error">{archive.error.message}</div>}
-          <div className="rm-buttons">
-            <button type="button" className="am-submit" onClick={() => setOpen(false)}>
-              CANCEL
-            </button>
-            <button
-              type="button"
-              className="am-submit"
-              disabled={archive.isPending}
-              onClick={() => archive.mutate(contract.uuid, { onSuccess: () => setOpen(false) })}
-            >
-              {archive.isPending ? 'ARCHIVING…' : 'ARCHIVE'}
-            </button>
-          </div>
-        </Modal>
+        <ArchiveModal
+          header="Are you sure you want to archive this contract?"
+          /* Said plainly: the document is kept, because it is the evidence of
+             the right to use the music. */
+          subheader="It leaves the list. The document itself is kept."
+          archive={archive}
+          onConfirm={() => archive.mutate(contract.uuid, { onSuccess: () => setOpen(false) })}
+          onClose={() => setOpen(false)}
+        />
       )}
     </>
   )

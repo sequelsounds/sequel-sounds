@@ -155,7 +155,7 @@ export default function Brief() {
   return (
     <div className="bp-wrap">
       <img
-        className={`bp-logo${screen === 'welcome' ? ' is-on-dark' : ''}`}
+        className={`bp-logo qw-logo${screen === 'welcome' ? ' is-on-dark' : ''}`}
         src="/sequel-wordmark.png"
         alt="Written Sequel Logo"
         width={425}

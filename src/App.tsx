@@ -22,6 +22,7 @@ import User from './routes/User'
 import Dashboard from './routes/Dashboard'
 import Management from './routes/Management'
 import Users from './routes/Users'
+import Contract from './routes/Contract'
 import Invoice from './routes/Invoice'
 import Finance from './routes/Finance'
 import Project from './routes/Project'
@@ -72,6 +73,20 @@ export default function App() {
           card, no nav rail — and it is what a client opens. Putting it inside
           StaffLayout gave it a sidebar the original has never had. */}
       <Route path="/quotes/:uuid" element={<Quote />} />
+      {/* ⚠️ STAFF, BUT OUTSIDE THE STAFF SHELL — the same call as /quotation.
+          The old app's /contract is a document: wordmark, one rule, the
+          summary beside the PDF, and no nav rail. Putting it inside
+          StaffLayout would give it a sidebar the original has never had.
+          A supplier gets the 7-day share link to the PDF alone and never
+          reaches this page or the AI summary. */}
+      <Route
+        path="/contracts/:uuid"
+        element={
+          <RequireStaff>
+            <Contract />
+          </RequireStaff>
+        }
+      />
       {/* The client's briefing form. Token in the query string, as the old
           app's /brief?token= has it, so links already sent keep their shape. */}
       <Route path="/brief" element={<Brief />} />

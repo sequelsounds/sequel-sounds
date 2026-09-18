@@ -19,6 +19,8 @@ const rpc = (supabase as unknown as SupabaseClient).rpc.bind(supabase as unknown
 
 export type ContractRow = {
   id: number
+  /** '#1013-C'. Built by `track_ref` in SQL — never rebuilt in a page. */
+  ref: string
   uuid: string
   project_master_list_id: number | null
   file_name: string | null
@@ -90,10 +92,13 @@ export function useProjectContracts(id: number | undefined) {
 
 export const TERM_UNITS = ['days', 'weeks', 'months', 'years'] as const
 
-async function signContract(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+async function callFunction(
+  name: string,
+  body: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
   const { data } = await supabase.auth.getSession()
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-  const res = await fetch(`${FUNCTIONS_URL}/sign-contract`, {
+  const res = await fetch(`${FUNCTIONS_URL}/${name}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -110,6 +115,8 @@ async function signContract(body: Record<string, unknown>): Promise<Record<strin
   }
   return payload ?? {}
 }
+
+const signContract = (body: Record<string, unknown>) => callFunction('sign-contract', body)
 
 /** The row first, unconfirmed, then the file — as with assets. */
 export async function uploadContract(projectId: number, file: File): Promise<string> {
@@ -263,4 +270,68 @@ export function useSuppliersForPicker() {
       return (data ?? []) as { id: number; title: string | null; countries_list_id: number | null }[]
     },
   })
+}
+
+/* ------------------------------------------------------- the contract page */
+
+/**
+ * One contract, with everything `/contracts/:uuid` shows — including the stored
+ * AI summary and whether it is still current.
+ *
+ * ⚠️ `summary_current` is the whole caching decision, made in SQL: the stored
+ * prompt version against the live one, with '' counted as never read. The page
+ * calls the model ONLY when this is false.
+ */
+export type ContractDetail = {
+  id: number
+  /** '#1013-C'. Built by `track_ref` in SQL — never rebuilt in a page. */
+  ref: string
+  uuid: string
+  file_name: string | null
+  contract_type: string | null
+  supplier: string | null
+  artist: string | null
+  song_name: string | null
+  start_date: string | null
+  end_date: string | null
+  perpetual: boolean
+  mcps_yn: boolean
+  master_pct: number | null
+  publishing_pct: number | null
+  project_id: number | null
+  project_uuid: string | null
+  project_title: string | null
+  project_sequel_no: string | null
+  summary: string | null
+  summary_status: string | null
+  summary_version: string | null
+  prompt_version: string | null
+  summary_current: boolean
+}
+
+export function useContractDetail(uuid: string | undefined) {
+  return useQuery({
+    queryKey: ['contract-detail', uuid],
+    enabled: Boolean(uuid),
+    queryFn: async () => {
+      const { data, error } = await rpc('track_contract_detail', { p_uuid: uuid })
+      if (error) throw error
+      return data as ContractDetail
+    },
+  })
+}
+
+/**
+ * Read the whole document and write the result onto the row.
+ *
+ * Costs money and a few seconds, so it is called only when the cache says to,
+ * or when someone presses TRY AGAIN. A refusal comes back as status 'failed'
+ * with the reason, not as a thrown error — a failed read is stored so a second
+ * visit does not re-run the model on a file that cannot be read.
+ */
+export async function summariseContract(
+  uuid: string,
+): Promise<{ status: 'ok' | 'failed'; summary: string; version: string }> {
+  const r = await callFunction('summarise-contract', { action: 'summarise', uuid })
+  return r as { status: 'ok' | 'failed'; summary: string; version: string }
 }
