@@ -109,48 +109,23 @@ function toBase64(bytes: Uint8Array) {
   return btoa(binary)
 }
 
-// Every rule below is in the prompt because it is a way this goes wrong; see
-// sequel-track-contracts.md §3.3–3.6. When changing one, RE-CHECK THE OTHERS —
-// three prompt "improvements" each moved one field and broke another.
-const PROMPT = `You are reading a music licence or agreement for a music supervision company.
-Answer with JSON only, no prose and no code fences, with exactly these keys:
-
-{
-  "companies_printed": [string],   // EVERY rights-holder company name printed on the document,
-                                   // imprint AND parent, exactly as written. Never the brand,
-                                   // the agency, the licensee or a collecting society acting as
-                                   // administrator. If none is printed, [].
-  "supplier_address": string|null, // the granting party's address, only if printed
-  "supplier_country": string|null, // the granting party's country, only if printed
-  "contract_type": string|null,    // one of: Library, Master, Publishing, Master & Publishing,
-                                   // Talent, Sonic Branding, Buy Out
-  "artist": string|null,           // performing artist, if stated
-  "song_name": string|null,        // the musical work licensed, if stated
-  "master_pct": number|null,       // the master share GRANTED by this document
-  "publishing_pct": number|null,   // the publishing share GRANTED by this document
-  "mcps": boolean,                 // true only if MCPS is named as a party or administrator
-  "start_date": string|null,       // commencement, YYYY-MM-DD
-  "end_date": string|null,         // expiry, YYYY-MM-DD, ONLY if a calendar date is printed
-  "term_value": number|null,       // the licence period as a number
-  "term_unit": string|null,        // days | weeks | months | years
-  "perpetual": boolean,            // true for a perpetual, in-perpetuity or buy-out grant
-  "summary": string|null           // two sentences a colleague could act on
-}
-
-Rules:
-- TYPE IS DECIDED BY THE RIGHTS GRANTED, not by the word "licence" on the page. A publishing
-  sync licence is Publishing even when it comes from a library. Getting this wrong forces the
-  wrong shares onto the record, which is worse than leaving it null.
-- ONLY GRANTED SHARES COUNT. Shares carved out, reserved, or administered by a third party are
-  excluded. Sum multiple granted writers.
-- COMMENCEMENT IS NOT THE SIGNATURE DATE, not the letterhead date, and not the invoice date;
-  all three routinely appear on the same document. If commencement is not stated, return null.
-  A null is safe, a signature date is not.
-- NEVER INFER A DATE FROM THE FILE NAME.
-- end_date ONLY if a calendar date is printed. Otherwise give the term and leave end_date null.
-- OPTIONS TO EXTEND ARE NOT TERM. "12 months with an option for a further 12" is 12 months.
-- PERPETUAL OVERRIDES TERM even where a period also appears.
-- If something is not printed, return null. Do not guess.`
+// ⚠️ THE RULES BELOW ARE XANO'S, VERBATIM (function 41, read 18 Sep). They are
+// not a summary and must not be tidied: every clause is there because the model
+// got that case wrong at least once. A first rebuild paraphrased them from the
+// write-up and mislabelled contract types, which is how this came to be copied
+// across word for word instead.
+//
+// When changing one rule, RE-CHECK THE OTHERS — three prompt "improvements"
+// over there each moved one field and broke another.
+//
+// ONE CLAUSE IS OURS, NOT XANO'S: the song rule now carries the shape of an
+// MCPS production music licence, where the track sits in a Musical Works and
+// Sound Recordings table on a later page while the front page carries a
+// Production Title that is the ADVERT, not the track. Xano's "the track title,
+// or null" left the model nothing to anchor on and it returned nothing
+// (Andy, 18 Sep, licence LMGR-0028386 — "Gonna make it look good" on page 2,
+// "Tresemme Thena" on page 1).
+const PROMPT = `You are reading a music industry contract. Extract only what the document actually states. Never guess and never infer from the filename. Return a flat JSON object, not an array, with exactly these fourteen keys. KEY contract_type: decide this by asking WHICH RIGHTS THE DOCUMENT GRANTS, not by whether the word licence appears. Work through these in order. Publishing means the document grants publishing, composition, songwriting or publisher share rights only, and does not grant the sound recording. A synchronisation licence from a music publisher for the use of a composition is Publishing. Master means the document grants the sound recording or master rights only, and not the composition. A licence from a record label for the use of a recording is Master. Master and Publishing means the same document grants both sides. Library means specifically a production music or stock music licence, where the track comes from a production music catalogue that exists to be licensed. Do NOT choose Library merely because the document is a licence, and do NOT choose Library for a publisher or label licensing a commercially released track. Talent means a performer, session musician or voiceover agreement. Sonic Branding means a sonic logo or brand identity. Buy Out means a full acquisition of all rights. If none fits, return null, which is far better than a wrong answer. KEY companies_printed: an ARRAY of strings listing EVERY music company named on the document that owns, controls, licenses or supplies the music. Write each EXACTLY as printed, including any Limited or Inc suffix. Include the label, the publisher, the production music library, the imprint AND any parent or group company, listing all of them separately, because we match them against our own list afterwards. KEY supplier_address: the registered or trading address printed for the company GRANTING the rights, copied as it appears. Never the address of the brand, the agency, the licensee or a collecting society, all of which commonly appear on the same page. Return null if the granting company has no address printed, which is normal on a licence issued by a society on a rights holder behalf. KEY supplier_country: just the country from that address, in English, for example United Kingdom or United States. If the country is not written out but the address is plainly identifiable, give the country it belongs to. Return null if you cannot tell or if there is no supplier address. Two rules govern all three of those keys. FIRST, a collecting society or licensing body is never the supplier. MCPS, the Mechanical Copyright Protection Society, PRS, PPL, ASCAP, BMI, GEMA and SACEM are never suppliers, even when one of them issues, administers or signs the licence. SECOND, the end client, the brand and the advertising agency are never the supplier. Do not normalise, translate or invent company names, and never add a company that is not printed on the page. KEY mcps_papered: true if this licence is issued, administered or signed by MCPS, also written as the Mechanical Copyright Protection Society, or by PRS for Music on behalf of MCPS. False if it plainly is not. This is a separate question from supplier and type and does not change either. KEY artist: the recording or performing artist, meaning a person or band and never a company or a publisher. On a publishing document the artist is often given as the recording the composition is known by, written as performed by, as recorded by, or artist. Return null only if no performer is named anywhere. KEY song: the track title, or null. On a production music or society licence the track is listed in a table, often headed Musical Works and Sound Recordings, with columns such as Title, Composer, Library/Publisher, Tunecode, ISWC and Duration. Take the song from the Title column of that table, and the artist from its Composer column. A Production Title, campaign name or advert name printed elsewhere on the licence is the thing the music is used IN, and is never the song. If that table lists several works, give the first. KEY master_pct: the master or recording share granted, as a number from 0 to 100, or null if the document grants no master rights or states no master figure. KEY publishing_pct: the publishing share granted, as a number from 0 to 100, or null if the document grants no publishing rights or states no publishing figure. ON THE PERCENTAGES. master_pct and publishing_pct are different figures and often differ on the same document, so read them separately and never copy one into the other. Count only shares actually GRANTED by this document. If a share is named but excluded, carved out, reserved, or said to be controlled or administered by a third party, do not include it. If several writers or rights holders are each granted separately, SUM only the granted shares into one figure, so three granted writers at 40, 25 and 10 is 75 even if a fourth uncontrolled writer at 25 is also listed. If the document states no share at all, return null. Return 0 only where a zero share is genuinely stated. NOW THE DATES, WHICH DRIVE RENEWAL CHASING AND MUST BE READ CONSERVATIVELY. KEY start_date: the date the licence term COMMENCES, formatted as YYYY-MM-DD. This is the commencement date, effective date, or start of term. It is NOT the date of signature, NOT the date printed on the letterhead, and NOT the invoice or order date. Those routinely all appear on the same document and are routinely different from each other. If no commencement date is stated, return null rather than the nearest date on the page. A null here is correct and safe. A signature date returned as a commencement date is neither. KEY end_date: the date the licence EXPIRES, formatted as YYYY-MM-DD, but ONLY where the document prints an actual calendar end date. If the document instead states a length of time, return null here and use the term keys below. KEY term_value: the length of the licence as a whole number, or null. KEY term_unit: the unit that length is measured in, which must be exactly one of days, weeks, months, years, or null. So one (1) year becomes term_value 1 and term_unit years. Twenty-four months becomes 24 and months. A three week pop up campaign becomes 3 and weeks. If no term is stated, return null for both. An OPTION or right to extend is NOT part of the term, so twelve months with an option for a further twelve is term_value 12 and term_unit months. KEY perpetual: true if the grant is in perpetuity, permanent, irrevocable, for the life of copyright, or a full buy out of all rights. Perpetual OVERRIDES the term keys, so if any part of the grant is perpetual return true even where a period is also mentioned somewhere on the document. Return false where the licence plainly expires. Getting this wrong in the false direction means we chase a client to renew a licence they already own outright, so when a document reads as a buy out, say so.`
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
@@ -276,8 +251,9 @@ Deno.serve(async (req) => {
             {
               role: 'user',
               parts: [
-                { inline_data: { mime_type: 'application/pdf', data: toBase64(bytes) } },
+                // Rules first, document second — the order Xano sends.
                 { text: PROMPT },
+                { inline_data: { mime_type: 'application/pdf', data: toBase64(bytes) } },
               ],
             },
           ],
@@ -314,7 +290,12 @@ Deno.serve(async (req) => {
 
     // The same date engine the save uses, so what the form shows is what would
     // be stored — never a second copy of the arithmetic.
-    const perpetual = read.perpetual === true || read.contract_type === 'Buy Out'
+    // ⚠️ MCPS-PAPERED LICENCES ARE PERPETUAL. They have been for at least ten
+    // years, whatever Term or Valid-to date is printed: that date bounds the
+    // Campaign Rate bracket, not the grant. Xano applies the same blanket rule.
+    // A Buy Out is perpetual by definition.
+    const mcps = read.mcps_papered === true
+    const perpetual = read.perpetual === true || read.contract_type === 'Buy Out' || mcps
     const { data: dates } = await asCaller.rpc('track_contract_dates', {
       p_start: read.start_date ?? null,
       p_end: read.end_date ?? null,
@@ -336,9 +317,14 @@ Deno.serve(async (req) => {
           song_name: read.song_name ?? null,
           master_pct: read.master_pct ?? null,
           publishing_pct: read.publishing_pct ?? null,
-          mcps: read.mcps === true,
+          mcps,
           start_date: read.start_date ?? null,
-          end_date: dates?.end_date ?? read.end_date ?? null,
+          // ⚠️ No falling back to the printed date when the grant is
+          // perpetual: track_contract_dates returns null there and the save
+          // stores null, so showing the printed valid-to date would put a
+          // figure in the form that never lands in the database. An MCPS
+          // licence prints one on every page.
+          end_date: perpetual ? null : (dates?.end_date ?? read.end_date ?? null),
           term_value: read.term_value ?? null,
           term_unit: read.term_unit ?? null,
           perpetual,

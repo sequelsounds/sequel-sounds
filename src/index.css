@@ -2188,18 +2188,36 @@
 
 /* The contract modal — 17 Sep 2026. */
 @layer components {
-  /* The details step is twelve fields; on a short window it must scroll inside
-     the modal rather than run off the top and bottom of the screen. */
+  /* Twelve fields have to fit without a scrollbar — Track's do, because every
+     control there is 2rem tall. The scroll is kept only as the last resort on
+     a genuinely short window. */
   .cm-box {
     display: flex;
-    max-height: calc(100dvh - 4rem);
+    max-height: calc(100dvh - 2rem);
     flex-direction: column;
     max-width: 44rem;
   }
 
   .cm-box .am-form {
     min-height: 0;
+    gap: 10px;
     overflow-y: auto;
+  }
+
+  /* 2rem controls, as over there. */
+  .cm-box .am-input {
+    height: 2rem;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .cm-box .am-tag {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+  }
+
+  .cm-box .am-picked {
+    min-height: 2.5rem;
   }
 
   /* Two columns, each holding its own six fields in order — Track's layout,
@@ -2207,14 +2225,21 @@
   .cm-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px 24px;
+    gap: 10px 24px;
   }
 
   .cm-col {
     display: flex;
     min-width: 0;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+  }
+
+  /* The column already spaces its fields with a gap, so .am-group's own
+     1rem bottom margin was adding a seventh field's worth of height to each
+     column (6 x 16px = 96px) and was the whole of the scrollbar. */
+  .cm-col .am-group {
+    margin-bottom: 0;
   }
 
   /* The yes/no pair fills its column, as over there, rather than sitting at
