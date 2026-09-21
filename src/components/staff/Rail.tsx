@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { useNotifications } from '../../lib/notifications'
 import { useIsFinance, useIsManagement } from '../../lib/xanoMirror'
 import SequelLogo from '../SequelLogo'
 
@@ -28,7 +29,7 @@ import SequelLogo from '../SequelLogo'
 const LINKS: { label: string; to: string | null; also?: string[] }[] = [
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Management', to: '/management' },
-  { label: 'Notifications', to: null },
+  { label: 'Notifications', to: '/notifications' },
   { label: 'Projects', to: '/projects' },
   { label: 'Roster', to: '/roster' },
   { label: 'Songs', to: '/songs' },
@@ -39,7 +40,7 @@ const LINKS: { label: string; to: string | null; also?: string[] }[] = [
   // Not in Track's nav — its /reporting page was reached by URL only. Shown
   // to finance only, because the page is finance only.
   { label: 'Reporting', to: '/reporting' },
-  { label: 'Settings', to: null },
+  { label: 'Settings', to: '/settings' },
 ]
 
 export default function Rail() {
@@ -47,6 +48,11 @@ export default function Rail() {
   // too. The database is what actually refuses — see useIsManagement.
   const management = useIsManagement()
   const finance = useIsFinance()
+  /* ⚠️ THE COUNT IS THE POINT OF THE LINK. A notifications page nobody is told
+   * to visit is a page nobody visits, and the whole reason this exists is that
+   * a release form being opened was buried in a row's share menu. */
+  const notifications = useNotifications()
+  const unread = notifications.data?.unread ?? 0
   const links = LINKS.filter(
     (l) =>
       (l.label !== 'Management' || management.data === true) &&
@@ -72,6 +78,11 @@ export default function Rail() {
             className={`nav-link-app${inAlso(also) ? ' is-current' : ''}`}
           >
             {label}
+            {label === 'Notifications' && unread > 0 && (
+              <span className="nav-count" aria-label={`${unread} unread`}>
+                {unread > 99 ? '99+' : unread}
+              </span>
+            )}
           </NavLink>
         ) : (
           <span key={label} className="nav-link-app is-unbuilt" aria-disabled="true">

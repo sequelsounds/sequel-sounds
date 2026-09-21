@@ -233,6 +233,7 @@ export function ShareModal({
   subheader,
   onClose,
   status,
+  extra,
 }: {
   link: string | null
   header: string
@@ -240,6 +241,9 @@ export function ShareModal({
   onClose: () => void
   /** What to show in place of the link until there is one. */
   status?: string
+  /** Anything else this row can do with the document — a release form offers
+   *  to send or download it from here rather than from inside its form. */
+  extra?: React.ReactNode
 }) {
   const [copied, setCopied] = useState(false)
   return (
@@ -279,6 +283,7 @@ export function ShareModal({
           {copied ? 'COPIED!' : 'COPY'}
         </button>
       </div>
+      {extra}
     </Modal>
   )
 }

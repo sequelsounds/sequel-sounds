@@ -14,6 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
+      coda_conversations: {
+        Row: {
+          auth_uid: string
+          created_at: string
+          id: string
+          provider: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_uid?: string
+          created_at?: string
+          id?: string
+          provider?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_uid?: string
+          created_at?: string
+          id?: string
+          provider?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      coda_messages: {
+        Row: {
+          content: Json
+          conversation_id: string
+          created_at: string
+          id: number
+          role: string
+          text: string | null
+        }
+        Insert: {
+          content: Json
+          conversation_id: string
+          created_at?: string
+          id?: number
+          role: string
+          text?: string | null
+        }
+        Update: {
+          content?: Json
+          conversation_id?: string
+          created_at?: string
+          id?: number
+          role?: string
+          text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coda_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "coda_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coda_tool_calls: {
+        Row: {
+          actor_email: string | null
+          args: Json | null
+          auth_uid: string | null
+          conversation_id: string | null
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          id: number
+          ok: boolean
+          source: string
+          summary: string | null
+          tool: string
+          track_user_id: number | null
+        }
+        Insert: {
+          actor_email?: string | null
+          args?: Json | null
+          auth_uid?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: number
+          ok: boolean
+          source: string
+          summary?: string | null
+          tool: string
+          track_user_id?: number | null
+        }
+        Update: {
+          actor_email?: string | null
+          args?: Json | null
+          auth_uid?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: number
+          ok?: boolean
+          source?: string
+          summary?: string | null
+          tool?: string
+          track_user_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coda_tool_calls_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "coda_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           author_name: string

@@ -22,6 +22,8 @@ import User from './routes/User'
 import Dashboard from './routes/Dashboard'
 import Management from './routes/Management'
 import Users from './routes/Users'
+import Notifications from './routes/Notifications'
+import Settings from './routes/Settings'
 import Contract from './routes/Contract'
 import Invoice from './routes/Invoice'
 import Finance from './routes/Finance'
@@ -122,9 +124,11 @@ export default function App() {
         <Route path="/songs" element={<Songs />} />
         <Route path="/songs/:uuid" element={<Song />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/management" element={<Management />} />
         <Route path="/users" element={<Users />} />
         <Route path="/users/:uuid" element={<User />} />
+        <Route path="/settings" element={<Settings />} />
         {/* Read-only. `invoices` is on the blocked side of the migration —
             QuickBooks reads it out of Xano — so the table stays in the sync and
             nothing here writes. It exists because the chart segments and the

@@ -39,11 +39,17 @@ import {
 } from '../lib/xanoMirror'
 import type { Brief, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../lib/xanoMirror'
 import { useProjectContracts, type ContractRow } from '../lib/contracts'
+import { useProjectReleaseForms } from '../lib/releaseForms'
 import {
   ContractRowActions,
   ContractModal,
   type ContractModalMode,
 } from '../components/staff/ContractActions'
+import {
+  ReleaseFormModal,
+  ReleaseFormRowActions,
+  type ReleaseFormMode,
+} from '../components/staff/ReleaseFormActions'
 import { NewSongModal } from '../components/staff/NewSong'
 
 /**
@@ -302,7 +308,14 @@ function Form({ children }: { children: React.ReactNode }) {
 }
 
 /** App subtitle wraps: the tab's own subtitle, and the button that adds to it. */
-type MenuItem = { label: string; onClick?: () => void }
+type MenuItem = {
+  label: string
+  onClick?: () => void
+  /** Choices of its own: clicking swaps the row for these, as CREATE does on
+   *  the Contracting tab. An item with neither onClick nor menu is drawn
+   *  disabled. */
+  menu?: MenuItem[]
+}
 
 function PaneBar({
   title,
@@ -321,31 +334,34 @@ function PaneBar({
       disabled, for the same reason as above. */
   menu?: MenuItem[]
 }) {
-  const [open, setOpen] = useState(false)
+  /** null while the action button is still showing; otherwise the choices on
+   *  screen, which a nested item swaps for its own. */
+  const [shown, setShown] = useState<MenuItem[] | null>(null)
+  const live = (m: MenuItem) => Boolean(m.onClick || m.menu?.length)
   return (
     <div className="pane-bar">
       <div className="pane-title">{title}</div>
-      {action && menu && open && (
+      {action && shown && (
         <div className="pane-menu">
-          {menu.map((m) => (
+          {shown.map((m) => (
             <button
               key={m.label}
               type="button"
               className="btn btn-mono btn-outline"
-              disabled={!m.onClick}
-              onClick={m.onClick}
+              disabled={!live(m)}
+              onClick={m.menu ? () => setShown(m.menu!) : m.onClick}
             >
               {m.label}
             </button>
           ))}
         </div>
       )}
-      {action && !(menu && open) && (
+      {action && !shown && (
         <button
           type="button"
           className="btn btn-mono btn-outline"
-          disabled={menu ? !menu.some((m) => m.onClick) : !onAction}
-          onClick={menu ? () => setOpen(true) : onAction}
+          disabled={menu ? !menu.some(live) : !onAction}
+          onClick={menu ? () => setShown(menu) : onAction}
         >
           {action}
         </button>
@@ -402,7 +418,10 @@ function Rows<T>({
         </div>
       )}
       {state.error && <p className="form-error px-8 py-4">{state.error.message}</p>}
-      {state.data?.length === 0 && <p className="empty-note">{empty}</p>}
+      {/* An empty string suppresses it: the Contracting tab has release forms
+          under the same list, so "nothing here yet" would be a lie whenever
+          there are forms but no contracts. */}
+      {state.data?.length === 0 && empty !== '' && <p className="empty-note">{empty}</p>}
       {state.data?.map((item, i) => {
         const href = link?.(item) ?? null
         const onOpen = open?.(item) ?? null
@@ -457,6 +476,7 @@ export default function Project() {
   const quotes = useProjectQuotes(projectId)
   const invoices = useProjectInvoices(projectId)
   const contracts = useProjectContracts(projectId)
+  const releaseForms = useProjectReleaseForms(projectId)
   const briefs = useProjectBriefs(projectId)
   const files = useProjectFiles(projectId)
   const songs = useProjectSongs(projectId)
@@ -474,6 +494,7 @@ export default function Project() {
   const [briefView, setBriefView] = useState<Brief | null>(null)
   const [assetModal, setAssetModal] = useState<AssetModalMode | null>(null)
   const [contractModal, setContractModal] = useState<ContractModalMode | null>(null)
+  const [releaseModal, setReleaseModal] = useState<ReleaseFormMode | null>(null)
   const [newSong, setNewSong] = useState(false)
   // row_flash: the row just saved blinks, then stops.
   const [flash, setFlash] = useState<string | null>(null)
@@ -987,17 +1008,40 @@ export default function Project() {
           <Rows<ContractRow>
             title="Contracting"
             action="+ New CONTRACT"
-            // contract-btn-swap: the button gives way to the two choices, as on
-            // Track. CREATE CONTRACT was never built over there either, so it
-            // is drawn and disabled rather than invented (Andy, 18 Sep).
+            // contract-btn-swap: the button gives way to the choices, as on
+            // Track.
+            //
+            // ⚠️ CREATE CONTRACT turned out to be THREE things, not one — Andy,
+            // 18 Sep. Upload and the release form are one click each; the two
+            // licences sit behind CREATE, which opens them as its own step
+            // (Andy, 19 Sep) because they are the same kind of thing as each
+            // other and a different kind from the first two.
+            //
+            // Only the release form is built. The composition licence waits on
+            // how its invoice number gets onto the page; the library contract
+            // is not written at all, and cannot be a copy of the composition
+            // one, because that catalogue is third-party.
             menu={[
               {
                 label: 'UPLOAD CONTRACT',
                 onClick: edit ? () => setContractModal({ kind: 'upload' }) : undefined,
               },
-              { label: 'CREATE CONTRACT', onClick: undefined },
+              {
+                label: 'CREATE CONTRACT',
+                menu: [
+                  { label: 'LIBRARY CONTRACT', onClick: undefined },
+                  { label: 'COMPOSITION CONTRACT', onClick: undefined },
+                ],
+              },
+              // ⚠️ LAST — Andy, 20 Sep. The two contract buttons belong beside
+              // each other; the release form is a different kind of document
+              // and reads better at the end than wedged between them.
+              {
+                label: '+ RELEASE FORM',
+                onClick: edit ? () => setReleaseModal({ kind: 'new' }) : undefined,
+              },
             ]}
-            empty="Nothing here yet.  Upload a file or create a contract to get started"
+            empty={releaseForms.data?.length ? '' : 'Nothing here yet.  Upload a file or create a contract to get started'}
             state={contracts}
             variant="contract"
             // The row opens the edit form, as on Track.
@@ -1006,6 +1050,11 @@ export default function Project() {
             row={(c) => (
               <>
                 <Title>{c.supplier}</Title>
+                {/* The tab holds two kinds of document and they are not the
+                    same thing at all — one is what Sequel licensed IN, the
+                    other what it told a broadcaster. The row says which
+                    (Andy, 19 Sep) before it says anything else about it. */}
+                <Cell>Contract</Cell>
                 <Cell>{c.contract_type}</Cell>
                 {/* Where the invoice row puts its number: after what the record
                     is, before when it happened. The string is the database's
@@ -1015,6 +1064,59 @@ export default function Project() {
                 {edit && <ContractRowActions contract={c} projectId={projectId} />}
               </>
             )}
+          />
+        )}
+
+
+        {/* Release forms continue the same list — no second header and no
+            second empty note. A release form is not a contract, but the row
+            says which it is without a heading over it, and two headers on one
+            short tab read as clutter (Andy, 19 Sep). */}
+        {tab === 'Contracting' &&
+          releaseForms.data?.map((r) => (
+            <div
+              key={r.uuid}
+              className={`project-row project-row-release${edit ? ' is-openable' : ''}`}
+              onClick={edit ? () => setReleaseModal({ kind: 'edit', form: r }) : undefined}
+            >
+              {/* ⚠️ The first column is WHO THE DOCUMENT IS FROM, which is
+                  what it means on a contract row — the supplier who licensed
+                  the music in. A release form comes from Sequel, so it says
+                  Sequel, not the broadcaster it went to (Andy, 19 Sep). It is
+                  the same word on every row, and that is the point: the two
+                  lists read the same way down the page. */}
+              <Title>Sequel</Title>
+              <Cell>Release Form</Cell>
+              <Cell>{r.track_name}</Cell>
+              <Cell>{r.ref}</Cell>
+              <Cell>{fmt(longDate, r.created_at)}</Cell>
+              {edit && <ReleaseFormRowActions form={r} projectId={projectId} />}
+            </div>
+          ))}
+
+        {releaseModal && projectId !== undefined && (
+          <ReleaseFormModal
+            mode={releaseModal}
+            projectId={projectId}
+            // Everything the project already knows, including the four off the
+            // Terms tab. All of it is editable in the modal — what a
+            // broadcaster is told is often narrower than what the project holds.
+            prefill={{
+              brand: p.brand ?? '',
+              campaign: p.title ?? '',
+              term: p.term ?? '',
+              territory: p.territory ?? '',
+              media: p.media ?? '',
+              scripts: p.scripts ?? '',
+              // ⚠️ DELIBERATELY EMPTY — Andy, 21 Sep. This used to seed the
+              // project's own producer. A release form often goes to a
+              // broadcaster who is not on the project at all, and seeding it
+              // meant a real client's address sat on every form including the
+              // tests — which is how one reached Ogilvy. Typed at send time now.
+              recipient_email: '',
+            }}
+            onClose={() => setReleaseModal(null)}
+            onIssued={() => void releaseForms.refetch()}
           />
         )}
 

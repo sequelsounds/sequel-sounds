@@ -1692,6 +1692,29 @@
     line-height: 1rem;
   }
 
+  /* ⚠️ THE BRIEF PAGE'S BUTTON PROPORTIONS, NOT ITS COLOURS — Andy, 21 Sep.
+     .bp-button is solid brown and goes to the library plum (#ad7186) on hover;
+     he wanted its shape and lettering but transparent at rest, filling brown on
+     hover, and no plum anywhere. So this takes the padding and the mono face,
+     and leaves the colours to .am-submit's own outline-then-fill. NO TRACKING:
+     .bp-button carries 0.08em, which reads on a wide page and only pushes the
+     words apart in a modal — removed from both, Andy, 21 Sep.
+     Pair it with .is-full, which supplies the width — and it must sit AFTER
+     .is-full in this sheet, because the two are the same specificity and the
+     later one wins.
+
+     `height` goes back to auto: .is-full pins 2rem, and 0.75rem of padding top
+     and bottom does not fit inside that. The height is deliberate and Andy
+     confirmed it on 21 Sep — it was the WIDTH he was reading as oversized. */
+  .am-submit.is-brief {
+    height: auto;
+    margin-top: 0.625rem;
+    padding: 0.75rem 2rem;
+    font-family: 'Azeret Mono', ui-monospace, monospace;
+    font-size: 0.7rem;
+    font-weight: 300;
+  }
+
   .am-submit.is-off {
     opacity: 0.35;
     cursor: not-allowed;
@@ -2196,6 +2219,16 @@
     max-height: calc(100dvh - 2rem);
     flex-direction: column;
     max-width: 44rem;
+  }
+
+  /* ⚠️ NARROWER THAN THE CREATE MODAL — Andy, 21 Sep: *"I just thought it was
+     extremely wide"*, about SEND. He was reading the box, not the button. 44rem
+     is sized for the create form's two columns; the send modal has ONE field
+     now that the subject has gone, and a full-width button across 704px stops
+     looking like a button and starts looking like a bar. A full-width primary
+     action is ordinary in a dialog — at dialog width. This is that width. */
+  .cm-box.rf-send-box {
+    max-width: 30rem;
   }
 
   .cm-box .am-form {

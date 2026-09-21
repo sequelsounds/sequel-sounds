@@ -2125,8 +2125,12 @@
   /* Four equal columns then the two icons — supplier, type, reference and
      date all get the same width, so the row reads evenly across rather than
      bunching at one end (Andy, 18 Sep). */
-  .project-row-contract {
-    grid-template-columns: 1fr 1fr 1fr 1fr 0.3fr 0.3fr;
+  /* Party, what the document IS, what it is about, reference, date — then
+     share and archive. The release form row below uses the same five, so the
+     two lists on the Contracting tab read straight down the page. */
+  .project-row-contract,
+  .project-row-release {
+    grid-template-columns: 1fr 0.7fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr;
     gap: 16px;
   }
 
@@ -2134,6 +2138,321 @@
     grid-template-columns: 0.75fr 0.75fr 0.25fr 0.25fr;
     gap: 16px;
   }
+
+  /* Recipient, track, reference, issued — then OPEN. The first four match the
+     contract row's four equal columns above, so the two lists on the
+     Contracting tab read down the page as one. */
+  /* The client search borrows the user picker's markup, and with it a faded
+     border and no fill — next to five .am-input boxes it read as broken rather
+     than as a search. This makes it the same box as the rest. */
+  .rf-combo .ns-field {
+    max-height: none;
+    height: 2rem;
+    border-color: var(--color-sequel-brown);
+    background-color: rgba(55, 43, 41, 0.05);
+  }
+
+  .rf-combo .ns-field:focus-within {
+    background-color: rgba(55, 43, 41, 0.16);
+  }
+
+  .rf-combo .ns-input {
+    max-height: none;
+    height: 2rem;
+    padding: 0 0.5rem;
+    font-family: 'Creato Display', Arial, sans-serif;
+    line-height: 2rem;
+    color: var(--color-sequel-brown);
+  }
+
+  /* The picker's own focus fill would sit inside the field's, two shades deep. */
+  .rf-combo .ns-input:focus {
+    background-color: transparent;
+  }
+
+
+
+  /* The signature pad. The box is the shape the stored path is drawn in
+     (600x200), so what is signed is what prints. */
+  .sig-pad {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 1.5rem 0 0.5rem;
+    max-width: 30rem;
+  }
+
+  .sig-note {
+    font-size: 0.75rem;
+    line-height: 1.4;
+    opacity: 0.75;
+  }
+
+  .sig-canvas {
+    width: 100%;
+    aspect-ratio: 3 / 1;
+    border: 1px solid var(--color-sequel-brown);
+    background: var(--color-sequel-bone, #f0efeb);
+    touch-action: none;
+  }
+
+  .sig-rule {
+    stroke: var(--color-sequel-brown);
+    stroke-width: 1;
+    opacity: 0.25;
+  }
+
+  .sig-ink {
+    fill: none;
+    stroke: var(--color-sequel-brown);
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .sig-modes {
+    display: flex;
+    gap: 8px;
+  }
+
+  .sig-mode {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid transparent;
+    opacity: 0.55;
+  }
+
+  .sig-mode.is-on {
+    border-color: var(--color-sequel-brown);
+    opacity: 1;
+  }
+
+  .sig-typed {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Only the drawing mode takes a pen; in typing mode the box is a preview. */
+  .sig-canvas.is-drawable {
+    cursor: crosshair;
+  }
+
+  /* Letter outlines are shapes: filled, not traced. */
+  .sig-ink-filled {
+    fill: var(--color-sequel-brown);
+    stroke: none;
+  }
+
+  .sig-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* ⚠️ EXACTLY TWO FIELDS TALL, so the two columns stay level.
+     A field is 3.5rem — a 1rem label line, its 0.5rem margin, a 2rem input —
+     and .cm-col puts a 10px gap between them. Two of those is 7rem + 10px, so
+     the box itself is that less the label: 5.5rem + 10px.
+     It is a HEIGHT, not a min-height: .am-input sets height 2rem, and a
+     min-height on top of it left the box a size neither rule intended.
+     Not resizable, deliberately — dragging it taller puts the columns back out
+     of step, and an address is three lines. */
+  /* ⚠️ `textarea.rf-address`, NOT `.rf-address`. design-system.css is imported
+     at the TOP of index.css, so .am-input's `height: 2rem` sits later in the
+     sheet and wins on equal specificity — a plain class here was overridden and
+     the box came out one line tall. Element + class outranks it wherever it
+     sits. Both height and min-height are set so nothing can split them. */
+  /* The share menu, hung off the icon that opens it. .row-action is already
+     position:relative, so this needs no wrapper of its own. */
+  /* ── Notifications ─────────────────────────────────────────────────── */
+
+  /* The count beside the rail link. Small and inline rather than a floating
+     pip: the rail is text, and a badge pinned to its corner would be the only
+     round thing on the page. */
+  .nav-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    margin-left: 0.45rem;
+    padding: 0 0.3rem;
+    font-family: 'Azeret Mono', ui-monospace, monospace;
+    font-size: 0.6rem;
+    font-weight: 400;
+    line-height: 1;
+    color: var(--color-sequel-silver);
+    background-color: var(--color-sequel-brown);
+  }
+
+  .nt-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 2rem;
+    border-bottom: 1px solid rgb(55 43 41 / 0.12);
+    color: var(--color-sequel-brown);
+    text-decoration: none;
+  }
+
+  .nt-row.is-openable {
+    cursor: pointer;
+  }
+
+  .nt-row.is-openable:hover {
+    background-color: rgb(55 43 41 / 0.04);
+  }
+
+  /* ⚠️ THE DOT IS THE ONLY UNREAD MARK — no bold text, no tinted row. A feed
+     where unread items shout is one people clear to make it stop rather than
+     because they read it. Read keeps the space so nothing shifts. */
+  .nt-dot {
+    flex: 0 0 auto;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background-color: var(--color-sequel-brown);
+  }
+
+  .nt-dot.is-read {
+    background-color: transparent;
+  }
+
+  .nt-message {
+    flex: 1 1 auto;
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .nt-when {
+    flex: 0 0 auto;
+    font-family: 'Azeret Mono', ui-monospace, monospace;
+    font-size: 0.68rem;
+    font-weight: 300;
+    white-space: nowrap;
+    opacity: 0.6;
+  }
+
+  .rf-menu-wrap {
+    position: relative;
+  }
+
+  /* Takes the click that dismisses the menu, so no document listener has to be
+     added and torn down. Behind the menu, over everything else. */
+  .rf-menu-catch {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+  }
+
+  /* ⚠️ CREATO DISPLAY, NOT AZERET MONO — Andy, 19 Sep. The mono face belongs to
+     data (refs, dates, amounts); these are verbs, so they take the face the
+     rest of the app's buttons take.
+     ⚠️ NO DIVIDERS AND NO CAPS — Andy, 19 Sep. Three short items do not need
+     ruling off from each other, and the hover fill already shows which one you
+     are on. Sentence case because these read as things to do, not as labels. */
+  .rf-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 41;
+    display: flex;
+    min-width: 13rem;
+    flex-direction: column;
+    background-color: var(--color-sequel-bone, #f0efeb);
+    /* ⚠️ NO VERTICAL PADDING — Andy, 19 Sep. With it, the hover fill on the
+       first and last items stops short of the box's own edge and leaves a
+       strip of bone above or below the highlight. The items run edge to edge
+       so the fill meets the border. */
+    border: 1px solid var(--color-sequel-brown);
+    /* Lifted off the row so it reads as above the list, not inside it. */
+    box-shadow: 0 6px 18px rgb(55 43 41 / 0.16);
+    animation: rf-menu-in 140ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform-origin: top right;
+  }
+
+  @keyframes rf-menu-in {
+    from {
+      transform: translateY(-4px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rf-menu {
+      animation: none;
+    }
+  }
+
+  /* What became of a sent form, above the verbs. Mono and small: it is a
+     read-out, not a thing to press. */
+  .rf-menu-head {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid rgb(55 43 41 / 0.2);
+    font-family: 'Azeret Mono', ui-monospace, monospace;
+    font-size: 0.65rem;
+    font-weight: 300;
+    line-height: 1.4;
+    color: var(--color-sequel-brown);
+    opacity: 0.75;
+  }
+
+  .rf-menu-item {
+    display: flex;
+    align-items: center;
+    height: 2.25rem;
+    padding: 0 1rem;
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1;
+    text-align: left;
+    white-space: nowrap;
+    color: var(--color-sequel-brown);
+    background-color: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: background-color 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .rf-menu-item:hover:not(:disabled) {
+    color: var(--color-sequel-silver);
+    background-color: var(--color-sequel-brown);
+  }
+
+  .rf-menu-item:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* Whatever the last action had to say — a result, an error, or the link
+     itself when the browser refused the clipboard. Mono here on purpose: a
+     url wraps better in it and is read character by character. */
+  .rf-menu-note {
+    padding: 0.55rem 1rem;
+    border-top: 1px solid rgb(55 43 41 / 0.2);
+    font-family: 'Azeret Mono', ui-monospace, monospace;
+    font-size: 0.68rem;
+    font-weight: 300;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    color: var(--color-sequel-brown);
+  }
+
+  textarea.rf-address {
+    height: calc(5.5rem + 10px);
+    min-height: calc(5.5rem + 10px);
+    padding: 0.4rem 0.5rem;
+    resize: none;
+    line-height: 1.35;
+  }
+
+
 
   /* Project row field title - the first cell, one weight up on the rest. */
   .row-title {
@@ -3624,7 +3943,9 @@
     font-family: 'Azeret Mono', ui-monospace, monospace;
     font-size: 0.7rem;
     font-weight: 300;
-    letter-spacing: 0.08em;
+    /* ⚠️ NO TRACKING — Andy, 21 Sep. This carried letter-spacing: 0.08em from
+       the Webflow original since the brief form was built on 15 Sep. It reads
+       as padding-between-letters rather than emphasis, so it went. */
     text-transform: uppercase;
     color: var(--color-sequel-silver);
     cursor: pointer;
@@ -4846,4 +5167,32 @@
       --sc-h2: 1.45rem;
     }
   }
+}
+
+/* ------------------------------------------------------- Coda's thinking mark
+ * The old widget's loading animation, carried over as it was: a brown square
+ * flipping on both axes over six seconds. It is a 20x20 rect scaled to its
+ * 1rem box, so the timing and the easing are the original's, not an
+ * approximation of it.
+ *
+ * The keyframes live here rather than in a <style> inside the SVG, because a
+ * React component would otherwise re-declare them on every render. */
+@keyframes coda-thinking {
+  25% {
+    transform: rotateX(180deg) rotateY(0);
+  }
+  50% {
+    transform: rotateX(180deg) rotateY(180deg);
+  }
+  75% {
+    transform: rotateX(0) rotateY(180deg);
+  }
+  100% {
+    transform: rotateX(0) rotateY(0);
+  }
+}
+
+.coda-thinking-mark {
+  transform-origin: 50% 50%;
+  animation: coda-thinking 6s 0s cubic-bezier(0.09, 0.57, 0.49, 0.9) infinite;
 }

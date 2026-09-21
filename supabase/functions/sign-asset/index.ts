@@ -14,10 +14,10 @@
 //   anyone (publishable key as bearer):
 //     { action: "peaks", code, peaks }
 //         -> saves a waveform for a file that has none (write-once)
-//     { action: "share", code }
+//     { action: "share", code, event?: "view" | "download" }
 //         -> the file behind a /link code: name, type, size, expiry, an inline
 //            url for the preview and a download url that saves under the real
-//            filename
+//            filename. The call itself is recorded in track_share_events.
 //
 // ⚠️ THE DATABASE DECIDES, NOT THIS FILE. Every staff action calls a
 // SECURITY DEFINER function AS THE CALLER, which checks track_is_staff() and
@@ -46,6 +46,10 @@ const KEY_RE = /^project-assets\/[0-9a-f-]{36}_[^/\\]+$/
 /** Contracts share through /link too (17 Sep), and their staff actions live in
  *  sign-contract — this prefix is signed on the SHARE PATH ONLY. */
 const CONTRACT_KEY_RE = /^contracts\/[0-9a-f-]{36}_[^/\\]+$/
+/** ⚠️ A release form is NOT `contracts/<uuid>_<name>`. It lives a level down,
+ *  at `contracts/release-forms/<uuid>.pdf`, so the contract pattern above
+ *  rejects it and a perfectly good share link reports itself invalid. */
+const RELEASE_KEY_RE = /^contracts\/release-forms\/[0-9a-f-]{36}\.pdf$/
 
 const ALLOWED_ORIGINS = [
   /^http:\/\/localhost:\d+$/,
@@ -158,9 +162,30 @@ Deno.serve(async (req) => {
     })
     if (error) return json({ error: 'server' }, 500, origin)
     if (data?.error) return json({ error: data.error }, data.error === 'busy' ? 429 : 404, origin)
-    if (!KEY_RE.test(data.key) && !CONTRACT_KEY_RE.test(data.key)) {
+    if (!KEY_RE.test(data.key) && !CONTRACT_KEY_RE.test(data.key) && !RELEASE_KEY_RE.test(data.key)) {
       return json({ error: 'invalid' }, 404, origin)
     }
+    /* ⚠️ RECORDED HERE, NOT WITH A PIXEL. A tracking image in the email would
+     * be stripped by most corporate mail filters and would report opens that
+     * never happened from the ones that prefetch. This is the link actually
+     * resolving, server-side: it happened.
+     *
+     * `event` is 'view' unless the page says otherwise — the download button
+     * re-calls with 'download'. It is logged AFTER resolve_share_link, so the
+     * rate limit already applied and a bad code has already been rejected.
+     * Failure is swallowed: an unrecorded open is not a reason to withhold
+     * somebody's document. */
+    admin
+      .rpc('track_log_share_event', {
+        p_code: String(body.code ?? ''),
+        p_event: body.event === 'download' ? 'download' : 'view',
+        p_ip: ip || null,
+        p_agent: req.headers.get('user-agent'),
+      })
+      .then(({ error: logErr }) => {
+        if (logErr) console.error('share event not logged', logErr.message)
+      })
+
     const fileName = data.file_name || nameFromKey(data.key)
     return json(
       {

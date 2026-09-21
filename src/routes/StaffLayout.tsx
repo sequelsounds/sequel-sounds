@@ -11,6 +11,7 @@ import {
 } from '@dnd-kit/core'
 import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import Coda from '../components/staff/Coda'
 import Creator from '../components/staff/Creator'
 import { ChevronIcon } from '../components/staff/icons'
 import Player from '../components/staff/Player'
@@ -136,6 +137,10 @@ function Shell() {
           </>
         )}
       </div>
+      {/* Coda sits above the grid rather than in it: she is fixed to the
+          window's bottom right, the way she is in the old app, and a grid cell
+          would make her a column. */}
+      <Coda />
       <DragOverlay dropAnimation={null}>
         {dragLabel && (
           <div className="max-w-[280px] truncate bg-sequel-brown px-3 py-2 text-[13px] text-sequel-silver shadow-lg">

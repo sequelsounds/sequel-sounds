@@ -159,14 +159,29 @@ export type SharedFile = {
   expires_at: string
   url: string
   download_url: string
+  /** 'asset' | 'contract' | 'release_form'. `sign-asset` has always returned
+   *  this; nothing read it until release forms needed to skip the asset page. */
+  kind: 'asset' | 'contract' | 'release_form'
   /** The waveform, if it has been worked out yet. */
   peaks: number[] | null
 }
 
 /** `null` with a reason when the code is unknown, expired or throttled. */
-export async function openShare(code: string): Promise<SharedFile | { error: string }> {
+/**
+ * Resolve a /link code.
+ *
+ * ⚠️ EVERY CALL IS RECORDED against the code — server-side, in
+ * `track_share_events`. `event` says which kind: the page opening is a view,
+ * pressing DOWNLOAD is a download. That is how a sent release form can answer
+ * "have they actually looked at it?" without a tracking pixel, which corporate
+ * mail strips anyway.
+ */
+export async function openShare(
+  code: string,
+  event: 'view' | 'download' = 'view',
+): Promise<SharedFile | { error: string }> {
   try {
-    return (await signAsset({ action: 'share', code })) as unknown as SharedFile
+    return (await signAsset({ action: 'share', code, event })) as unknown as SharedFile
   } catch (e) {
     return { error: (e as Error).message }
   }

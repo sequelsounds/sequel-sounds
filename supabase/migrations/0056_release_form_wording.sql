@@ -1,0 +1,20 @@
+-- 0056_release_form_wording
+--
+-- Wording only. No behaviour, no schema.
+--
+-- ⚠️ "ISSUED" WAS THE WRONG WORD — Andy, 20 Sep: saving a release form does not
+-- issue it to anybody. It writes a row and draws a PDF; the broadcaster learns
+-- nothing until somebody presses Send. A validation message saying a field is
+-- "needed before a release form can be issued" makes SAVE read as SEND, on the
+-- one screen where the difference matters most.
+--
+-- Applied in place with a DO block that rewrites the two existing definitions,
+-- so the validation logic is untouched and cannot drift from what is live:
+--
+--   for each public function whose body contains 'can be issued'
+--     execute replace(pg_get_functiondef(oid),
+--                     'The % is needed before a release form can be issued.',
+--                     'A release form needs a % before it can be saved.')
+--
+-- Affects track_create_release_form (11 args) and track_update_release_form.
+-- Both now raise, e.g.: "A release form needs a territory before it can be saved."

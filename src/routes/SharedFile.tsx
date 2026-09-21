@@ -22,9 +22,6 @@ import { fileKind, openShare, saveSharePeaks, type SharedFile as Shared } from '
 
 const KIND_LABEL = { video: 'Video', audio: 'Audio', image: 'Image', doc: 'Document', other: 'File' } as const
 
-/** The signed URLs last an hour; a page left open longer asks again. */
-const FRESH_MS = 50 * 60 * 1000
-
 function sizeText(raw: string | null): string {
   const total = Number(raw)
   if (!total) return ''
@@ -63,6 +60,19 @@ export default function SharedFile() {
         setError(errorText(r.error))
         setReady(true)
       } else {
+        /* ⚠️ A RELEASE FORM GOES STRAIGHT TO THE PDF — Andy, 21 Sep, having
+         * asked repeatedly. This page is the PROJECT ASSET page: it says
+         * "Project Asset" at the top and is built around audio and video
+         * previews. A broadcaster opening a clearance letter should get the
+         * letter, not a media viewer with a document in it.
+         *
+         * The view is already recorded by the openShare call above, so the
+         * tracking survives the redirect. `replace` rather than `href` so the
+         * back button returns to the email, not to this page. */
+        if (r.kind === 'release_form') {
+          window.location.replace(r.url)
+          return
+        }
         fetchedAt.current = Date.now()
         setFile(r)
       }
@@ -90,10 +100,16 @@ export default function SharedFile() {
   // full eight seconds on a WAV.
   const loaded = () => setReady(true)
 
+  /**
+   * ⚠️ IT ALWAYS RE-CALLS, even on a url that is still fresh. It used to return
+   * early and let the plain anchor navigate, which is one fewer round trip and
+   * means the download is never recorded — and on a sent release form, whether
+   * the thing was actually taken is the whole question being asked.
+   */
   const download = async (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (!file || Date.now() - fetchedAt.current < FRESH_MS) return
+    if (!file) return
     e.preventDefault()
-    const r = await openShare(code)
+    const r = await openShare(code, 'download')
     if ('error' in r) {
       setError(errorText(r.error))
       return
