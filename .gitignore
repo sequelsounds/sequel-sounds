@@ -21,3 +21,7 @@ npm-debug.log*
 # Built Lambda artefacts — the ffmpeg binary is ~80MB and is fetched, not stored
 lambda/**/ffmpeg-layer.zip
 lambda/**/function.zip
+
+~$*
+supabase/.temp/
+Claude outputs/
