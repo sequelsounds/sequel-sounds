@@ -36,9 +36,16 @@ function inline(text: string, keyBase: string): ReactNode[] {
     }
 
     if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      const inner = part.slice(1, -1)
+      // Only things that look like code get code styling. Coda backticks whole
+      // sentences when she quotes a refusal back — setting those in monospace
+      // makes one reply look like two different voices, so they render as the
+      // prose they are.
+      const looksLikeCode = inner.length <= 40 && inner.trim().split(/\s+/).length <= 3
+      if (!looksLikeCode) return <span key={key}>{inner}</span>
       return (
-        <code key={key} className="font-mono text-[0.75rem]">
-          {part.slice(1, -1)}
+        <code key={key} className="font-mono text-[0.9em] px-1 py-px rounded bg-black/[0.06]">
+          {inner}
         </code>
       )
     }

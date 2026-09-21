@@ -724,6 +724,53 @@ const ACTIONS: ActionDef[] = [
     },
   },
   {
+    name: 'create_user',
+    title: 'Create a person',
+    description:
+      'Add someone to the directory: staff, a client contact, an agency producer or a ' +
+      'supplier contact. Name, email and company are all required. The email is the login, ' +
+      'so it has to be right and cannot already belong to someone else, and the company has ' +
+      'to be a client we already have. `user_type`, `status` and `company` are given by ' +
+      'name, not by id — say "Adpro" and "Ogilvy London". Check the spelling of the ' +
+      'company with find first if you are unsure.\n\n' +
+      'Give a type and a status. Left out, they are left blank rather than defaulted, and a ' +
+      'person with no status cannot sign in — so ask which they are rather than guessing.\n\n' +
+      'Say plainly who you are about to create and wait for a yes. Creating a person is not ' +
+      'the same as inviting them: they exist and can sign in, and nobody emails them.',
+    requires: 'staff',
+    rpc: 'track_create_user',
+    schema: obj(
+      {
+        name: str('Their full name.'),
+        email: str('Their email address. This is how they sign in.'),
+        user_type: str(
+          'Who they are. Agency is an agency contact, Brand a client-side marketer, Adpro an ' +
+          'ad producer, Sequel or Admin our own staff, Freelance a contractor. Supplier ' +
+          'exists but nobody is one — suppliers are supplier records, not people who sign in.',
+        ),
+        status: str(
+          'Active (can sign in now), Pending (created, not yet let in), Blocked or Archived.',
+        ),
+        company: str(
+          'The client company they belong to, by name. Required. It has to match a client ' +
+          'we already have \u2014 find it first if you are unsure of the spelling.',
+        ),
+        job_title: str('Optional.'),
+        notes: str('Optional.'),
+      },
+      ['name', 'email', 'company'],
+    ),
+    say: (r, a, ctx) => {
+      const row = first(r)
+      if (!row) return 'Nothing was created.'
+      return (
+        `Created ${a.name} <${String(a.email).toLowerCase()}>\n` +
+        `${ctx.appBase}/users/${row.uuid}\n\n` +
+        'They can sign in as soon as their status is Active. No email has been sent to them.'
+      )
+    },
+  },
+  {
     name: 'create_song',
     title: 'Create a song',
     description:
