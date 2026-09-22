@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { useSession } from '../lib/auth'
 import { loginErrorMessage } from '../lib/authErrors'
 import { supabase } from '../lib/supabase'
@@ -15,7 +15,13 @@ export default function Login() {
   const codeInput = useRef<HTMLInputElement>(null)
 
   // Already signed in — nothing to do here.
-  if (session) return <Navigate to="/" replace />
+  // Somewhere we were sent from, if we were sent. Only a path is honoured:
+  // an absolute URL here would be an open redirect, which is exactly the trick
+  // a phishing link would want from a login page.
+  const [params] = useSearchParams()
+  const next = params.get('next')
+  const back = next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
+  if (session) return <Navigate to={back} replace />
 
   async function requestCode(e?: React.FormEvent) {
     e?.preventDefault()

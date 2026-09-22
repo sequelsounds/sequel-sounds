@@ -13,6 +13,7 @@ import Library from './routes/Library'
 import Login from './routes/Login'
 import Partner from './routes/Partner'
 import Partners from './routes/Partners'
+import Connect from './routes/Connect'
 import Playlists, { PlaylistRoute } from './routes/Playlists'
 import Roster from './routes/Roster'
 import RosterMember from './routes/RosterMember'
@@ -45,7 +46,14 @@ function RequireStaff({ children }: { children: React.ReactNode }) {
   const session = useSession()
   const staff = useIsStaff()
   if (session === undefined) return <LoadingModal />
-  if (session === null) return <Navigate to="/login" replace />
+  if (session === null) {
+    // Keep where they were headed. Claude sends people straight to /connect
+    // with the OAuth parameters in the query, and losing those to a login
+    // bounce means starting the whole connection again.
+    const here = window.location.pathname + window.location.search
+    const next = here === '/' ? '' : `?next=${encodeURIComponent(here)}`
+    return <Navigate to={`/login${next}`} replace />
+  }
   if (staff.isPending) return <LoadingModal />
   if (!staff.data) {
     // Signed in, but not on the allowlist — a viewer who found the staff URL.
@@ -102,6 +110,16 @@ export default function App() {
 
       {/* Staff */}
       <Route path="/login" element={<Login />} />
+      {/* Connecting an assistant: staff only, but standalone rather than
+          inside the app chrome — it is a decision, not a page. */}
+      <Route
+        path="/connect"
+        element={
+          <RequireStaff>
+            <Connect />
+          </RequireStaff>
+        }
+      />
       <Route
         element={
           <RequireStaff>

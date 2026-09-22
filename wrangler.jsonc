@@ -2,8 +2,13 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sequel-sounds",
   "compatibility_date": "2026-09-11",
+  // The Worker now runs in front of the assets: it serves the OAuth front door
+  // for the MCP server (see worker/index.ts) and falls through to the SPA for
+  // everything else.
+  "main": "worker/index.ts",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     // Every route except /inbox/:token and /p/:token is behind staff auth, and
     // all of them are client-side. Without this, a partner opening a share link
     // directly — which is the only way they ever arrive — gets a 404 instead of
