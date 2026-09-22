@@ -179,6 +179,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return
     }
     if (!currentKey) {
+      // Stop whatever was playing before. Leaving it running meant the bar
+      // named this track while play/pause drove the previous one.
+      el.pause()
+      el.removeAttribute('src')
       setState((s) => ({
         ...s,
         playing: false,
@@ -223,7 +227,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const play = useCallback(
     (queue: PlayerTrack[], index: number) => {
       const target = queue[index]
-      if (target && currentRef.current?.id === target.id) {
+      // Same track, same preview: a toggle. A track that has finished
+      // processing since it was queued arrives with a preview it did not
+      // have, so it is started fresh rather than toggled.
+      if (
+        target &&
+        currentRef.current?.id === target.id &&
+        currentRef.current?.preview_key === target.preview_key
+      ) {
         // Same track: treat as toggle rather than restart — and if it is a
         // film whose picture was dismissed, bring the picture back.
         const el = media()

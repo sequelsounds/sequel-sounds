@@ -353,6 +353,12 @@
     white-space: nowrap;
   }
 
+  /* Same height as the .kind-picker row above it. */
+  .btn-tool.btn-slim {
+    padding-top: 0.38rem;
+    padding-bottom: 0.38rem;
+  }
+
   .btn-tool.btn-outline {
     border-color: var(--color-sequel-brown);
     color: var(--color-sequel-brown);
@@ -586,6 +592,15 @@
      get the ellipsis on a long title; this one holds a menu that is wider
      than the column and opens below it, and hidden overflow left the panel
      showing as a blank sliver with the words cut off outside the cell. */
+  /* In the narrow list the details mark only shows on the row you are on. */
+  .row-actions-hover {
+    visibility: hidden;
+  }
+
+  .track-row:hover .row-actions-hover {
+    visibility: visible;
+  }
+
   .track-row td.actions-cell {
     overflow: visible;
   }
@@ -677,6 +692,13 @@
     cursor: grab;
   }
 
+  /* The playing row's tint sits before the hover rule, so hover still
+     inverts it. As a utility class it outranked hover, and the row went
+     silver-on-light and unreadable. */
+  .creator-track.is-playing {
+    background-color: var(--color-sequel-playing);
+  }
+
   .creator-track:hover {
     background-color: var(--color-sequel-brown);
     color: var(--color-sequel-silver);
@@ -686,6 +708,36 @@
   .creator-track:hover .pill {
     color: var(--color-sequel-silver);
     border-color: var(--color-sequel-silver);
+  }
+
+  /* A file still uploading: a track row with a progress bar along its foot. */
+  /* A section name is its own rename button: underlined on hover so it
+     reads as clickable. */
+  .section-name {
+    cursor: text;
+  }
+
+  .section-name:hover {
+    color: var(--color-sequel-ink);
+    text-decoration: underline;
+  }
+
+  .creator-upload {
+    position: relative;
+  }
+
+  /* Hover inverts it like any other row; the bar follows the text. */
+  .creator-upload:hover .creator-upload-bar {
+    background-color: var(--color-sequel-silver);
+  }
+
+  .creator-upload-bar {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    background-color: var(--color-sequel-brown);
+    transition: width 200ms linear;
   }
 
   .creator-track.is-over {
@@ -901,15 +953,11 @@
 
   .volume-line {
     width: 100%;
-    background-color: color-mix(
-      in srgb,
-      var(--color-sequel-silver) 35%,
-      transparent
-    );
+    background-color: var(--color-sequel-mid);
   }
 
   .volume-fill {
-    background-color: var(--color-sequel-silver);
+    background-color: var(--color-sequel-brown);
   }
 
   .volume-thumb {
@@ -919,11 +967,11 @@
     height: 10px;
     margin-left: -5px;
     margin-top: -5px;
-    background-color: var(--color-sequel-silver);
+    background-color: var(--color-sequel-brown);
   }
 
   .volume:focus-visible {
-    outline: 1px solid var(--color-sequel-silver);
+    outline: 1px solid var(--color-sequel-brown);
     outline-offset: 4px;
   }
 
@@ -2947,6 +2995,46 @@
 
   /* Shown, not hidden, and not clickable: these pages have not been rebuilt.
      Dimming them says so honestly; leaving them out would not. */
+  /* Studio's rail: the app's nav with the colours flipped, so it is always
+     clear which half you are in. */
+  .nav-sidebar.is-studio {
+    background-color: var(--color-sequel-brown);
+    border-right-color: var(--color-sequel-brown);
+  }
+
+  .nav-sidebar.is-studio .nav-link-app {
+    color: var(--color-sequel-silver);
+  }
+
+  .studio-recent {
+    margin-top: 2rem;
+    color: var(--color-sequel-silver);
+  }
+
+  .studio-recent-head {
+    margin-bottom: 1rem;
+    font-size: 0.7rem;
+    font-weight: 400;
+  }
+
+  .studio-recent-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--color-sequel-silver);
+    text-decoration: none;
+  }
+
+  .studio-recent-new {
+    width: 7px;
+    height: 7px;
+    flex: none;
+    background-color: var(--color-sequel-accent);
+  }
+
   .nav-link-app.is-unbuilt {
     opacity: 0.4;
     cursor: default;

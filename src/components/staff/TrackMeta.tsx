@@ -103,6 +103,12 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
   // edit made while it was still in flight.
   const touched = useRef<Set<string>>(new Set())
   const [writers, setWriters] = useState<Writer[]>([])
+  // Save only lights up once something has actually been changed.
+  const [dirty, setDirty] = useState(false)
+  const markDirtyWriters: typeof setWriters = (v) => {
+    setDirty(true)
+    setWriters(v)
+  }
   const [artKey, setArtKey] = useState<string | null>(track.artwork_s3_key)
   const [artPreview, setArtPreview] = useState<string | null>(null)
   const [artBusy, setArtBusy] = useState(false)
@@ -144,6 +150,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
 
   const set = (k: string, v: string) => {
     touched.current.add(k)
+    setDirty(true)
     setForm((f) => ({ ...f, [k]: v }))
   }
 
@@ -162,6 +169,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
       const signed = await signArtworkUpload(file, track.id, accessToken)
       await putToS3(signed.upload_url, file, () => {})
       setArtKey(signed.key)
+      setDirty(true)
       setArtPreview(URL.createObjectURL(file))
     } catch (err) {
       setArtError(err instanceof Error ? err.message : 'Could not upload that image.')
@@ -308,6 +316,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
                         title="Remove artwork"
                         onClick={() => {
                           setArtKey(null)
+                          setDirty(true)
                           setArtPreview(null)
                         }}
                         className={`absolute right-0 top-0 grid h-9 w-9 place-items-center text-[1.6rem] leading-none ${
@@ -436,7 +445,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
                         className={`${field} mt-2`}
                         value={String(w[k] ?? '')}
                         onChange={(e) =>
-                          setWriters((ws) =>
+                          markDirtyWriters((ws) =>
                             ws.map((x, j) => (j === i ? { ...x, [k]: e.target.value } : x)),
                           )
                         }
@@ -450,7 +459,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
                       className={`${field} mt-2`}
                       value={String(w.split ?? '')}
                       onChange={(e) =>
-                        setWriters((ws) =>
+                        markDirtyWriters((ws) =>
                           ws.map((x, j) => (j === i ? { ...x, split: e.target.value } : x)),
                         )
                       }
@@ -463,7 +472,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
                     // The same weight as the closes on the artwork and the
                     // header, so a × means the same size wherever it appears.
                     className="mb-0.5 grid h-9 w-9 place-items-center text-[1.6rem] leading-none"
-                    onClick={() => setWriters((ws) => ws.filter((_, j) => j !== i))}
+                    onClick={() => markDirtyWriters((ws) => ws.filter((_, j) => j !== i))}
                   >
                     ×
                   </button>
@@ -472,7 +481,7 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
               <button
                 type="button"
                 className="btn btn-tool btn-outline"
-                onClick={() => setWriters((ws) => [...ws, { name: '' }])}
+                onClick={() => markDirtyWriters((ws) => [...ws, { name: '' }])}
               >
                 Add writer
               </button>
@@ -531,12 +540,9 @@ export default function TrackMeta({ track, onClose, onPrev, onNext }: Props) {
           </button>
           <div className="flex shrink-0 items-center gap-3">
             {save.error && <span className="form-error">{save.error.message}</span>}
-            <button type="button" onClick={onClose} className="btn btn-tool btn-quiet">
-              Cancel
-            </button>
             <button
               type="submit"
-              disabled={save.isPending}
+              disabled={!dirty || save.isPending}
               className="btn btn-tool btn-dark"
             >
               {save.isPending ? 'Saving…' : 'Save'}

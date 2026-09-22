@@ -62,7 +62,7 @@ export default function Projects() {
                   <tr
                     key={p.id}
                     className="track-row cursor-pointer"
-                    onClick={() => navigate(`/projects/${p.id}`)}
+                    onClick={() => navigate(`/studio/${p.id}`)}
                   >
                     <td className="pl-7">
                       <span className="sentence-case font-sans">{p.name}</span>

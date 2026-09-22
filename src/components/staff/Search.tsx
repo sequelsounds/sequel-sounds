@@ -44,7 +44,7 @@ export default function Search() {
           {hits && hits.projects.length > 0 && (
             <Group title="Projects">
               {hits.projects.map((p) => (
-                <button key={p.id} type="button" onClick={() => go(`/projects/${p.id}`)}>
+                <button key={p.id} type="button" onClick={() => go(`/studio/${p.id}`)}>
                   {p.name}
                   {p.client_name && <span className="ml-2 text-sequel-mid">{p.client_name}</span>}
                 </button>
@@ -59,7 +59,7 @@ export default function Search() {
                   type="button"
                   onClick={() => {
                     creator.open(p.id)
-                    go(p.project_id ? `/projects/${p.project_id}?tab=playlists` : '/playlists')
+                    go(p.project_id ? `/studio/${p.project_id}` : '/playlists')
                   }}
                 >
                   {p.name}
@@ -75,7 +75,7 @@ export default function Search() {
                   type="button"
                   // A track uploaded into an unattached playlist has no project
                   // to open; the library is where it lives.
-                  onClick={() => go(t.project_id ? `/projects/${t.project_id}` : '/library')}
+                  onClick={() => go(t.project_id ? `/studio/${t.project_id}` : '/library')}
                 >
                   {t.title}
                   {t.artist && <span className="ml-2 text-sequel-mid">{t.artist}</span>}

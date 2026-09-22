@@ -20,7 +20,7 @@ export default function Playlists() {
 
   const openPlaylist = (p: PlaylistSummary) => {
     creator.open(p.id)
-    if (p.project_id) navigate(`/projects/${p.project_id}?tab=playlists`)
+    if (p.project_id) navigate(`/studio/${p.project_id}`)
   }
 
   const groups = new Map<string, { title: string; rows: PlaylistSummary[] }>()
@@ -135,7 +135,6 @@ export function PlaylistRows({
               <td className="secondary text-xs">
                 {[
                   p.video_track_id ? 'picture' : null,
-                  p.require_sign_in ? 'sign-in' : 'open link',
                   p.visible_to_client ? 'visible to client' : null,
                 ]
                   .filter(Boolean)
@@ -160,7 +159,7 @@ export function PlaylistRoute() {
     const p = playlists.data.find((x) => x.id === id)
     creator.open(id)
     navigate(
-      p?.project_id ? `/projects/${p.project_id}?tab=playlists` : '/playlists',
+      p?.project_id ? `/studio/${p.project_id}` : '/playlists',
       { replace: true },
     )
   }, [id, playlists.data, creator, navigate])

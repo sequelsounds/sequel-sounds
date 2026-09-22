@@ -5,7 +5,6 @@ import { toPlayerTrack, usePlayer, type PlayerTrack } from '../../lib/player'
 import { useDeleteTrack, type TrackWithUse } from '../../lib/queries'
 import Artwork from './Artwork'
 import {
-  GripIcon,
   InfoIcon,
   PauseIcon,
   PlayIcon,
@@ -45,12 +44,14 @@ export default function TrackTable({ tracks, lean = false }: Props) {
     <>
       <table className="track-table">
         <colgroup>
-          <col style={{ width: 34 }} />
-          <col style={{ width: 56 }} />
+          {/* 2rem row inset + the 40px cover. The title cell's own 10px left
+              padding is the gap, the same as in the Playlister. */}
+          <col style={{ width: 72 }} />
           <col />
           {/* Three 24px marks and two 14px gaps is 100, and the cell's own
               12px padding either side puts the column at 124. At 86 the
               first mark was clipped by the td's overflow. */}
+          {lean && <col style={{ width: 56 }} />}
           {!lean && <col style={{ width: 124 }} />}
           {!lean && <col style={{ width: 80 }} />}
         </colgroup>
@@ -118,11 +119,7 @@ function TrackRow({
       {...listeners}
       className={`track-row ${current ? 'is-playing' : ''} ${isDragging ? 'opacity-40' : ''}`}
     >
-      <td className="grip">
-        <span className="grip-glyph">
-          <GripIcon />
-        </span>
-      </td>
+      {/* No grip: the whole row drags, so the dots said nothing. */}
       <td className="pr-0!">
         {/* Pointerdown must not start a drag here, or the click never lands. */}
         <div className="art-wrap" onPointerDown={(e) => e.stopPropagation()}>
@@ -140,13 +137,31 @@ function TrackRow({
           </button>
         </div>
       </td>
-      <td>
+      <td className="pl-[10px]!">
         <div className="truncate">{track.title}</div>
         <div className="secondary mt-0.5 truncate text-xs">
           {secondary ||
             (track.processing_status !== 'ready' ? 'Processing…' : '')}
         </div>
       </td>
+      {lean && (
+        <td className="actions-cell">
+          <div className="row-actions row-actions-hover" onPointerDown={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Track details"
+              title="Track details"
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit()
+              }}
+            >
+              <InfoIcon />
+            </button>
+          </div>
+        </td>
+      )}
       {!lean && (
         <>
           <td className="actions-cell">

@@ -151,22 +151,12 @@ export default function TrackRows({
             }
             const own = comments.filter((c) => c.target_id === track.id)
             const downloads: { label: string; key: string; ext: string }[] = []
-            if (playlist.allow_download && track.preview_key) {
-              const ext = extOf(track.preview_key)
-              downloads.push({
-                label: ext.toUpperCase(),
-                key: track.preview_key,
-                ext,
-              })
-            }
-            if (
-              playlist.allow_download &&
-              playlist.allow_originals &&
-              track.s3_key
-            ) {
+            // Only ever the file as delivered. The compressed preview is for
+            // listening in the page and is never offered as a download.
+            if (playlist.allow_download && track.s3_key) {
               const ext = extOf(track.original_filename ?? track.s3_key)
               downloads.push({
-                label: `Original (${ext.toUpperCase()})`,
+                label: ext.toUpperCase(),
                 key: track.s3_key,
                 ext,
               })

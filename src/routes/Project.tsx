@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 import { Loader } from '../components/Loader'
 import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
 import { NewQuote } from '../components/staff/NewQuote'
@@ -88,7 +90,7 @@ const TABS = [
   'Assets',
   'Estimates',
   'Briefs',
-  'Creative',
+  'Music',
   'Invoicing',
   'Songs',
   'Contracting',
@@ -462,6 +464,23 @@ function briefState(b: Brief) {
   return b.status ?? ''
 }
 
+/** The project's Studio record, for the Music tab's OPEN STUDIO button. */
+function useStudioId(projectId: number) {
+  return useQuery({
+    queryKey: ['studio-id', projectId],
+    enabled: Number.isFinite(projectId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('projects_mirror')
+        .select('id')
+        .eq('xano_id', String(projectId))
+        .maybeSingle()
+      if (error) throw error
+      return data?.id ?? null
+    },
+  })
+}
+
 export default function Project() {
   const { id } = useParams()
   const projectId = Number(id)
@@ -481,6 +500,8 @@ export default function Project() {
   const files = useProjectFiles(projectId)
   const songs = useProjectSongs(projectId)
   const creative = useProjectCreativeLinks(projectId)
+  const studioId = useStudioId(projectId)
+  const navigate = useNavigate()
 
   // Staff see boxes, everyone else sees the page as it was. The gate that
   // counts is the update policy in the database, not this.
@@ -937,9 +958,13 @@ export default function Project() {
           <BriefViewModal brief={briefView} project={p} onClose={() => setBriefView(null)} />
         )}
 
-        {tab === 'Creative' && (
+        {tab === 'Music' && (
           <>
-            <PaneBar title="Creative" action="+ Creative Link" />
+            <PaneBar
+              title="Music"
+              action="Open Studio"
+              onAction={studioId.data ? () => navigate(`/studio/${studioId.data}`) : undefined}
+            />
             {/* Both minted by Studio when a project gets its upload inbox, so
                 neither is ours to type over. A project created in Track now
                 gets that inbox too — see the studio_record trigger. */}

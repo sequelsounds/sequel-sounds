@@ -14,6 +14,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { useMatch } from 'react-router-dom'
 import { useCreator } from '../../lib/creator'
 import type { Tables } from '../../lib/database.types'
@@ -43,12 +44,14 @@ import {
   MenuIcon,
   PauseIcon,
   PlayIcon,
+  InfoIcon,
   TrashIcon,
   UploadFileIcon,
 } from './icons'
 import Menu from './Menu'
 import Switch from './Switch'
 import ThemePanel from './ThemePanel'
+import TrackMeta from './TrackMeta'
 import { Loader } from '../Loader'
 
 type Section = Tables<'playlist_sections'>
@@ -145,7 +148,7 @@ function normalise(rows: Row[], sections: Section[]): Row[] {
 
 export default function Creator() {
   const { playlistId, open, setDropHandler } = useCreator()
-  const routeProjectId = useMatch('/projects/:id')?.params.id ?? null
+  const routeProjectId = useMatch('/studio/:id')?.params.id ?? null
   const playlist = usePlaylist(playlistId)
   const projectPlaylists = usePlaylists(routeProjectId ?? undefined)
   const actions = usePlaylistActions()
@@ -157,6 +160,9 @@ export default function Creator() {
   const [title, setTitle] = useState('')
   const [editing, setEditing] = useState(false)
   const [picking, setPicking] = useState(false)
+  const [newSection, setNewSection] = useState(false)
+  // The track whose details are open, by id so the list can step through.
+  const [metaId, setMetaId] = useState<string | null>(null)
   const [theming, setTheming] = useState(false)
   const [addingTracks, setAddingTracks] = useState(false)
   const [uploads, setUploads] = useState<Upload[]>([])
@@ -577,14 +583,21 @@ export default function Creator() {
     }
   }
 
-  const addSection = async () => {
+  // As DISCO does it: name the section and say where it goes, then it
+  // appears there. Top shifts the existing sections down one.
+  const addSection = async (name: string, where: 'top' | 'bottom') => {
     if (!data) return
+    if (where === 'top' && sections.length > 0) {
+      await actions.reorderSections.mutateAsync({
+        playlistId: data.id,
+        rows: sections.map((s, i) => ({ id: s.id, name: s.name, position: i + 1 })),
+      })
+    }
     await actions.addSection.mutateAsync({
       playlistId: data.id,
-      name: 'New section',
-      position: sections.length,
+      name,
+      position: where === 'top' ? 0 : sections.length,
     })
-    setEditing(true)
   }
 
   const moveSection = (section: Section, dir: -1 | 1) => {
@@ -630,7 +643,7 @@ export default function Creator() {
     },
     {
       label: 'Add section',
-      onSelect: () => void addSection(),
+      onSelect: () => setNewSection(true),
       disabled: !data,
     },
     {
@@ -888,40 +901,41 @@ export default function Creator() {
                         onDeleteTrack={() =>
                           row.track && removeTrack.mutate(row.track.id)
                         }
+                        onInfo={() => row.track && setMetaId(row.track.id)}
                       />
                     )
                   })}
                 </Fragment>
+              ))}
+              {/* Files on their way up, as rows in the list itself (the way
+                  DISCO does it): each one takes its place at the foot of the
+                  playlist and pushes the drop zone down, with its progress
+                  under the name and a bar along the bottom. */}
+              {uploads.map((u, i) => (
+                <div key={u.id} className="creator-track creator-upload cursor-default">
+                  <span className="secondary w-4 text-xs">{rows.length + i + 1}</span>
+                  <div className="art-wrap">
+                    <Artwork artworkKey={null} kind="audio" />
+                  </div>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{u.name}</span>
+                    <span className={`block truncate text-xs ${u.error ? 'form-error' : 'secondary'}`}>
+                      {u.error ? u.error : `Uploading ${u.progress}%`}
+                    </span>
+                  </span>
+                  {!u.error && (
+                    <span
+                      className="creator-upload-bar"
+                      style={{ width: `${u.progress}%` }}
+                    />
+                  )}
+                </div>
               ))}
               <EndDrop
                 empty={rows.length === 0}
                 onClick={() => fileInput.current?.click()}
               />
             </SortableContext>
-            {uploads.length > 0 && (
-              <ul className="border-t border-sequel-line px-[18px] py-2 text-[13px]">
-                {uploads.map((u) => (
-                  <li key={u.id} className="py-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="min-w-0 truncate">{u.name}</span>
-                      <span className="shrink-0 tabular-nums text-sequel-mid">
-                        {u.error ? 'failed' : `${u.progress}%`}
-                      </span>
-                    </div>
-                    {u.error ? (
-                      <p className="form-error">{u.error}</p>
-                    ) : (
-                      <div className="mt-1 h-[2px] bg-sequel-brown/15">
-                        <div
-                          className="h-full bg-sequel-brown transition-[width]"
-                          style={{ width: `${u.progress}%` }}
-                        />
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
             {notice && (
               <div className="px-[18px] py-2 text-[13px] text-sequel-mid">
                 {notice}
@@ -937,6 +951,38 @@ export default function Creator() {
               onPick={(t) => void addTrack(t)}
             />
           )}
+
+          {metaId &&
+            (() => {
+              const list = rows.flatMap((r) => (r.track ? [r.track] : []))
+              const i = list.findIndex((t) => t.id === metaId)
+              if (i < 0) return null
+              // Out to the page itself: inside the Playlister's column it sat
+              // under the column's own stacking, and the panel's handle showed
+              // through it.
+              return createPortal(
+                <TrackMeta
+                  key={metaId}
+                  track={list[i]}
+                  onClose={() => setMetaId(null)}
+                  onPrev={i > 0 ? () => setMetaId(list[i - 1].id) : undefined}
+                  onNext={i < list.length - 1 ? () => setMetaId(list[i + 1].id) : undefined}
+                />,
+                document.body,
+              )
+            })()}
+
+          {newSection &&
+            createPortal(
+              <NewSectionModal
+                onCancel={() => setNewSection(false)}
+                onCreate={(name, where) => {
+                  setNewSection(false)
+                  void addSection(name, where)
+                }}
+              />,
+              document.body,
+            )}
 
           {picking && (
             <PicturePicker
@@ -977,11 +1023,6 @@ export default function Creator() {
                     actions.updatePlaylist.mutate({
                       id: data.id,
                       kind: k.value,
-                      // A review is never an open link; the database
-                      // refuses the pair, so both change together.
-                      ...(k.value === 'composition'
-                        ? { require_sign_in: true }
-                        : {}),
                     })
                   }
                 >
@@ -991,27 +1032,27 @@ export default function Creator() {
             </div>
             <button
               type="button"
-              className="btn btn-tool btn-dark"
+              className="btn btn-tool btn-slim btn-dark"
               onClick={() => void share()}
             >
               {copied ? 'Copied' : 'Share'}
             </button>
             <button
               type="button"
-              className={`btn btn-tool ${theming ? 'btn-dark' : 'btn-outline'}`}
+              className={`btn btn-tool btn-slim ${theming ? 'btn-dark' : 'btn-outline'}`}
               onClick={() => setTheming((v) => !v)}
             >
               Theme
             </button>
             <button
               type="button"
-              className="btn btn-tool btn-outline"
+              className="btn btn-tool btn-slim btn-outline"
               onClick={() => setPicking((v) => !v)}
             >
               Add film
             </button>
             <a
-              className="btn btn-tool btn-quiet"
+              className="btn btn-tool btn-slim btn-quiet"
               href={`/p/${data.token}`}
               target="_blank"
               rel="noreferrer"
@@ -1032,27 +1073,6 @@ export default function Creator() {
               />
             </div>
             <div className="col-span-2 flex items-center justify-between text-[13px] text-sequel-mid">
-              <span>
-                Sign-in required
-                {data.kind === 'composition' && (
-                  <span className="ml-1 text-[11px]">
-                    (always, for a review)
-                  </span>
-                )}
-              </span>
-              <Switch
-                label="Sign-in required"
-                checked={data.require_sign_in}
-                disabled={data.kind === 'composition'}
-                onChange={(v) =>
-                  actions.updatePlaylist.mutate({
-                    id: data.id,
-                    require_sign_in: v,
-                  })
-                }
-              />
-            </div>
-            <div className="col-span-2 flex items-center justify-between text-[13px] text-sequel-mid">
               <span>Downloads</span>
               <Switch
                 label="Viewers can download"
@@ -1061,20 +1081,6 @@ export default function Creator() {
                   actions.updatePlaylist.mutate({
                     id: data.id,
                     allow_download: v,
-                  })
-                }
-              />
-            </div>
-            <div className="col-span-2 flex items-center justify-between text-[13px] text-sequel-mid">
-              <span>Original files too</span>
-              <Switch
-                label="Viewers can download the originals"
-                checked={data.allow_download && data.allow_originals}
-                disabled={!data.allow_download}
-                onChange={(v) =>
-                  actions.updatePlaylist.mutate({
-                    id: data.id,
-                    allow_originals: v,
                   })
                 }
               />
@@ -1103,9 +1109,84 @@ export default function Creator() {
 
 function SectionLabel({ name, count }: { name: string; count: number }) {
   return (
-    <div className="flex justify-between px-[18px] pb-1 pt-[10px] text-xs text-sequel-mid">
+    <div className="flex items-center gap-2 px-[18px] pb-1 pt-[10px] text-xs font-medium text-sequel-brown">
       <span>{name}</span>
-      <span>{count}</span>
+      <span className="ml-auto">{count}</span>
+      {/* Holds the place of a section's delete ×, so every count lines up. */}
+      <span aria-hidden="true" className="invisible px-1 text-lg leading-none">
+        ×
+      </span>
+    </div>
+  )
+}
+
+/** Name a new section and choose where it goes. */
+function NewSectionModal({
+  onCancel,
+  onCreate,
+}: {
+  onCancel: () => void
+  onCreate: (name: string, where: 'top' | 'bottom') => void
+}) {
+  const [name, setName] = useState('')
+  const [where, setWhere] = useState<'top' | 'bottom'>('top')
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onCancel])
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (name.trim()) onCreate(name.trim(), where)
+  }
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-sequel-brown/40 p-6"
+      onClick={onCancel}
+    >
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-label="New section"
+        onSubmit={submit}
+        onClick={(e) => e.stopPropagation()}
+        className="surface-light w-full max-w-[30rem] border border-sequel-line p-7 shadow-[0_10px_40px_rgba(55,43,41,0.25)]"
+      >
+        <h2 className="submission-title">New section</h2>
+        <label className="mt-5 block text-[0.8rem] text-sequel-mid" htmlFor="new-section-name">
+          Section name
+        </label>
+        <input
+          id="new-section-name"
+          autoFocus
+          className="field-boxed mt-2 w-full"
+          placeholder="Name your section"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <div className="mt-5 flex flex-col gap-3 text-[0.8rem]">
+          {(['top', 'bottom'] as const).map((w) => (
+            <label key={w} className="flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="new-section-where"
+                checked={where === w}
+                onChange={() => setWhere(w)}
+                className="accent-sequel-brown"
+              />
+              Insert at the {w} of the playlist
+            </label>
+          ))}
+        </div>
+        <div className="mt-7 flex justify-end gap-2">
+          <button type="button" className="btn btn-tool btn-quiet" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-tool btn-dark" disabled={!name.trim()}>
+            Create section
+          </button>
+        </div>
+      </form>
     </div>
   )
 }
@@ -1135,11 +1216,19 @@ function SectionHeader({
   })
   const [name, setName] = useState(section.name)
   useEffect(() => setName(section.name), [section.name])
+  // Click the name to rename it in place, without going into Edit all.
+  const [renaming, setRenaming] = useState(false)
+  const save = () => {
+    const next = name.trim()
+    if (next && next !== section.name) onRename(next)
+    else setName(section.name)
+    setRenaming(false)
+  }
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex items-center justify-between gap-2 px-[18px] pb-1 pt-[10px] text-xs text-sequel-mid ${
+      className={`group/section flex items-center justify-between gap-2 px-[18px] pb-1 pt-[10px] text-xs font-medium text-sequel-brown ${
         isOver ? 'bg-sequel-well' : ''
       }`}
     >
@@ -1183,8 +1272,44 @@ function SectionHeader({
         </>
       ) : (
         <>
-          <span>{section.name}</span>
-          <span>{count}</span>
+          {renaming ? (
+            <input
+              autoFocus
+              className="field-boxed min-w-0 flex-1 py-0.5! text-xs!"
+              value={name}
+              aria-label="Section name"
+              onChange={(e) => setName(e.target.value)}
+              onBlur={save}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur()
+                if (e.key === 'Escape') {
+                  setName(section.name)
+                  setRenaming(false)
+                }
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              className="section-name min-w-0 truncate text-left"
+              title="Click to rename"
+              onClick={() => setRenaming(true)}
+            >
+              {section.name}
+            </button>
+          )}
+          <span className="ml-auto">{count}</span>
+          {/* Deleting a section keeps its tracks: they drop out of the
+              section, not out of the playlist. */}
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label="Delete section"
+            title="Delete section (keeps its tracks)"
+            className="invisible px-1 text-lg leading-none text-sequel-brown group-hover/section:visible"
+          >
+            ×
+          </button>
         </>
       )}
     </div>
@@ -1199,6 +1324,7 @@ function CreatorTrack({
   onPlay,
   onRemove,
   onDeleteTrack,
+  onInfo,
 }: {
   row: Row
   number: number
@@ -1207,6 +1333,7 @@ function CreatorTrack({
   onPlay: () => void
   onRemove: () => void
   onDeleteTrack: () => void
+  onInfo: () => void
 }) {
   const {
     attributes,
@@ -1229,7 +1356,7 @@ function CreatorTrack({
       {...listeners}
       onClick={onPlay}
       className={`creator-track group/row ${isOver ? 'is-over' : ''} ${isDragging ? 'opacity-40' : ''} ${
-        playing ? 'is-playing bg-sequel-playing' : ''
+        playing ? 'is-playing' : ''
       }`}
     >
       <span className="secondary w-4 text-xs">{number}</span>
@@ -1254,7 +1381,14 @@ function CreatorTrack({
       {/* No "video" tag: the artwork block already renders brown for a film,
           so the label said the same thing a second time, on the rows with
           the least width to spare. */}
-      <span className="flex-1 truncate">{track?.title ?? 'Missing track'}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{track?.title ?? 'Missing track'}</span>
+        {track && track.processing_status !== 'ready' && (
+          <span className="secondary block truncate text-xs">
+            {track.processing_status === 'failed' ? 'Could not process' : 'Processing…'}
+          </span>
+        )}
+      </span>
       {/* One control per state, not two side by side. Taking a track out of
           a list is curation, which is what Edit all is for and where the ×
           has always lived. Deleting the track is the thing you reach for
@@ -1275,18 +1409,34 @@ function CreatorTrack({
         </button>
       ) : (
         track && (
-          <button
-            type="button"
-            aria-label="Delete track"
-            title="Delete the track itself"
-            className="icon-btn hidden shrink-0 group-hover/row:grid"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDeleteTrack()
-            }}
-          >
-            <TrashIcon />
-          </button>
+          <span className="hidden shrink-0 items-center gap-3 group-hover/row:flex">
+            <button
+              type="button"
+              aria-label="Track details"
+              title="Track details"
+              className="icon-btn"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                onInfo()
+              }}
+            >
+              <InfoIcon />
+            </button>
+            <button
+              type="button"
+              aria-label="Delete track"
+              title="Delete the track itself"
+              className="icon-btn"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteTrack()
+              }}
+            >
+              <TrashIcon />
+            </button>
+          </span>
         )
       )}
     </div>

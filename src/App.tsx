@@ -15,6 +15,8 @@ import Partner from './routes/Partner'
 import Partners from './routes/Partners'
 import Connect from './routes/Connect'
 import Playlists, { PlaylistRoute } from './routes/Playlists'
+import StudioProject from './routes/StudioProject'
+import StudioProjects from './routes/StudioProjects'
 import Roster from './routes/Roster'
 import RosterMember from './routes/RosterMember'
 import Song from './routes/Song'
@@ -154,6 +156,10 @@ export default function App() {
         <Route path="/invoices" element={<Finance />} />
         <Route path="/invoices/:uuid" element={<Invoice />} />
         <Route path="/reporting" element={<Reporting />} />
+        {/* A project's Studio page: its inbox submissions and playlists. It
+            lived at /projects/:id until the project page took that address. */}
+        <Route path="/studio" element={<StudioProjects />} />
+        <Route path="/studio/:id" element={<StudioProject />} />
         <Route path="/playlists" element={<Playlists />} />
         <Route path="/playlists/:id" element={<PlaylistRoute />} />
         <Route path="/library" element={<Library />} />

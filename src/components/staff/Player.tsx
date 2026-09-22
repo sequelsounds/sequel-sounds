@@ -21,7 +21,7 @@ export default function Player() {
 
   return (
     <footer
-      className="col-start-1 col-span-3 row-start-3 grid items-center gap-[18px] bg-sequel-brown px-[22px] text-sequel-silver"
+      className="col-start-1 col-span-3 row-start-3 grid items-center gap-[18px] bg-sequel-white px-[22px] text-sequel-brown"
       style={{
         gridTemplateColumns: '44px minmax(120px, 300px) 1fr 100px auto',
       }}
@@ -31,7 +31,7 @@ export default function Player() {
         onClick={player.toggle}
         disabled={!player.current}
         aria-label={player.playing ? 'Pause' : 'Play'}
-        className="grid h-[34px] w-[34px] place-items-center bg-sequel-silver text-sequel-brown disabled:opacity-40"
+        className="grid h-[34px] w-[34px] place-items-center bg-sequel-brown text-sequel-silver disabled:opacity-40"
       >
         {player.playing ? <PauseIcon /> : <PlayIcon />}
       </button>
@@ -40,7 +40,7 @@ export default function Player() {
           <div className="truncate">
             {player.current?.title ?? 'Nothing playing'}
           </div>
-          <div className="truncate text-xs font-light text-sequel-silver">
+          <div className="truncate text-xs font-light text-sequel-brown">
             {player.error ? (
               <span className="text-sequel-error">{player.error}</span>
             ) : (
@@ -53,7 +53,7 @@ export default function Player() {
         {player.current?.kind === 'video' && !player.filmOpen && (
           <button
             type="button"
-            className="icon-btn shrink-0 text-sequel-silver"
+            className="icon-btn shrink-0 text-sequel-brown"
             aria-label="Show the film"
             title="Show the film"
             onClick={player.openFilm}
@@ -66,8 +66,10 @@ export default function Player() {
         peaks={peaks ?? null}
         progress={duration > 0 ? Math.min(1, player.position / duration) : 0}
         onSeek={(fraction) => player.seek(fraction * duration)}
+        played="#372b29"
+        unplayed="#8b8a86"
       />
-      <div className="text-right font-light text-sequel-silver tabular-nums">
+      <div className="text-right font-light text-sequel-brown tabular-nums">
         {formatDuration(player.position)} / {formatDuration(duration)}
       </div>
       <div className="flex items-center justify-end gap-4">

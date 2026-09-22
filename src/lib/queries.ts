@@ -115,10 +115,23 @@ export function useProject(id: string | undefined) {
   })
 }
 
+/**
+ * While any track in the result is still processing, look again every few
+ * seconds, so "Processing…" clears by itself when the preview is ready.
+ * Stops as soon as everything is ready.
+ */
+const POLL_MS = 1000
+function pollWhileProcessing(tracks: { processing_status: string | null }[] | undefined) {
+  return tracks?.some((t) => t.processing_status !== 'ready' && t.processing_status !== 'failed')
+    ? POLL_MS
+    : false
+}
+
 export function useProjectTracks(projectId: string | null | undefined) {
   return useQuery({
     queryKey: ['tracks', 'project', projectId],
     enabled: !!projectId,
+    refetchInterval: (q) => pollWhileProcessing(q.state.data),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tracks')
@@ -140,6 +153,7 @@ export function useLibraryTracks(search: string) {
   const term = safeTerm(search)
   return useQuery({
     queryKey: ['tracks', 'library', term],
+    refetchInterval: (q) => pollWhileProcessing(q.state.data),
     queryFn: async () => {
       let query = supabase
         .from('tracks')
@@ -237,6 +251,10 @@ export function usePlaylist(id: string | null) {
   return useQuery({
     queryKey: ['playlist', id],
     enabled: !!id,
+    refetchInterval: (q) =>
+      pollWhileProcessing(
+        q.state.data?.playlist_tracks?.flatMap((r) => (r.tracks ? [r.tracks] : [])),
+      ),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('playlists')

@@ -17,7 +17,6 @@ import {
   useRecordVisit,
   useDeleteSubmission,
 } from '../lib/queries'
-import { trackProjectUrl } from '../lib/track'
 
 /**
  * The tracks in a drop that a delete may touch: the ones nothing is using
@@ -161,7 +160,8 @@ export default function Project() {
 
   const title = project.data?.name ?? ''
   const sequelNo = project.data?.sequel_no ?? ''
-  const trackUrl = trackProjectUrl(project.data?.xano_uuid ?? null)
+  // The title goes back to this project in the app.
+  const trackUrl = project.data?.xano_id ? `/projects/${project.data.xano_id}` : null
 
   /**
    * A drop has no playlist of its own to edit, so the pencil makes one —
@@ -210,9 +210,7 @@ export default function Project() {
             {trackUrl ? (
               <a
                 href={trackUrl}
-                target="_blank"
-                rel="noreferrer"
-                title="Open this project in Sequel Track"
+                title="Open this project in the app"
               >
                 {title}
               </a>
