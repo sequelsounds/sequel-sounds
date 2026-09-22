@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatDuration } from '../../lib/format'
 import { peaksFromUrl } from '../../lib/peaks'
-import { PauseIcon, PlayIcon } from '../staff/icons'
+import { PauseIcon, PlayIcon, VolumeIcon, VolumeMuteIcon } from '../staff/icons'
 import VolumeSlider from '../staff/VolumeSlider'
 import Waveform from '../staff/Waveform'
 
@@ -21,31 +21,10 @@ import Waveform from '../staff/Waveform'
  * pause; double-click, or the bar's last button, for full screen, which takes
  * the bar with it.
  */
-/**
- * The volume mark: a solid speaker, square-cut like the play button, with
- * sound waves that follow the level — Andy, 16 Sep (three rising bars were
- * tried and rejected: it stays a speaker). Local to this page.
- */
+/** The volume mark: the shared speaker — one wave when quiet, two when louder, a cross when muted. */
 function Speaker({ muted, level }: { muted: boolean; level: number }) {
-  // One arc when quiet, two when louder, a cross when muted.
-  const waves = muted || level <= 0 ? 0 : level < 0.5 ? 1 : 2
-  return (
-    <svg
-      width="1rem"
-      height="1rem"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="square"
-      aria-hidden="true"
-    >
-      <path d="M4 9h3.5L12 5v14l-4.5-4H4z" fill="currentColor" stroke="none" />
-      {waves === 0 && <path d="m16 10 4 4m0-4-4 4" />}
-      {waves >= 1 && <path d="M15.5 9.5a3.5 3.5 0 0 1 0 5" />}
-      {waves >= 2 && <path d="M18 7a7 7 0 0 1 0 10" />}
-    </svg>
-  )
+  if (muted || level <= 0) return <VolumeMuteIcon size="1.1rem" />
+  return <VolumeIcon size="1.1rem" waves={level < 0.5 ? 1 : 2} />
 }
 
 function FullscreenIcon({ on }: { on: boolean }) {

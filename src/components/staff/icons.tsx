@@ -220,12 +220,23 @@ export function ImageIcon(props: IconProps) {
   )
 }
 
-export function VolumeIcon(props: IconProps) {
+/**
+ * The speaker every player uses: one rounded outline (box and cone, no dividing line),
+ * and sound waves (Andy, 22 Sep, from a reference image). `waves` is 2 by
+ * default; the shared-file page passes 1 when quiet. Muted draws a cross.
+ */
+// 1px on screen at the players' 1.1rem (17.6px): 24 / 17.6.
+const SPEAKER_STROKE = 1.36
+const SPEAKER = 'M4.3 9H7l3.8-3.4Q12 4.6 12 6.1v11.8q0 1.5-1.2.5L7 15H4.3Q3 15 3 13.7v-3.4Q3 9 4.3 9Z'
+
+export function VolumeIcon({ waves = 2, ...props }: IconProps & { waves?: 1 | 2 }) {
   return (
     <Svg {...props}>
-      <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4Z" />
-      <path d="M16 9.5a4 4 0 0 1 0 5" />
-      <path d="M18.5 7a7.5 7.5 0 0 1 0 10" />
+      <g strokeWidth={SPEAKER_STROKE}>
+      <path d={SPEAKER} />
+      <path d="M15 9.8a3.1 3.1 0 0 1 0 4.4" />
+      {waves === 2 && <path d="M17.4 8.3a5.2 5.2 0 0 1 0 7.4" />}
+      </g>
     </Svg>
   )
 }
@@ -233,9 +244,11 @@ export function VolumeIcon(props: IconProps) {
 export function VolumeMuteIcon(props: IconProps) {
   return (
     <Svg {...props}>
-      <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4Z" />
-      <path d="m16 9.5 5 5" />
-      <path d="m21 9.5-5 5" />
+      <g strokeWidth={SPEAKER_STROKE}>
+      <path d={SPEAKER} />
+      <path d="m15.5 10 4 4" />
+      <path d="m19.5 10-4 4" />
+      </g>
     </Svg>
   )
 }
