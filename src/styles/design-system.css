@@ -1839,9 +1839,17 @@
     border-bottom: 1px solid var(--color-sequel-line);
   }
 
+  /* The label sits low in the strip rather than centred in it: the tabs read
+     as sitting ON the rule beneath them. `flex-end` plus the padding puts the
+     bottom of the line box 8px above the tab's own edge, two pixels lower than
+     centring gave. */
   .project-tab {
+    position: relative;
+    display: flex;
     height: 100%;
-    padding: 0 1rem;
+    padding: 0 1rem 8px;
+    align-items: flex-end;
+    justify-content: center;
     border: none;
     border-bottom: 1px solid transparent;
     background: none;
@@ -1854,8 +1862,18 @@
     cursor: pointer;
   }
 
-  .project-tab[aria-selected='true'] {
-    border-bottom-color: var(--color-sequel-brown);
+  /* The current tab's mark is 3px and straddles the strip's own rule: one
+     pixel above it, one on it, one below. A border cannot do that - it stops
+     at the tab's edge - so it is drawn as a bar hung 2px below that edge,
+     which puts its three pixels either side of the 1px rule. */
+  .project-tab[aria-selected='true']::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: -2px;
+    left: 0;
+    height: 3px;
+    background-color: var(--color-sequel-brown);
   }
 
   /* ------------------------------------------------------------ the pane bar
@@ -2014,6 +2032,7 @@
   .edit-field-input:focus-visible {
     outline: none;
     border-color: var(--color-sequel-brown);
+    color: var(--color-sequel-brown);
   }
 
   /* Label on the left, what just happened to this field on the right. The row

@@ -1133,11 +1133,18 @@ export default function Project() {
           <>
             <PaneBar title="NOTES" />
             <Form>
-              <TextField label="Notes" value={p.notes} column="notes" textarea edit={edit} save={save} />
               <TextField
-                label="Notes or Request"
+                label="Client Notes"
                 value={p.notes_or_request}
                 column="notesorrequest"
+                textarea
+                edit={edit}
+                save={save}
+              />
+              <TextField
+                label="Internal (Private) Notes"
+                value={p.notes}
+                column="notes"
                 textarea
                 edit={edit}
                 save={save}
