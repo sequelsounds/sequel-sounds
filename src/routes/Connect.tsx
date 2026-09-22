@@ -63,7 +63,7 @@ export default function Connect() {
       p_client_id: clientId,
       p_redirect_uri: redirectUri,
       p_code_challenge: challenge,
-      p_scope: scope,
+      p_scope: scope ?? undefined,
     })
     if (error || !data) {
       setBusy(false)
