@@ -38,6 +38,7 @@ const PHRASES: Record<string, string> = {
   create_song: 'Creating a song',
   request_brief: 'Requesting a brief',
   set_invoice_status: 'Changing an invoice',
+  create_invoice_draft: 'Drafting an invoice',
   update_invoice: 'Updating an invoice',
   update_invoice_line: 'Updating an invoice line',
   save_contract: 'Saving a contract',

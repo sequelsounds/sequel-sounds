@@ -960,6 +960,83 @@ const ACTIONS: ActionDef[] = [
     say: (_r, a) => `Invoice ${a.invoice_id} is now ${a.status}.`,
   },
   {
+    name: 'create_invoice_draft',
+    title: 'Draft an invoice',
+    description:
+      'Create an invoice REQUEST on a project, for a person to review in the app — status ' +
+      'Submitted, never raised: nothing goes to QuickBooks or the client. The same path as the ' +
+      "app's invoice request form. Build it from the project's accepted quote and the client's " +
+      'PO: find the project, read its quotes (quote_detail, quote_lines — minor units, divide ' +
+      'by 100) and an earlier invoice on the project for the client and currency ids. Sequel ' +
+      'fees go in `fees`; third-party costs go in `lines`. A library licence, for example, is ' +
+      'one line (supplier MCPS, id 117, category "Library Master", paythrough true) plus the ' +
+      'Sequel cut in fees.master_sequel_licence_fee. If the PO total and the quote differ, ' +
+      'say so and ask which to use. The totals are computed by the database. Say what you are ' +
+      'about to create and wait for a yes.',
+    requires: 'staff',
+    rpc: 'track_create_invoice_request',
+    schema: obj(
+      {
+        project_id: int('The project (project_list id).'),
+        client_id: int('The client being billed (client_list id) — the company on the PO.'),
+        currency_id: int(
+          "The currency id — quote_currency on the project's quote, or currency_id on an " +
+            'earlier invoice to the same client.',
+        ),
+        description: str('What is being invoiced, e.g. "Library music licence: Mozart, Queen of the Night".'),
+        po_number: str("Optional. The client's PO number, exactly as on the PO."),
+        song_name: str('Optional.'),
+        artist_name: str('Optional.'),
+        usage_territories: str('Optional. Where it is licensed, e.g. "Indonesia".'),
+        usage_region: {
+          type: 'string',
+          enum: [
+            'Africa', 'Asia', 'Europe', 'Global', 'Latin America',
+            'NAMET & RUB', 'North America', 'North Asia', 'SEAA', 'South Asia',
+          ],
+          description: 'Optional. The usage region.',
+        },
+        fees: obj({
+          sequel_demo_fee: num('Optional.'),
+          demo_contingency_fee: num('Optional.'),
+          sequel_search_fee: num('Optional.'),
+          search_contingency_fee: num('Optional.'),
+          master_sequel_licence_fee: num('Optional. Sequel licence fee on the master / library track.'),
+          master_sequel_studios_fee: num('Optional.'),
+          publishing_sequel_licence_fee: num('Optional.'),
+          publishing_sequel_studios_fee: num('Optional.'),
+          sequel_consultancy_fee: num('Optional. "Other fees".'),
+        }),
+        lines: {
+          type: 'array',
+          description: 'Third-party costs, one per supplier. Major units (e.g. 8241.75).',
+          items: obj(
+            {
+              supplier_id: int('The supplier (partner_list / roster_list id).'),
+              amount: num('The amount, in the invoice currency.'),
+              category: {
+                type: 'string',
+                enum: ['Demos', 'Searches', 'Library Master', 'Publishing', 'Other Fees'],
+                description: 'The line category.',
+              },
+              is_paythrough: bool('True if the client pays this cost through Sequel (it is on the invoice).'),
+            },
+            ['supplier_id', 'amount', 'category', 'is_paythrough'],
+          ),
+        },
+      },
+      ['project_id', 'client_id', 'currency_id', 'description'],
+    ),
+    say: (r, _a, ctx) => {
+      const row = first(r)
+      if (!row) return 'Nothing was created.'
+      return (
+        `Draft invoice request ${row.id} created (status Submitted — not raised, nothing sent).\n` +
+        `${ctx.appBase}/invoices/${row.uuid}`
+      )
+    },
+  },
+  {
     name: 'update_invoice',
     title: 'Edit an invoice',
     description:
