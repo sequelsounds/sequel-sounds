@@ -172,11 +172,19 @@ export async function requestInvoice(
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { error: `\u201c${to}\u201d is not an email address.`, status: 400 }
   if (row.status === 'attached') return { error: 'This bill already has its invoice.', status: 409 }
   const key = Deno.env.get('RESEND_API_KEY')
-  const template = Deno.env.get('SUPPLIER_INVOICE_TEMPLATE_ID')
+  // Resend template "Invoice Submission" (published 23 Sep). The secret can
+  // override it to try a redesign without a deploy.
+  const template = Deno.env.get('SUPPLIER_INVOICE_TEMPLATE_ID') ?? '7e0ffbf9-c83e-4ab6-97d1-15e3f0e39c77'
   if (!key) return { error: 'Email is not configured on the server (RESEND_API_KEY).', status: 500 }
   if (!template) return { error: 'The invoice request email template is not set up yet (SUPPLIER_INVOICE_TEMPLATE_ID).', status: 500 }
 
-  const { data: greeting } = await admin.rpc('track_greeting_for_email', { p_email: to })
+  // "Hi Overcoast," — the supplier's name in the app, else QuickBooks' without
+  // its currency suffix; and the brand and project the invoice is for.
+  const company = (await suggestedRecipient(admin, row))?.supplier || stripCurrency(row.vendor_name ?? '') || 'there'
+  const { data: project } = row.project_id
+    ? await admin.schema('xano_mirror').from('project_master_list').select('brand, title').eq('id', row.project_id).maybeSingle()
+    : { data: null }
+  const p = project as { brand: string | null; title: string | null } | null
   const cleanName = caller.name.replace(/[\r\n"<>,;:]/g, '').trim()
   const from = cleanName ? `${cleanName} \u2014 Sequel <${SENDER}>` : `Sequel <${SENDER}>`
   const mine = caller.email.includes('@') ? caller.email : ''
@@ -197,11 +205,14 @@ export async function requestInvoice(
         // which is what we want rather than a request with a blank PO.
         template: {
           id: template,
+          // Andy's wording, 23 Sep: "Hi [company], it's time to send us your
+          // invoice for the recent [brand] – [project] project…"
           variables: {
-            greeting: typeof greeting === 'string' && greeting ? greeting : 'Hi there,',
+            company_name: company,
+            brand: (p?.brand ?? '').trim(),
+            project_name: (p?.title ?? '').trim(),
             po_number: po,
             sequel_no: row.project_sequel_no ?? '',
-            amount: money(num(row.total), row.currency),
             upload_url: `${appBase}/bill-upload/${row.token}`,
           },
         },
