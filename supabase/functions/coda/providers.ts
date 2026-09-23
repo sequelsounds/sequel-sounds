@@ -41,6 +41,9 @@ export type Provider = {
   userTurn: (text: string) => unknown
 }
 
+/** Added to a reply the length cap cut short, so it never looks finished. */
+const CUT_OFF = '\n\n(I ran out of room there. Ask me to carry on.)'
+
 class ModelError extends Error {
   constructor(public status: number, message: string) {
     super(message)
@@ -122,8 +125,12 @@ const anthropic: Provider = {
     // deno-lint-ignore no-explicit-any
     const content: any[] = body.content ?? []
 
+    const said = content.filter((b) => b.type === 'text' && b.text).map((b) => b.text as string)
+    // Cut off by the cap: say so, rather than stop mid-word as if finished.
+    if (body.stop_reason === 'max_tokens' && said.length) said[said.length - 1] += CUT_OFF
+
     return {
-      text: content.filter((b) => b.type === 'text' && b.text).map((b) => b.text as string),
+      text: said,
       calls: content
         .filter((b) => b.type === 'tool_use')
         .map((b) => ({ id: b.id, name: b.name, args: (b.input ?? {}) as Record<string, unknown> })),
@@ -242,9 +249,9 @@ const gemini: Provider = {
             },
           ],
           toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
-          // Temperature 0 for the same reason the other Gemini calls in this
-          // repo use it: this is retrieval and tool choice, not writing.
-          generationConfig: { temperature: 0, maxOutputTokens: maxTokens },
+          // No temperature: Google deprecated the sampling parameters on the
+          // Gemini 3 models (21 Jul 2026).
+          generationConfig: { maxOutputTokens: maxTokens },
         }),
       },
     )
@@ -264,8 +271,14 @@ const gemini: Provider = {
       throw new ModelError(200, `The model returned nothing (${why}).`)
     }
 
+    // Thought parts are the model's working, never shown.
+    const said = parts
+      .filter((p) => typeof p.text === 'string' && p.text && !p.thought)
+      .map((p) => p.text as string)
+    if (candidate?.finishReason === 'MAX_TOKENS' && said.length) said[said.length - 1] += CUT_OFF
+
     return {
-      text: parts.filter((p) => typeof p.text === 'string' && p.text).map((p) => p.text as string),
+      text: said,
       calls: parts
         .filter((p) => p.functionCall)
         .map((p, i) => ({

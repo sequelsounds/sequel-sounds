@@ -27,11 +27,13 @@ const PHRASES: Record<string, string> = {
   describe_data: 'Checking what data there is',
   find: 'Searching',
   list_records: 'Reading records',
+  totals: 'Adding up',
   get_record: 'Reading a record',
   report: 'Running a report',
   update_record: 'Saving a change',
   create_supplier: 'Creating a supplier',
   create_project: 'Creating a project',
+  create_user: 'Adding a person',
   create_quote: 'Creating a quote',
   create_song: 'Creating a song',
   request_brief: 'Requesting a brief',
@@ -44,7 +46,9 @@ const PHRASES: Record<string, string> = {
 }
 
 export function phraseFor(name: string): string {
-  return PHRASES[name] ?? name.replace(/_/g, ' ')
+  if (PHRASES[name]) return PHRASES[name]
+  const words = name.replace(/_/g, ' ')
+  return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
 /**
@@ -187,8 +191,11 @@ export function useCoda() {
           } else if (e.type === 'tool_result') {
             const run = [...tools].reverse().find((t) => t.name === e.name && t.ok === undefined)
             if (run) run.ok = Boolean(e.ok)
-            setDoing(null)
+            // Left up on purpose. A tool takes well under a second; the model
+            // reading its result takes several. Clearing here flashed the
+            // phrase and went straight back to "Thinking" (Andy, 23 Sep).
           } else if (e.type === 'text') {
+            setDoing(null)
             answer += (answer ? '\n\n' : '') + String(e.text)
           } else if (e.type === 'error') {
             fail(String(e.text))

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { phraseFor, useCoda } from '../../lib/coda'
+import { useCoda } from '../../lib/coda'
 import CodaMarkdown from '../../lib/codaMarkdown'
 
 /**
@@ -176,8 +176,9 @@ export default function Coda() {
                   <rect width="20" height="20" fill="currentColor" className="coda-thinking-mark" />
                 </svg>
               </div>
-              <span className="font-mono text-[0.65rem] text-sequel-brown uppercase">
-                {doing ? phraseFor(doing) : 'Thinking'}
+              {/* Her reply size and case, in the app's grey so it reads as a status, not a message. */}
+              <span className="text-[0.8rem] leading-[1.4] text-sequel-mid">
+                {doing ?? 'Thinking'}…
               </span>
             </div>
           )}

@@ -18,7 +18,11 @@ import { callTool } from './runtime.ts'
 import { toolsFor, type Ctx } from './tools.ts'
 
 const MAX_STEPS = 16
-const MAX_TOKENS = 4096
+// Room for the answer AND, on Gemini 3, the hidden thinking, which is billed
+// against the same cap. At 4096 long answers stopped mid-sentence (23 Sep).
+// Only what is actually written is paid for, so a high cap costs nothing on a
+// short reply.
+const MAX_TOKENS = 16384
 const DEFAULT_MODEL = 'claude-sonnet-5'
 const DEFAULT_PROVIDER = 'anthropic'
 
@@ -113,6 +117,20 @@ function situation(ctx: Ctx, page: string | null): string {
   ]
     .filter(Boolean)
     .join('\n')
+}
+
+/**
+ * Coda's whole briefing — her instructions, the resource list and who she is
+ * talking to — for the MCP server to hand Claude on the desktop.
+ *
+ * ⚠️ ONE SOURCE, TWO DOORS. Until 23 Sep the MCP server sent a fixed paragraph
+ * instead, so a rule taught to Coda (the numbers rule, say) never reached the
+ * connector, and Claude guessed column names she already had. Teach Coda by
+ * editing her prompt row; both doors read it.
+ */
+export async function briefing(ctx: Ctx): Promise<string[]> {
+  const { prompt } = await settings(ctx)
+  return [prompt, await catalogue(ctx), situation(ctx, null)].filter(Boolean)
 }
 
 /**

@@ -14,6 +14,7 @@
 // database decides. Adding a tool can never widen what someone may do.
 import { callTool, ctxFor, type Caller } from './runtime.ts'
 import { toolsFor } from './tools.ts'
+import { briefing } from './agent.ts'
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 
 const SERVER_NAME = 'sequel'
@@ -21,6 +22,34 @@ const SERVER_VERSION = '1.0.0'
 const PROTOCOL_VERSION = '2025-06-18'
 
 type Id = string | number | null
+
+const FALLBACK =
+  'Sequel Track — the music supervision platform for Sequel Sounds. Start with ' +
+  'describe_data to see what is readable and find to turn a name into a record. ' +
+  'Everything runs as the signed-in person, so a refusal is a real permission ' +
+  'boundary, not a bug. References like the Sequel No. are allocated by the ' +
+  'database, never supplied.'
+
+/**
+ * The same briefing Coda gets in the app, so anything taught to her reaches
+ * Claude on the desktop too. Her prompt is written for the in-app panel, so a
+ * line up front says which parts do not apply here.
+ */
+async function instructionsFor(sb: SupabaseClient, caller: Caller): Promise<string> {
+  try {
+    const parts = await briefing(ctxFor(sb, caller.who))
+    return [
+      'These are the instructions Sequel gives Coda, its in-app assistant. You are ' +
+        'reaching the same tools from Claude on the desktop rather than from inside ' +
+        'the app: you are not Coda and there is no page open, but every rule below ' +
+        'about using the tools, writes, numbers and permissions applies to you.',
+      ...parts,
+    ].join('\n\n')
+  } catch (e) {
+    console.error('mcp instructions', e instanceof Error ? e.message : String(e))
+    return FALLBACK
+  }
+}
 
 export async function handleMcp(
   body: Record<string, unknown>,
@@ -47,12 +76,7 @@ export async function handleMcp(
             : PROTOCOL_VERSION,
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
-        instructions:
-          'Sequel Track — the music supervision platform for Sequel Sounds. Start with ' +
-          'describe_data to see what is readable and find to turn a name into a record. ' +
-          'Everything runs as the signed-in person, so a refusal is a real permission ' +
-          'boundary, not a bug. References like the Sequel No. are allocated by the ' +
-          'database, never supplied.',
+        instructions: await instructionsFor(sb, caller),
       })
     }
 

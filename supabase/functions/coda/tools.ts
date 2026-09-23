@@ -310,31 +310,152 @@ const find: Tool = {
 
 const OPS = ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'in', 'is'] as const
 
+/** The filter list list_records and totals share. A string back is a refusal. */
+// deno-lint-ignore no-explicit-any
+function withFilters(q: any, given: unknown): any {
+  for (const raw of asArray(given)) {
+    const f = raw as { column?: string; op?: string; value?: unknown }
+    if (!f.column) continue
+    const op = (f.op ?? 'eq') as (typeof OPS)[number]
+    if (!OPS.includes(op)) return `Unknown operator "${op}".`
+    if (op === 'in') {
+      const list = Array.isArray(f.value)
+        ? (f.value as unknown[])
+        : String(f.value ?? '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      q = q.in(f.column, list)
+    } else if (op === 'is') {
+      q = q.is(f.column, f.value === 'null' || f.value === null ? null : (f.value as boolean))
+    } else {
+      q = q[op](f.column, f.value)
+    }
+  }
+  return q
+}
+
+const FILTERS = {
+  type: 'array',
+  description: 'Optional. Each filter is a column, an operator and a value.',
+  items: obj(
+    {
+      column: str('Column name.'),
+      op: { type: 'string', enum: OPS, description: 'Comparison. Default eq.' },
+      value: {
+        description: 'The value. For "in", a comma-separated list. For "is", null.',
+      },
+    },
+    ['column', 'value'],
+  ),
+}
+
+/**
+ * Counts and sums done by the database's rows, not by the model.
+ *
+ * ⚠️ WHY THIS EXISTS. On 23 Sep Coda read all 159 management invoices and then
+ * added them up herself: every billing, profit and margin figure she gave was
+ * wrong, and she "corrected" them with more wrong ones. A model cannot be
+ * trusted to sum a page of rows. This reads every matching row (not a page of
+ * 25) and does the arithmetic here.
+ */
+const totals: Tool = {
+  name: 'totals',
+  title: 'Count and add up',
+  description:
+    'Count rows and add up number columns on any resource, optionally split by one column ' +
+    '(per supervisor, per client, per service, per year…). Use this for EVERY total, sum, ' +
+    'average, margin or "how many" question. Never add up rows from list_records yourself. ' +
+    'Covers every matching row, not a page. You only see what this person is allowed to see.',
+  requires: 'any',
+  schema: obj(
+    {
+      resource: str('The resource name.'),
+      group_by: str('Optional. One column to split the totals by, e.g. supervisor_id.'),
+      sum: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Optional. Number columns to add up, e.g. ["invoiced", "profit", "spend"].',
+      },
+      filters: FILTERS,
+    },
+    ['resource'],
+  ),
+  run: async (ctx, args) => {
+    const resource = String(args.resource ?? '')
+    if (!resource) return bad('Which resource?')
+    const by = typeof args.group_by === 'string' && args.group_by ? args.group_by : null
+    const sums = (asArray(args.sum) as unknown[]).map(String).filter(Boolean)
+    const cols = [...new Set([...(by ? [by] : []), ...sums])]
+
+    const PAGE = 1000
+    const CAP = 20000
+    const all: Record<string, unknown>[] = []
+    for (let from = 0; from < CAP; from += PAGE) {
+      let q = ctx.sb
+        .schema(MIRROR)
+        .from(resource)
+        .select(cols.length ? cols.join(',') : 'id')
+      const filtered = withFilters(q, args.filters)
+      if (typeof filtered === 'string') return bad(filtered)
+      q = filtered
+      const { data, error } = await q.range(from, from + PAGE - 1)
+      if (error) return bad(readable(error))
+      all.push(...((data ?? []) as Record<string, unknown>[]))
+      if (!data || data.length < PAGE) break
+    }
+    if (all.length >= CAP) return bad(`More than ${CAP} rows match. Narrow it with a filter.`)
+
+    type Group = { count: number; sums: Record<string, number> }
+    const fresh = (): Group => ({ count: 0, sums: Object.fromEntries(sums.map((c) => [c, 0])) })
+    const overall = fresh()
+    const groups = new Map<string, Group>()
+    for (const row of all) {
+      const key = by ? String(row[by] ?? '(blank)') : ''
+      const g = groups.get(key) ?? fresh()
+      g.count += 1
+      overall.count += 1
+      for (const c of sums) {
+        const n = Number(row[c])
+        if (Number.isFinite(n)) {
+          g.sums[c] += n
+          overall.sums[c] += n
+        }
+      }
+      groups.set(key, g)
+    }
+
+    const tidy = (g: Group): Record<string, number> => ({
+      count: g.count,
+      ...Object.fromEntries(Object.entries(g.sums).map(([k, v]) => [k, Math.round(v * 100) / 100])),
+    })
+    const out: Record<string, unknown> = { rows_counted: all.length, overall: tidy(overall) }
+    if (by) {
+      const first = sums[0]
+      out.by = by
+      out.groups = [...groups.entries()]
+        .map(([key, g]): Record<string, unknown> => ({ [by]: key, ...tidy(g) }))
+        .sort((a, b) =>
+          first ? Number(b[first]) - Number(a[first]) : Number(b.count) - Number(a.count),
+        )
+    }
+    return ok(JSON.stringify(out, null, 1))
+  },
+}
+
 const listRecords: Tool = {
   name: 'list_records',
   title: 'List records',
   description:
-    'Read rows from any resource in your instructions. Filters are ANDed. Use this for ' +
-    "anything countable or comparable — open projects, unpaid invoices, this year's quotes. " +
+    'Read rows from any resource in your instructions. Filters are ANDed. Use this to SEE ' +
+    "records — open projects, unpaid invoices, this year's quotes. For any count, sum or " +
+    'margin use totals instead; never add rows up yourself. ' +
     'You only ever see what the person you are talking to is allowed to see.',
   requires: 'any',
   schema: obj(
     {
       resource: str('The resource name.'),
-      filters: {
-        type: 'array',
-        description: 'Optional. Each filter is a column, an operator and a value.',
-        items: obj(
-          {
-            column: str('Column name.'),
-            op: { type: 'string', enum: OPS, description: 'Comparison. Default eq.' },
-            value: {
-              description: 'The value. For "in", a comma-separated list. For "is", null.',
-            },
-          },
-          ['column', 'value'],
-        ),
-      },
+      filters: FILTERS,
       order_by: str('Optional. Column to sort on.'),
       descending: bool('Optional. Sort highest first.'),
       columns: {
@@ -355,27 +476,9 @@ const listRecords: Tool = {
 
     let q = ctx.sb.schema(MIRROR).from(resource).select(cols, { count: 'exact' })
 
-    const filters = asArray(args.filters)
-    for (const raw of filters) {
-      const f = raw as { column?: string; op?: string; value?: unknown }
-      if (!f.column) continue
-      const op = (f.op ?? 'eq') as (typeof OPS)[number]
-      if (!OPS.includes(op)) return bad(`Unknown operator "${op}".`)
-      if (op === 'in') {
-        const list = Array.isArray(f.value)
-          ? (f.value as unknown[])
-          : String(f.value ?? '')
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        q = q.in(f.column, list)
-      } else if (op === 'is') {
-        q = q.is(f.column, f.value === 'null' || f.value === null ? null : (f.value as boolean))
-      } else {
-        // deno-lint-ignore no-explicit-any
-        q = (q as any)[op](f.column, f.value)
-      }
-    }
+    const filtered = withFilters(q, args.filters)
+    if (typeof filtered === 'string') return bad(filtered)
+    q = filtered
 
     if (typeof args.order_by === 'string' && args.order_by) {
       q = q.order(args.order_by, { ascending: !args.descending })
@@ -1027,6 +1130,7 @@ export const TOOLS: Tool[] = [
   describeData,
   find,
   listRecords,
+  totals,
   getRecord,
   report,
   updateRecord,

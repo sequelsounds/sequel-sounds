@@ -63,8 +63,8 @@ const PANES: { key: Pane; label: string }[] = [
   { key: 'brands', label: 'Brands' },
   { key: 'agencies', label: 'Agencies' },
   { key: 'categories', label: 'Categories' },
-  { key: 'clientmix', label: 'Client Mix' },
   { key: 'region', label: 'Region' },
+  { key: 'clientmix', label: 'Client Mix' },
 ]
 
 /* ----------------------------------------------------------------- leagues */
@@ -410,7 +410,7 @@ export default function Management() {
     <>
       <div className="header-band">
         <div className="page-eyebrow">{today}</div>
-        <h1 className="page-title">The Company</h1>
+        <h1 className="page-title">Management</h1>
         <div className="page-subtitle">Here&rsquo;s your overview&hellip;</div>
       </div>
 
