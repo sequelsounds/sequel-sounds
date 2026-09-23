@@ -144,6 +144,32 @@ function rows(data: unknown[], total: number | null, cap: number): string {
 const MIRROR = 'xano_mirror'
 
 /**
+ * What a resource's numbers MEAN, where the column names do not say.
+ *
+ * ⚠️ These travel with the data — on every read, every total and in the column
+ * list both doors are given — rather than living in Coda's prompt. A fact about
+ * a view belongs to the view (Andy, 23 Sep). Add one here whenever a resource's
+ * money is in a unit or currency its column names do not show.
+ */
+export const NOTES: Record<string, string> = {
+  management_invoices:
+    'Money columns (invoiced, profit, spend, cost_avoidance and the fee columns) are GBP, ' +
+    "converted at each invoice's locked exchange rate. Margin is profit / spend.",
+  dashboard_invoices:
+    'Money columns (invoiced, profit, spend, cost_avoidance and the fee columns) are GBP, ' +
+    "converted at each invoice's locked exchange rate. Margin is profit / spend.",
+  quote_detail:
+    'local_grand_total is in MINOR units (pence / cents): divide by 100. It is in the ' +
+    "quote's own currency (currency_code), so never add quotes in different currencies together.",
+  quote_lines:
+    "cost is in MINOR units (pence / cents): divide by 100. It is in its quote's currency — " +
+    'read currency_code off quote_detail.',
+}
+
+const noted = (resource: string, text: string) =>
+  NOTES[resource] ? `Note: ${NOTES[resource]}\n\n${text}` : text
+
+/**
  * Where a free-text search looks, and at what. Hardcoded on purpose — unlike
  * the resource list, this is about what a person means by "find the Dove job",
  * which no catalogue can tell you.
@@ -225,7 +251,10 @@ const describeData: Tool = {
         )
       }
       return ok(
-        `${entry.resource}\n` + entry.columns.map((c) => `  ${c.name} (${c.type})`).join('\n'),
+        noted(
+          entry.resource,
+          `${entry.resource}\n` + entry.columns.map((c) => `  ${c.name} (${c.type})`).join('\n'),
+        ),
       )
     }
 
@@ -439,7 +468,7 @@ const totals: Tool = {
           first ? Number(b[first]) - Number(a[first]) : Number(b.count) - Number(a.count),
         )
     }
-    return ok(JSON.stringify(out, null, 1))
+    return ok(noted(resource, JSON.stringify(out, null, 1)))
   },
 }
 
@@ -486,7 +515,7 @@ const listRecords: Tool = {
 
     const { data, error, count } = await q.limit(limit)
     if (error) return bad(readable(error))
-    return ok(rows(data ?? [], count ?? null, limit))
+    return ok(noted(resource, rows(data ?? [], count ?? null, limit)))
   },
 }
 
@@ -518,7 +547,7 @@ const getRecord: Tool = {
 
     if (error) return bad(readable(error))
     if (!data) return bad('Not found, or not visible to this account.')
-    return ok(JSON.stringify(data, null, 1))
+    return ok(noted(resource, JSON.stringify(data, null, 1)))
   },
 }
 

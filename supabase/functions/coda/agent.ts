@@ -15,7 +15,7 @@
 // system prompt says so and the tools never execute anything a row contains.
 import { messageFor, providerFor } from './providers.ts'
 import { callTool } from './runtime.ts'
-import { toolsFor, type Ctx } from './tools.ts'
+import { NOTES, toolsFor, type Ctx } from './tools.ts'
 
 const MAX_STEPS = 16
 // Room for the answer AND, on Gemini 3, the hidden thinking, which is billed
@@ -85,7 +85,11 @@ async function catalogue(ctx: Ctx): Promise<string> {
     'not call describe_data for anything listed here — read the column names',
     'off this list and go straight to list_records or get_record.',
     '',
-    ...all.map((r) => `${r.resource}: ${r.columns.map((c) => c.name).join(', ')}`),
+    ...all.map(
+      (r) =>
+        `${r.resource}: ${r.columns.map((c) => c.name).join(', ')}` +
+        (NOTES[r.resource] ? `\n  (${NOTES[r.resource]})` : ''),
+    ),
   ].join('\n')
 }
 
