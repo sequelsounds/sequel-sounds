@@ -117,7 +117,12 @@ export type QboBill = {
   project_label?: string | null
   invoice_number?: string | null
   invoice_uuid?: string | null
+  /** Our invoice's status: Submitted, Awaiting Payment or Paid. */
+  invoice_status?: string | null
   linked_by?: 'link' | 'raised' | 'memo' | 'job' | 'none'
+  /** The supplier invoice upload for this bill, when a link has been made. */
+  upload_status?: 'waiting' | 'review' | 'attached' | 'rejected' | 'failed'
+  upload_token?: string
 }
 
 /** Every supplier bill in QuickBooks. Finance only. */
@@ -173,13 +178,41 @@ export function useBillLinks() {
   })
 }
 
-export type BillStage = 'Paid' | 'Overdue' | 'Unpaid'
+/**
+ * Where a supplier bill is, in one word (Andy, 23 Sep):
+ *
+ *   Awaiting invoice → the supplier's invoice is not in QuickBooks yet
+ *   Needs review     → uploaded, but it did not match the bill (finance decides)
+ *   Awaiting payment → invoice in, but the client has not paid OUR invoice yet
+ *   Ready to pay     → invoice in and the client has paid us
+ *   Paid             → the bill's balance is nil
+ *
+ * ⚠️ MCPS RUNS THE OTHER WAY ROUND. Sequel only takes out the licence — and so
+ * only gets MCPS's invoice — once the client has paid our invoice. So an MCPS
+ * bill waits for the client's payment FIRST, then for the invoice:
+ * Awaiting payment → Awaiting invoice → Ready to pay → Paid.
+ */
+export type BillStage = 'Awaiting invoice' | 'Needs review' | 'Awaiting payment' | 'Ready to pay' | 'Paid'
 
-export function billStageOf(b: QboBill): BillStage {
+export const BILL_STAGES: BillStage[] = ['Awaiting invoice', 'Needs review', 'Awaiting payment', 'Ready to pay', 'Paid']
+
+export const isMcpsBill = (b: QboBill) => /^mcps\b/i.test((b.vendor_name ?? '').trim())
+
+export function billStage(b: QboBill): BillStage {
   if (b.balance <= 0) return 'Paid'
-  if (b.due_date && b.due_date < today()) return 'Overdue'
-  return 'Unpaid'
+  if (b.upload_status === 'review' || b.upload_status === 'failed') return 'Needs review'
+  const hasInvoice = b.has_supplier_invoice || b.upload_status === 'attached'
+  const clientPaid = (b.invoice_status ?? '').toLowerCase() === 'paid'
+  if (isMcpsBill(b)) {
+    if (!clientPaid) return 'Awaiting payment'
+    return hasInvoice ? 'Ready to pay' : 'Awaiting invoice'
+  }
+  if (!hasInvoice) return 'Awaiting invoice'
+  return clientPaid ? 'Ready to pay' : 'Awaiting payment'
 }
+
+/** Past its due date and not paid — shown beside the stage, not instead of it. */
+export const billOverdue = (b: QboBill) => b.balance > 0 && !!b.due_date && b.due_date < today()
 
 export type QboOrphan = {
   id: string

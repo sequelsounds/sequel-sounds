@@ -6,6 +6,7 @@ import { supabase } from './lib/supabase'
 import Inbox from './routes/Inbox'
 import Brief from './routes/Brief'
 import SharedFile from './routes/SharedFile'
+import BillUpload from './routes/BillUpload'
 import SongConfirmation from './routes/SongConfirmation'
 import Client from './routes/Client'
 import Clients from './routes/Clients'
@@ -104,6 +105,8 @@ export default function App() {
       <Route path="/brief" element={<Brief />} />
       {/* A shared project file. /link?id= is the old app's shape. */}
       <Route path="/link" element={<SharedFile />} />
+      {/* A supplier sends their invoice for a QuickBooks bill. The token is the credential. */}
+      <Route path="/bill-upload/:token" element={<BillUpload />} />
       {/* The composer's song form and Schedule A. /song-confirmation?uuid= is
           the old app's shape, so the emails' links keep working. */}
       <Route path="/song-confirmation" element={<SongConfirmation />} />

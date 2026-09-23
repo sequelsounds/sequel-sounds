@@ -2030,8 +2030,9 @@
     text-decoration: underline;
   }
 
+  /* …then the supplier invoice status, and its share menu (Andy, 23 Sep). */
   .finance-bill-grid {
-    grid-template-columns: 0.6fr 0.6fr 1.3fr 0.6fr 1.3fr 1fr 0.6fr 0.6fr 0.8fr;
+    grid-template-columns: 0.6fr 0.6fr 1.3fr 0.6fr 1.3fr 1fr 0.6fr 1fr 0.3fr 0.3fr;
   }
 
   .finance-pay-grid {

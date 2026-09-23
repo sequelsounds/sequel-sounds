@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader } from '../components/Loader'
+import { SupplierInvoiceCell } from '../components/staff/SupplierInvoiceCell'
 import { formatMoney } from '../lib/format'
 import {
-  billStageOf,
+  BILL_STAGES,
+  billStage,
+  type BillStage,
   stageOf,
   useAllInvoices,
   useBillLinks,
@@ -278,13 +281,13 @@ function ClientInvoices() {
   )
 }
 
-const BILL_FILTERS = ['All', 'No supplier invoice', 'Unpaid', 'Overdue', 'Paid'] as const
+const BILL_FILTERS: ('All' | BillStage)[] = ['All', ...BILL_STAGES]
 type BillFilter = (typeof BILL_FILTERS)[number]
 
 /**
  * Supplier bills, read from QuickBooks — every bill, not only the ones the app
- * raised. "No supplier invoice" is a bill with nothing attached: the list the
- * supplier upload emails will work through (Andy, 15 Sep). A row opens the
+ * raised. The Status column is billStage (Andy, 23 Sep): Awaiting invoice,
+ * Needs review, Awaiting payment, Ready to pay, Paid. A row opens the
  * bill in QuickBooks; the Invoice cell is filled where the app raised it.
  */
 function SupplierBills() {
@@ -305,8 +308,7 @@ function SupplierBills() {
   }
 
   const rows = all.filter((b) => {
-    if (filter === 'No supplier invoice' && b.has_supplier_invoice) return false
-    if ((filter === 'Unpaid' || filter === 'Overdue' || filter === 'Paid') && billStageOf(b) !== filter) return false
+    if (filter !== 'All' && billStage(b) !== filter) return false
     const term = q.trim().toLowerCase()
     if (!term) return true
     const inv = invoiceFor(b.id)
@@ -317,7 +319,7 @@ function SupplierBills() {
   if (finance.isPending) return null
   if (!isFinance) return <div className="no-result-row">Only finance can see bills.</div>
 
-  const noFile = all.filter((b) => !b.has_supplier_invoice).length
+  const count = (stage: BillStage) => (bills.data ? all.filter((b) => billStage(b) === stage).length : '')
 
   return (
     <>
@@ -333,13 +335,13 @@ function SupplierBills() {
           />
         </div>
         <div className="tab-band-divider" />
-        <Counter label="No supplier invoice" value={bills.data ? noFile : ''} />
-        <div className="tab-band-divider" />
-        <Counter label="Unpaid" value={bills.data ? all.filter((b) => billStageOf(b) === 'Unpaid').length : ''} />
-        <div className="tab-band-divider" />
-        <Counter label="Overdue" value={bills.data ? all.filter((b) => billStageOf(b) === 'Overdue').length : ''} />
-        <div className="tab-band-divider" />
-        <Counter label="Paid" value={bills.data ? all.filter((b) => billStageOf(b) === 'Paid').length : ''} />
+        {/* Every stage but Paid: the band is for what still needs doing. */}
+        {BILL_STAGES.filter((st) => st !== 'Paid').map((st) => (
+          <span key={st} className="contents">
+            <div className="tab-band-divider" />
+            <Counter label={st} value={count(st)} />
+          </span>
+        ))}
       </div>
 
       <div className="filter-tabs" role="tablist" aria-label="Bills">
@@ -366,7 +368,8 @@ function SupplierBills() {
         <span className="project-list-head-cell">Total</span>
         <span className="project-list-head-cell">Due</span>
         <span className="project-list-head-cell">Status</span>
-        <span className="project-list-head-cell">Supplier invoice</span>
+        <span className="project-list-head-cell">Upload</span>
+        <span className="project-list-head-cell">Share</span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
@@ -416,8 +419,7 @@ function SupplierBills() {
               </span>
               <span className="project-list-cell">{formatMoney(b.total, b.currency)}</span>
               <span className="project-list-cell">{fmtDate(b.due_date)}</span>
-              <span className="project-list-cell">{billStageOf(b)}</span>
-              <span className="project-list-cell">{b.has_supplier_invoice ? 'Uploaded' : 'Missing'}</span>
+              <SupplierInvoiceCell bill={b} />
             </div>
           )
         })}

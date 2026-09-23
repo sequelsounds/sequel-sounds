@@ -6,6 +6,10 @@
 //   { action: "payment_times" }       -> { connected, clients?, overall? }
 //   { action: "bills" }               -> { connected, bills? }
 //   { action: "project_bills", project_id } -> { connected, bills? }  ANY STAFF, one project
+//   { action: "bill_upload_link", bill_id }      -> { token }          ANY STAFF
+//   { action: "bill_upload_view", token }        -> the upload page    PUBLIC (more for staff)
+//   { action: "bill_upload_submit", token, file: { name, data(base64) }, note? } PUBLIC
+//   { action: "bill_upload_decide", token, decision: "attach" | "reject" }       finance
 //   { action: "invoice", doc_number } -> { connected, invoices? }  read only
 //   { action: "orphans" }             -> { connected, orphans? }   read only
 //   { action: "raise_check", uuid }   -> { connected, environment, ok, problems, summary }
@@ -32,6 +36,7 @@
 // ⚠️ The connection row is a credential. Nothing here returns or logs it.
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 import { raiseCheck, raiseInvoice, retryBills, type Conn, type Env } from './raise.ts'
+import { decide, linkFor, statusesFor, submit, view } from './supplier-invoice.ts'
 
 const AUTHORISE_URL = 'https://appcenter.intuit.com/connect/oauth2'
 const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
@@ -78,6 +83,13 @@ function json(body: unknown, status: number, origin: string | null) {
 }
 
 /** Finance, asked the same way the database asks it: track_is_finance(). */
+/** track_users.id for a signed-in auth user, for created_by / decided_by. */
+async function trackIdFor(admin: SupabaseClient, authUserId: string): Promise<number | null> {
+  if (!authUserId) return null
+  const { data } = await admin.from('track_users').select('id').eq('auth_user_id', authUserId).maybeSingle()
+  return (data as { id: number } | null)?.id ?? null
+}
+
 /** The signed-in person, if they are live Sequel staff, and whether they are finance. */
 async function staffCaller(req: Request): Promise<{ userId: string; finance: boolean } | null> {
   const auth = req.headers.get('authorization') ?? ''
@@ -474,6 +486,9 @@ type BillOwner = {
   project_label: string | null
   invoice_number: string | null
   invoice_uuid: string | null
+  /** Our invoice's status (Submitted / Awaiting Payment / Paid): a bill is only
+   *  ready to pay once the client has paid us. */
+  invoice_status: string | null
   /** How the bill was placed: link (manual), raised (the app raised it), memo, job, or none. */
   linked_by: 'link' | 'raised' | 'memo' | 'job' | 'none'
 }
@@ -493,14 +508,14 @@ type BillOwner = {
 async function billOwners(admin: SupabaseClient, bills: { id: string; memo?: string | null; line_descriptions?: string[] }[]) {
   const mirror = admin.schema('xano_mirror')
   const [invoices, projects, lines, links] = await Promise.all([
-    mirror.from('invoices').select('id, invoice_number, uuid, project_master_list_id'),
+    mirror.from('invoices').select('id, invoice_number, uuid, project_master_list_id, status'),
     mirror.from('project_master_list').select('id, sequel_no, title'),
     mirror.from('invoice_line_items').select('invoice_id, qbo_bill_id').not('qbo_bill_id', 'is', null).neq('qbo_bill_id', ''),
     admin.from('track_bill_links').select('bill_id, project_id, not_project'),
   ])
   for (const r of [invoices, projects, lines, links]) if (r.error) throw new Error(r.error.message)
 
-  type Inv = { id: number; invoice_number: string | null; uuid: string | null; project_master_list_id: number | null }
+  type Inv = { id: number; invoice_number: string | null; uuid: string | null; project_master_list_id: number | null; status: string | null }
   type Proj = { id: number; sequel_no: string | null; title: string | null }
   const invById = new Map((invoices.data as Inv[]).map((i) => [i.id, i]))
   const invByNumber = new Map(
@@ -525,10 +540,18 @@ async function billOwners(admin: SupabaseClient, bills: { id: string; memo?: str
       project_label: label(projById.get(inv.project_master_list_id)),
       invoice_number: inv.invoice_number,
       invoice_uuid: inv.uuid,
+      invoice_status: inv.status,
       linked_by: by,
     }
   }
-  const none: BillOwner = { project_id: null, project_label: null, invoice_number: null, invoice_uuid: null, linked_by: 'none' }
+  const none: BillOwner = {
+    project_id: null,
+    project_label: null,
+    invoice_number: null,
+    invoice_uuid: null,
+    invoice_status: null,
+    linked_by: 'none',
+  }
 
   const out = new Map<string, BillOwner>()
   for (const b of bills) {
@@ -663,6 +686,11 @@ Deno.serve(async (req) => {
   let body: {
     action?: string
     project_id?: unknown
+    bill_id?: unknown
+    token?: unknown
+    file?: { name?: unknown; data?: unknown }
+    note?: unknown
+    decision?: unknown
     return_to?: unknown
     doc_number?: unknown
     environment?: unknown
@@ -680,12 +708,21 @@ Deno.serve(async (req) => {
   // ⚠️ Everything here is finance only, except project_bills: every member of
   // staff sees a project's bills on its Bills tab (Andy, 23 Sep). That action
   // returns one project's bills and nothing else.
+  //
+  // ⚠️ Two actions are PUBLIC: the supplier invoice upload page, which a
+  // supplier opens with nothing but the token in its link. They touch one row,
+  // found by that token, and never return anything about any other bill.
+  const PUBLIC_ACTIONS = new Set(['bill_upload_view', 'bill_upload_submit'])
+  const STAFF_ACTIONS = new Set(['project_bills', 'bill_upload_link'])
+  const action = body.action ?? ''
   const caller = await staffCaller(req)
-  if (!caller) return json({ error: 'Only Sequel staff can use QuickBooks from here.' }, 403, origin)
-  if (body.action !== 'project_bills' && !caller.finance) {
-    return json({ error: 'Only finance can use QuickBooks from here.' }, 403, origin)
+  if (!PUBLIC_ACTIONS.has(action)) {
+    if (!caller) return json({ error: 'Only Sequel staff can use QuickBooks from here.' }, 403, origin)
+    if (!STAFF_ACTIONS.has(action) && !caller.finance) {
+      return json({ error: 'Only finance can use QuickBooks from here.' }, 403, origin)
+    }
   }
-  const userId = caller.userId
+  const userId = caller?.userId ?? ''
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
     auth: { persistSession: false },
@@ -735,16 +772,55 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ── supplier invoice uploads (supplier-invoice.ts) ─────────────────────────
+  if (action === 'bill_upload_link') {
+    const billId = typeof body.bill_id === 'string' ? body.bill_id.trim() : ''
+    if (!/^\d+$/.test(billId)) return json({ error: 'bill_id is required.' }, 400, origin)
+    try {
+      const bills = await listBills(admin)
+      const bill = bills.find((b) => b.id === billId)
+      if (!bill) return json({ error: 'That bill is not in QuickBooks.' }, 404, origin)
+      const owner = (await billOwners(admin, [bill])).get(bill.id)
+      const row = await linkFor(admin, { ...bill, ...owner }, await trackIdFor(admin, userId))
+      return json({ token: row.token, status: row.status }, 200, origin)
+    } catch (e) {
+      if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
+      return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
+    }
+  }
+
+  if (action === 'bill_upload_view') {
+    const token = typeof body.token === 'string' ? body.token.trim() : ''
+    const page = await view(admin, token, !!caller, caller?.finance === true)
+    if (!page) return json({ error: 'This link is not valid.' }, 404, origin)
+    return json(page, 200, origin)
+  }
+
+  if (action === 'bill_upload_submit') {
+    const token = typeof body.token === 'string' ? body.token.trim() : ''
+    const staffId = caller ? await trackIdFor(admin, caller.userId) : null
+    const r = await submit(admin, () => accessToken(admin), token, body.file ?? {}, body.note, staffId)
+    if ('error' in r) return json({ error: r.error }, r.status, origin)
+    const page = await view(admin, token, !!caller, caller?.finance === true)
+    return json(page, 200, origin)
+  }
+
+  if (action === 'bill_upload_decide') {
+    const token = typeof body.token === 'string' ? body.token.trim() : ''
+    const r = await decide(admin, () => accessToken(admin), token, body.decision, await trackIdFor(admin, userId))
+    if ('error' in r) return json({ error: r.error }, r.status, origin)
+    return json(await view(admin, token, true, true), 200, origin)
+  }
+
   if (body.action === 'project_bills') {
     const projectId = Number(body.project_id)
     if (!Number.isInteger(projectId) || projectId <= 0) return json({ error: 'project_id is required.' }, 400, origin)
     try {
       const bills = await listBills(admin)
       const owners = await billOwners(admin, bills)
-      const mine = bills
-        .map((b) => ({ ...b, ...owners.get(b.id) }))
-        .filter((b) => b.project_id === projectId)
-      return json({ connected: true, bills: mine }, 200, origin)
+      const mine = bills.map((b) => ({ ...b, ...owners.get(b.id) })).filter((b) => b.project_id === projectId)
+      const uploads = await statusesFor(admin, mine.map((b) => b.id))
+      return json({ connected: true, bills: mine.map((b) => ({ ...b, ...uploads.get(b.id) })) }, 200, origin)
     } catch (e) {
       if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
       return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
@@ -755,7 +831,12 @@ Deno.serve(async (req) => {
     try {
       const bills = await listBills(admin)
       const owners = await billOwners(admin, bills)
-      return json({ connected: true, bills: bills.map((b) => ({ ...b, ...owners.get(b.id) })) }, 200, origin)
+      const uploads = await statusesFor(admin, bills.map((b) => b.id))
+      return json(
+        { connected: true, bills: bills.map((b) => ({ ...b, ...owners.get(b.id), ...uploads.get(b.id) })) },
+        200,
+        origin,
+      )
     } catch (e) {
       if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
       return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)

@@ -2169,10 +2169,10 @@
     gap: 0.025rem;
   }
 
-  /* Supplier, amount, invoice, date, due, paid state, supplier invoice. The
+  /* Supplier, amount, invoice, date, due, stage (billStage), upload, share. The
      invoice row's widths, so the two tabs read down the page the same way. */
   .project-row-bill {
-    grid-template-columns: 0.75fr 0.3fr 0.2fr 0.25fr 0.3fr 0.2fr 0.4fr;
+    grid-template-columns: 0.75fr 0.3fr 0.2fr 0.25fr 0.3fr 0.5fr 0.15fr 0.15fr;
     gap: 16px;
   }
 
@@ -2396,6 +2396,13 @@
 
   .rf-menu-wrap {
     position: relative;
+  }
+
+  /* ⚠️ An open menu lifts its own cell. .row-action carries z-index 2, which
+     makes every row's action cell its own layer — so the next row's share icon,
+     later in the page, was drawn on top of this row's menu (Andy, 23 Sep). */
+  .rf-menu-wrap:has(.rf-menu) {
+    z-index: 45;
   }
 
   /* Takes the click that dismisses the menu, so no document listener has to be
@@ -4315,6 +4322,126 @@
 
   .sf-head {
     margin-bottom: 24px;
+  }
+
+  /* ── /bill-upload: a supplier's invoice for a bill ───────────────────────
+     The share page's card (.sf-*), with the amount, the upload form and, for
+     staff, the check laid out as a four-column table. */
+  .bu-amount {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 24px;
+  }
+
+  .bu-amount-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+
+  .bu-amount-value {
+    font-family: 'Creato Display', Arial, sans-serif;
+    font-size: 1.2rem;
+    font-weight: 400;
+  }
+
+  .bu-status,
+  .bu-help,
+  .bu-note {
+    margin-bottom: 16px;
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+
+  .bu-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* The partner inbox's dropzone: dashed brown, tinted while a file is over it. */
+  .bu-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2.5rem;
+    border: 1px dashed var(--color-sequel-brown);
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 160ms ease;
+  }
+
+  .bu-drop.is-dragging {
+    background-color: rgb(55 43 41 / 0.05);
+  }
+
+  .bu-drop-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+
+  .bu-drop-sub {
+    margin-top: 4px;
+    font-size: 0.75rem;
+    font-weight: 400;
+    opacity: 0.7;
+  }
+
+  .bu-drop-button {
+    margin-top: 1rem;
+  }
+
+  .bu-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .bu-staff {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-sequel-line);
+  }
+
+  .bu-staff-title {
+    margin-bottom: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+
+  .bu-check {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 1.2fr 0.6fr;
+    column-gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .bu-check-head {
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--color-sequel-line);
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+
+  .bu-check-row {
+    display: contents;
+    font-size: 0.8rem;
+    font-weight: 400;
+  }
+
+  .bu-check-row > span {
+    padding: 8px 0;
+    overflow-wrap: anywhere;
+  }
+
+  .bu-ok {
+    font-weight: 500;
+  }
+
+  .bu-bad {
+    font-weight: 500;
+    color: var(--color-sequel-library);
   }
 
   /* share_file_meta */

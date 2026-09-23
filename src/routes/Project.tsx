@@ -22,7 +22,8 @@ import {
   type AssetModalMode,
 } from '../components/staff/AssetActions'
 import { formatBytes, formatMoney } from '../lib/format'
-import { billStageOf, useProjectBills, type QboBill } from '../lib/finance'
+import { useProjectBills, type QboBill } from '../lib/finance'
+import { SupplierInvoiceCell } from '../components/staff/SupplierInvoiceCell'
 import {
   useProjectLookups,
   useProjectPeople,
@@ -1034,8 +1035,7 @@ export default function Project() {
                 <Cell>{b.invoice_number ?? ''}</Cell>
                 <Cell>{fmt(shortDate, b.txn_date)}</Cell>
                 <Cell>{b.due_date ? `Due ${fmt(shortDate, b.due_date)}` : ''}</Cell>
-                <Cell>{billStageOf(b)}</Cell>
-                <Cell>{b.has_supplier_invoice ? 'Supplier invoice in' : 'No supplier invoice'}</Cell>
+                <SupplierInvoiceCell bill={b} />
               </>
             )}
           />
