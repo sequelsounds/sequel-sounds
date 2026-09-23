@@ -736,9 +736,10 @@ const updateRecord: Tool = {
  * mailbox in the company.
  */
 async function graphToken(): Promise<string> {
-  const tenant = Deno.env.get('MS_TENANT_ID') ?? ''
-  const clientId = Deno.env.get('MS_CLIENT_ID') ?? ''
-  const secret = Deno.env.get('MS_CLIENT_SECRET') ?? ''
+  // Trimmed: a value pasted into the dashboard can carry a space or newline.
+  const tenant = (Deno.env.get('MS_TENANT_ID') ?? '').trim()
+  const clientId = (Deno.env.get('MS_CLIENT_ID') ?? '').trim()
+  const secret = (Deno.env.get('MS_CLIENT_SECRET') ?? '').trim()
   if (!tenant || !clientId || !secret) {
     throw new Error('Email access is not set up (MS_TENANT_ID / MS_CLIENT_ID / MS_CLIENT_SECRET).')
   }
@@ -755,7 +756,15 @@ async function graphToken(): Promise<string> {
   const body = await res.json().catch(() => ({}))
   if (!res.ok || !body.access_token) {
     // The description, never the secret. An expired secret reads AADSTS7000222.
-    throw new Error(`Microsoft refused the sign-in: ${body.error_description ?? res.status}`)
+    // The SHAPE of what is stored is safe to show and settles most of these:
+    // a Secret ID is a 36-char GUID; a real secret value is ~40 chars with a "~".
+    const looksLikeId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(secret)
+    const shape = `stored MS_CLIENT_SECRET is ${secret.length} characters${
+      looksLikeId ? ' and looks like a Secret ID, not the Value' : secret.includes('~') ? ', contains "~"' : ', has no "~"'
+    }`
+    throw new Error(
+      `Microsoft refused the sign-in (${shape}): ${String(body.error_description ?? res.status).split(' Trace ID')[0]}`,
+    )
   }
   return body.access_token as string
 }
@@ -790,10 +799,22 @@ const attachPoFromEmail: Tool = {
     if (!mailbox) return bad('This account has no email address, so there is no mailbox to read.')
 
     const invoiceId = Number(args.invoice_id)
-    // Refuse before touching the mailbox: a missing invoice, a non-staff caller
-    // or an invoice already in QuickBooks all stop here.
-    const editable = await ctx.sb.rpc('track_invoice_editable', { p_invoice_id: invoiceId })
-    if (editable.error) return bad(readable(editable.error))
+    // Refuse before touching the mailbox or storage. Read through the view the
+    // caller can see — ⚠️ NOT track_invoice_editable(), which is an internal
+    // helper with no execute grant for signed-in users (it refused the first
+    // real run, 23 Sep). track_update_invoice still enforces the same rule at
+    // the end; this only saves an upload that would be thrown away.
+    const inv = await ctx.sb
+      .schema(MIRROR)
+      .from('invoice_detail')
+      .select('id, qbo_invoice_id')
+      .eq('id', invoiceId)
+      .maybeSingle()
+    if (inv.error) return bad(readable(inv.error))
+    if (!inv.data) return bad('No such invoice, or not visible to this account.')
+    if (String(inv.data.qbo_invoice_id ?? '') !== '') {
+      return bad('That invoice is already in QuickBooks and can no longer be changed.')
+    }
 
     let raw = String(args.message_id ?? '').trim()
     if (!raw) return bad('Which email?')
