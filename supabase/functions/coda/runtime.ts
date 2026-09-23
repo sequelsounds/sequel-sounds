@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { passes, readable, toolByName, type Ctx, type ToolResult, type Who } from './tools.ts'
 
 export const APP_BASE_URL =
-  Deno.env.get('APP_BASE_URL') ?? 'https://studio.sequelsounds.com'
+  Deno.env.get('APP_BASE_URL') ?? 'https://app.sequelsounds.com'
 
 const ALLOWED_ORIGINS = [
   /^http:\/\/localhost:\d+$/,

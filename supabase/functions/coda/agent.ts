@@ -7,7 +7,7 @@
 // with five and it showed: her prompt told her to look up a country, then a
 // region, then confirm, then write — four steps before a word came back, and
 // hitting the ceiling looked like her trailing off rather than failing
-// (`sequel-track-coda.md` §8.3). Twelve is enough for a real chain and still
+// (`sequel-track-coda.md` §8.3). Sixteen is enough for a real chain and still
 // stops a loop.
 //
 // ⚠️ TOOL RESULTS ARE NOT TRUSTED INPUT. They carry rows written by clients and
@@ -60,18 +60,13 @@ export async function settings(ctx: Ctx): Promise<Settings> {
 }
 
 /**
- * What Coda knows about this conversation before a word is said: who is
- * talking, what today is, and which page they have open — so "raise a quote on
- * this project" means something.
- */
-/**
  * Every resource and its columns, in the system prompt.
  *
  * ⚠️ THIS IS A LATENCY FIX, NOT A CONVENIENCE. Without it she called
  * `describe_data` before every single `list_records` to look up a column name
  * — two model round trips per resource, thirteen calls to answer one question
  * about a project, twenty seconds, and the step ceiling hit six resources in.
- * Every tool call here ran in under half a second; the time was all in the
+ * Every tool call there ran in under half a second; the time was all in the
  * round trips. Handing her the column names up front removes half of them.
  */
 async function catalogue(ctx: Ctx): Promise<string> {
@@ -90,6 +85,11 @@ async function catalogue(ctx: Ctx): Promise<string> {
   ].join('\n')
 }
 
+/**
+ * What Coda knows about this conversation before a word is said: who is
+ * talking, what today is, and which page they have open — so "raise a quote on
+ * this project" means something.
+ */
 function situation(ctx: Ctx, page: string | null): string {
   const roles = [
     ctx.who.is_staff && 'Sequel staff',

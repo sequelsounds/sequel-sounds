@@ -134,7 +134,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: row, error: readError } = await sb
     .from('coda_auth_codes')
-    .select('code, client_id, auth_uid, redirect_uri, code_challenge, used_at, expires_at')
+    .select('code, client_id, auth_uid, redirect_uri, code_challenge, used_at, expires_at, scope')
     .eq('code', code)
     .maybeSingle()
 

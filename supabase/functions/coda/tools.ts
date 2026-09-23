@@ -5,10 +5,7 @@
 // NOTHING HERE GRANTS ANYTHING. Every call runs on a Supabase client carrying
 // the caller's own access token, so PostgREST applies that person's row-level
 // policies and column grants. The `requires` field on a tool only decides
-// whether the tool is *offered* — the database decides whether it works. The
-// two can never disagree in a dangerous direction: the worst case is a tool
-// that is offered and then refused, which reads as a refusal and not as a
-// silent success.
+// whether the tool is *offered* — the database decides whether it works.
 //
 // ⚠️ THE READ SURFACE IS NOT LISTED HERE, DELIBERATELY. `list_records` and
 // `get_record` work against whatever views exist in `xano_mirror`, discovered
@@ -151,16 +148,19 @@ const MIRROR = 'xano_mirror'
  * the resource list, this is about what a person means by "find the Dove job",
  * which no catalogue can tell you.
  */
+// Text columns only: `ilike` on a number column is an error, not a miss, and
+// one bad column fails the whole search. Names must match the views exactly —
+// a column that is not there is skipped silently.
 const SEARCHABLE: Record<string, { columns: string[]; label: string }> = {
   project_list: {
-    columns: ['title', 'sequel_no', 'brand', 'client_name', 'campaign'],
+    columns: ['title', 'sequel_no', 'brand', 'campaign_name', 'agency', 'client_user'],
     label: 'projects',
   },
-  client_list: { columns: ['company', 'country'], label: 'clients' },
-  partner_list: { columns: ['title', 'country'], label: 'partners' },
-  roster_list: { columns: ['title', 'country'], label: 'roster members' },
-  user_directory: { columns: ['name', 'email', 'company'], label: 'people' },
-  song_list: { columns: ['song_name', 'artist', 'project_title'], label: 'songs' },
+  client_list: { columns: ['company', 'country_text'], label: 'clients' },
+  partner_list: { columns: ['title', 'country_text'], label: 'partners' },
+  roster_list: { columns: ['title', 'country_text'], label: 'roster members' },
+  user_directory: { columns: ['name', 'email', 'company_name'], label: 'people' },
+  song_list: { columns: ['track_title', 'composer', 'project', 'brand'], label: 'songs' },
 }
 
 type CatalogueEntry = { resource: string; columns: { name: string; type: string }[] }
@@ -201,9 +201,9 @@ const describeData: Tool = {
   name: 'describe_data',
   title: 'What data is available',
   description:
-    'Lists every resource you can read and, for one named resource, its columns. Call this ' +
-    'when you are not sure which resource holds something, or what a column is called, ' +
-    'rather than guessing. The list reflects the app as it stands today.',
+    'Lists every resource you can read and, for one named resource, its columns. The column ' +
+    'names are already in your instructions, so you should rarely need this — use it only if ' +
+    'a resource is missing from that list.',
   requires: 'any',
   schema: obj({
     resource: str('Optional. One resource name, to get its full column list.'),
@@ -314,13 +314,13 @@ const listRecords: Tool = {
   name: 'list_records',
   title: 'List records',
   description:
-    'Read rows from any resource describe_data lists. Filters are ANDed. Use this for ' +
+    'Read rows from any resource in your instructions. Filters are ANDed. Use this for ' +
     "anything countable or comparable — open projects, unpaid invoices, this year's quotes. " +
     'You only ever see what the person you are talking to is allowed to see.',
   requires: 'any',
   schema: obj(
     {
-      resource: str('The resource name, as describe_data gives it.'),
+      resource: str('The resource name.'),
       filters: {
         type: 'array',
         description: 'Optional. Each filter is a column, an operator and a value.',
@@ -553,8 +553,7 @@ const updateRecord: Tool = {
     Object.entries(WRITABLE)
       .map(([k, v]) => `${k} (${v.what})`)
       .join('; ') +
-    '. Read the record first and say what you are changing before you call this. Use ' +
-    'describe_data on the matching list resource if you are unsure of a column name.',
+    '. Read the record first and say what you are changing before you call this.',
   requires: 'staff',
   writes: true,
   schema: obj(
@@ -662,24 +661,31 @@ const ACTIONS: ActionDef[] = [
     description:
       'Create a project. The Sequel No., the id and the created date are allocated by the ' +
       'database — never supply them. Names must match existing records, so use find to check ' +
-      'a client or a person before calling this.',
+      'the client, the client contact and the AdPro lead before calling this. Only the ' +
+      'start date and client job number may be left out; ask for anything else ' +
+      'that is missing rather than guessing.',
     requires: 'staff',
     rpc: 'track_create_project',
     schema: obj(
       {
         title: str('What the project is called, e.g. "Dove Hair Global — Real Beauty".'),
         brand: str('The brand. Its first three letters become the Sequel No. brand code.'),
-        client: str('The client company, by name.'),
-        client_user: str('Optional. The client contact, by full name or email.'),
-        project_type: str('Advert, Film or Social post.'),
+        client: str('The client company (usually the agency), by name as in client_list.'),
+        client_user: str(
+          'The client contact the project is for — an Agency, Brand or Freelance user — by ' +
+          'full name or email.',
+        ),
+        project_type: str(
+          'The service: Composition, Commercial, Library, Sonic Branding, Sound Design or Talent.',
+        ),
         brand_category: str('Beauty & Wellbeing, Foods, or Non-Unilever.'),
-        account: str('Optional. The account the project sits under.'),
-        adpro_lead: str('Optional. The ad producer, by name or email.'),
+        account: str('Unilever or Non-Unilever.'),
+        adpro_lead: str('The AdPro lead (an Adpro user), by full name or email.'),
         client_job_no: str("Optional. The client's own job number."),
-        pipeline_gbp: num('Optional. Expected value in GBP.'),
+        pipeline_gbp: num('The projected pipeline in GBP.'),
         proposed_start_date: str('Optional. YYYY-MM-DD.'),
       },
-      ['title', 'brand', 'client', 'project_type', 'brand_category'],
+      ['title', 'brand', 'client', 'client_user', 'project_type', 'brand_category', 'account', 'adpro_lead', 'pipeline_gbp'],
     ),
     say: (r, a, ctx) => {
       const row = first(r)
@@ -753,7 +759,7 @@ const ACTIONS: ActionDef[] = [
         ),
         company: str(
           'The client company they belong to, by name. Required. It has to match a client ' +
-          'we already have \u2014 find it first if you are unsure of the spelling.',
+          'we already have — find it first if you are unsure of the spelling.',
         ),
         job_title: str('Optional.'),
         notes: str('Optional.'),

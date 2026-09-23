@@ -13,6 +13,9 @@
     // all of them are client-side. Without this, a partner opening a share link
     // directly — which is the only way they ever arrive — gets a 404 instead of
     // the app.
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // In SPA mode a browser navigation to an unknown path gets index.html
+    // without the Worker ever running. These paths must always reach it.
+    "run_worker_first": ["/mcp", "/oauth/*", "/.well-known/*"]
   }
 }
