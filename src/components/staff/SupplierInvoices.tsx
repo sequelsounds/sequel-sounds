@@ -45,11 +45,11 @@ export function SupplierInvoices({ supplierId }: { supplierId: number | undefine
   return (
     <>
       <div className="project-row project-row-supplier-invoice is-head">
-        <span className="row-field">Project</span>
-        <span className="row-field">Invoice</span>
-        <span className="row-field">Date</span>
-        <span className="row-field">Status</span>
-        <span className="row-field">Their fee</span>
+        <span className="project-list-head-cell">Project</span>
+        <span className="project-list-head-cell">Invoice</span>
+        <span className="project-list-head-cell">Date</span>
+        <span className="project-list-head-cell">Status</span>
+        <span className="project-list-head-cell">Their fee</span>
       </div>
       {invoices.data.map((r) => (
         <Link

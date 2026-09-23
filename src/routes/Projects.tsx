@@ -130,7 +130,7 @@ export default function Projects() {
               {/* 14 of the 241 projects carry no title at all — blank shells
                   made in Track. The id keeps them identifiable rather than
                   rendering an empty line you cannot click with confidence. */}
-              <span className="project-list-title" title={p.title ?? undefined}>
+              <span className="project-list-cell" title={p.title ?? undefined}>
                 {p.title ?? `Untitled (#${p.id})`}
               </span>
               <span className="project-list-cell" title={p.brand ?? undefined}>

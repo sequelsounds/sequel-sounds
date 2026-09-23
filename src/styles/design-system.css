@@ -2169,6 +2169,13 @@
     gap: 0.025rem;
   }
 
+  /* Supplier, amount, invoice, date, due, paid state, supplier invoice. The
+     invoice row's widths, so the two tabs read down the page the same way. */
+  .project-row-bill {
+    grid-template-columns: 0.75fr 0.3fr 0.2fr 0.25fr 0.3fr 0.2fr 0.4fr;
+    gap: 16px;
+  }
+
   .project-row-asset {
     grid-template-columns: 0.75fr 1fr 0.25fr 0.25fr 0.25fr 0.25fr 0.25fr;
     gap: 16px;
@@ -2353,52 +2360,38 @@
     background-color: var(--color-sequel-brown);
   }
 
-  .nt-row {
-    display: flex;
+  /* The notifications list uses the /projects row (.project-list-row: 4rem,
+     inverts on hover) and head, on four columns: the message, the project,
+     the type and when. Same 16px gap and 2rem sides, so the first column lines
+     up with the title and the search above it. */
+  .nt-grid {
+    position: relative;
+    display: grid;
+    width: 100%;
+    grid-template-columns: 3fr 1.5fr 1fr 0.75fr;
+    gap: 16px;
+    padding: 0 2rem;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.85rem 2rem;
-    border-bottom: 1px solid rgb(55 43 41 / 0.12);
-    color: var(--color-sequel-brown);
-    text-decoration: none;
-  }
-
-  .nt-row.is-openable {
-    cursor: pointer;
-  }
-
-  .nt-row.is-openable:hover {
-    background-color: rgb(55 43 41 / 0.04);
   }
 
   /* ⚠️ THE DOT IS THE ONLY UNREAD MARK — no bold text, no tinted row. A feed
      where unread items shout is one people clear to make it stop rather than
-     because they read it. Read keeps the space so nothing shifts. */
+     because they read it. It hangs in the row's 2rem left gutter, outside the
+     columns, so it never pushes the text out of line with the page.
+     currentColor so it inverts with the row on hover. */
   .nt-dot {
-    flex: 0 0 auto;
+    position: absolute;
+    top: 50%;
+    left: 1rem;
     width: 0.4rem;
     height: 0.4rem;
+    margin-top: -0.2rem;
     border-radius: 50%;
-    background-color: var(--color-sequel-brown);
+    background-color: currentColor;
   }
 
   .nt-dot.is-read {
-    background-color: transparent;
-  }
-
-  .nt-message {
-    flex: 1 1 auto;
-    font-size: 0.8rem;
-    line-height: 1.4;
-  }
-
-  .nt-when {
-    flex: 0 0 auto;
-    font-family: 'Azeret Mono', ui-monospace, monospace;
-    font-size: 0.68rem;
-    font-weight: 300;
-    white-space: nowrap;
-    opacity: 0.6;
+    display: none;
   }
 
   .rf-menu-wrap {
@@ -2538,7 +2531,9 @@
     overflow: hidden;
     font-size: 0.8rem;
     line-height: 1rem;
-    font-weight: 300;
+    /* 400, not Webflow's 300 (Andy, 23 Sep): at 0.8rem a light weight's thin
+       strokes break up, on non-retina and Windows screens especially. */
+    font-weight: 400;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -2615,7 +2610,9 @@
   /* dashboard-project-title-txt. Capitalised, and a weight up on the rows —
      the only thing separating the head from them, since it has no fill. */
   .project-list-head-cell {
-    font-size: 0.8rem;
+    /* 0.7rem at 500, the same as the project page tabs, so every column head
+       in the app matches them (Andy, 23 Sep). */
+    font-size: 0.7rem;
     line-height: 1.25rem;
     font-weight: 500;
     text-transform: capitalize;
@@ -2660,7 +2657,9 @@
     /* 1rem for the same reason as .project-list-title above — and this one was
        worse, a 0.7rem box holding 0.8rem type. */
     line-height: 1rem;
-    font-weight: 300;
+    /* 400, not Webflow's 300 (Andy, 23 Sep): at 0.8rem a light weight's thin
+       strokes break up, on non-retina and Windows screens especially. */
+    font-weight: 400;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -2834,7 +2833,9 @@
   .row-type {
     font-size: 0.8rem;
     line-height: 0.8rem;
-    font-weight: 300;
+    /* 400, not Webflow's 300 (Andy, 23 Sep): at 0.8rem a light weight's thin
+       strokes break up, on non-retina and Windows screens especially. */
+    font-weight: 400;
   }
 
   /* asset-delete-wrapper: the two action cells, each filling its column so
@@ -3387,9 +3388,9 @@
     padding: 0 0 0.75rem;
     border-bottom: 1px solid rgba(55, 43, 41, 0.15);
     background: var(--color-sequel-silver);
+    /* Matches every other column head: the project page tab's 0.7rem at 500. */
     font-size: 0.7rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    font-weight: 500;
   }
 
   .league-row {
@@ -3439,7 +3440,9 @@
     position: relative;
     z-index: 1;
     font-size: 0.8rem;
-    font-weight: 300;
+    /* 400, not Webflow's 300 (Andy, 23 Sep): at 0.8rem a light weight's thin
+       strokes break up, on non-retina and Windows screens especially. */
+    font-weight: 400;
     white-space: nowrap;
   }
 
@@ -3761,14 +3764,14 @@
      link, and it does not pretend to be clickable. */
   .project-row.is-head {
     min-height: 2rem;
-    color: var(--color-sequel-mid);
+    color: var(--color-sequel-brown);
     font-weight: 500;
     pointer-events: none;
   }
 
   .project-row.is-head:hover {
     background-color: transparent;
-    color: var(--color-sequel-mid);
+    color: var(--color-sequel-brown);
   }
 
 

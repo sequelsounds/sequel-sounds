@@ -310,7 +310,7 @@ function SupplierBills() {
     const term = q.trim().toLowerCase()
     if (!term) return true
     const inv = invoiceFor(b.id)
-    return [b.vendor_name, b.doc_number, inv?.invoice_number, inv?.project_title, inv?.client_name]
+    return [b.vendor_name, b.doc_number, inv?.invoice_number ?? b.invoice_number, inv?.project_title ?? b.project_label, inv?.client_name]
       .some((v) => (v ?? '').toLowerCase().includes(term))
   })
 
@@ -381,6 +381,10 @@ function SupplierBills() {
         )}
         {rows.map((b) => {
           const inv = invoiceFor(b.id)
+          // The app's own link first, then what the memo says (edge function).
+          const invUuid = inv?.uuid ?? b.invoice_uuid ?? null
+          const invNo = inv?.invoice_number ?? b.invoice_number ?? null
+          const projectLabel = inv?.project_title ?? b.project_label ?? ''
           return (
             <div
               key={b.id}
@@ -394,21 +398,21 @@ function SupplierBills() {
                 {b.vendor_name}
               </span>
               <span className="project-list-cell">
-                {inv?.uuid ? (
+                {invUuid ? (
                   <button
                     type="button"
                     className="link-button"
                     onClick={(e) => {
                       e.stopPropagation()
-                      navigate(`/invoices/${inv.uuid}`)
+                      navigate(`/invoices/${invUuid}`)
                     }}
                   >
-                    {inv.invoice_number || 'Not raised'}
+                    {invNo || 'Not raised'}
                   </button>
                 ) : null}
               </span>
-              <span className="project-list-cell" title={inv?.project_title ?? undefined}>
-                {inv?.project_title ?? ''}
+              <span className="project-list-cell" title={projectLabel || undefined}>
+                {projectLabel}
               </span>
               <span className="project-list-cell">{formatMoney(b.total, b.currency)}</span>
               <span className="project-list-cell">{fmtDate(b.due_date)}</span>

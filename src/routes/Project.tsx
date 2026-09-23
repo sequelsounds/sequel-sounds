@@ -22,6 +22,7 @@ import {
   type AssetModalMode,
 } from '../components/staff/AssetActions'
 import { formatBytes, formatMoney } from '../lib/format'
+import { billStageOf, useProjectBills, type QboBill } from '../lib/finance'
 import {
   useProjectLookups,
   useProjectPeople,
@@ -92,6 +93,7 @@ const TABS = [
   'Briefs',
   'Music',
   'Invoicing',
+  'Bills',
   'Songs',
   'Contracting',
   'Notes',
@@ -400,7 +402,7 @@ function Rows<T>({
   rowClass?: (item: T) => string
   empty: string
   state: List<T>
-  variant: 'quote' | 'invoice' | 'asset' | 'brief' | 'contract' | 'song'
+  variant: 'quote' | 'invoice' | 'bill' | 'asset' | 'brief' | 'contract' | 'song'
   row: (item: T) => React.ReactNode
   /**
    * Where a row goes when it has somewhere to go. Track makes the whole row a
@@ -494,6 +496,16 @@ export default function Project() {
 
   const quotes = useProjectQuotes(projectId)
   const invoices = useProjectInvoices(projectId)
+  // Supplier bills live in QuickBooks, so they are only fetched when the tab is
+  // open: every read is a round trip to Intuit.
+  const billsQuery = useProjectBills(projectId, tab === 'Bills')
+  const bills = {
+    isPending: billsQuery.isPending,
+    error: billsQuery.error ?? (billsQuery.data && !billsQuery.data.connected
+      ? new Error(billsQuery.data.error ?? 'QuickBooks is not connected.')
+      : null),
+    data: billsQuery.data?.connected ? (billsQuery.data.bills ?? []) : undefined,
+  }
   const contracts = useProjectContracts(projectId)
   const releaseForms = useProjectReleaseForms(projectId)
   const briefs = useProjectBriefs(projectId)
@@ -1003,6 +1015,27 @@ export default function Project() {
                 <Cell>{fmt(shortDate, i.invoice_date)}</Cell>
                 <Cell>{i.status}</Cell>
                 {edit && <InvoiceRowActions invoice={i} projectId={projectId} />}
+              </>
+            )}
+          />
+        )}
+
+        {tab === 'Bills' && (
+          <Rows<QboBill>
+            title="bills"
+            empty="No supplier bills for this project yet"
+            state={bills}
+            variant="bill"
+            link={(b) => (b.invoice_uuid ? `/invoices/${b.invoice_uuid}` : null)}
+            row={(b) => (
+              <>
+                <Title>{b.vendor_name}</Title>
+                <Cell>{formatMoney(b.total, b.currency)}</Cell>
+                <Cell>{b.invoice_number ?? ''}</Cell>
+                <Cell>{fmt(shortDate, b.txn_date)}</Cell>
+                <Cell>{b.due_date ? `Due ${fmt(shortDate, b.due_date)}` : ''}</Cell>
+                <Cell>{billStageOf(b)}</Cell>
+                <Cell>{b.has_supplier_invoice ? 'Supplier invoice in' : 'No supplier invoice'}</Cell>
               </>
             )}
           />

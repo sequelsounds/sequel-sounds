@@ -26,6 +26,13 @@ export type Notification = {
   subject_uuid: string | null
   created_at: string
   read_at: string | null
+  /** Looked up at read time from the project (0074), so it reads as the
+   *  project is called now; null when there is no project. */
+  /** Where clicking goes, written with the notification (0075). Null on the
+   *  first release form rows, which fall back to notificationHref's rules. */
+  link: string | null
+  project_sequel_no: string | null
+  project_title: string | null
 }
 
 export type Notifications = { unread: number; items: Notification[] }
@@ -65,6 +72,7 @@ export function useMarkNotificationsRead() {
 
 /** Where a notification points, when it points anywhere. */
 export function notificationHref(n: Notification): string | null {
+  if (n.link) return n.link
   if (n.subject_kind === 'release_form' && n.project_id) {
     return `/projects/${n.project_id}?tab=Contracting`
   }

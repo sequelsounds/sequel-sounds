@@ -108,6 +108,16 @@ export type QboBill = {
   total: number
   balance: number
   has_supplier_invoice: boolean
+  /** QuickBooks PrivateNote: holds the Sequel invoice number on bills. */
+  memo?: string | null
+  line_descriptions?: string[]
+  /** Which project the bill belongs to — worked out by the edge function from
+   *  a manual link, the app's own raise, or the invoice number in the memo. */
+  project_id?: number | null
+  project_label?: string | null
+  invoice_number?: string | null
+  invoice_uuid?: string | null
+  linked_by?: 'link' | 'raised' | 'memo' | 'job' | 'none'
 }
 
 /** Every supplier bill in QuickBooks. Finance only. */
@@ -118,6 +128,24 @@ export function useQboBills(enabled: boolean) {
     staleTime: 5 * 60_000,
     retry: false,
     queryFn: () => callQuickBooks<{ connected: boolean; error?: string; bills?: QboBill[] }>({ action: 'bills' }),
+  })
+}
+
+/**
+ * One project's supplier bills, for the project page's Bills tab. Any staff
+ * member — the edge function returns this project's bills and nothing else.
+ */
+export function useProjectBills(projectId: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['qbo', 'project-bills', projectId],
+    enabled: enabled && Number.isFinite(projectId),
+    staleTime: 5 * 60_000,
+    retry: false,
+    queryFn: () =>
+      callQuickBooks<{ connected: boolean; error?: string; bills?: QboBill[] }>({
+        action: 'project_bills',
+        project_id: projectId,
+      }),
   })
 }
 

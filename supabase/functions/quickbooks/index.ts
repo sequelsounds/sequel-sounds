@@ -5,6 +5,7 @@
 //   { action: "disconnect" }          -> { ok, revoked }
 //   { action: "payment_times" }       -> { connected, clients?, overall? }
 //   { action: "bills" }               -> { connected, bills? }
+//   { action: "project_bills", project_id } -> { connected, bills? }  ANY STAFF, one project
 //   { action: "invoice", doc_number } -> { connected, invoices? }  read only
 //   { action: "orphans" }             -> { connected, orphans? }   read only
 //   { action: "raise_check", uuid }   -> { connected, environment, ok, problems, summary }
@@ -77,7 +78,8 @@ function json(body: unknown, status: number, origin: string | null) {
 }
 
 /** Finance, asked the same way the database asks it: track_is_finance(). */
-async function financeUser(req: Request): Promise<string | null> {
+/** The signed-in person, if they are live Sequel staff, and whether they are finance. */
+async function staffCaller(req: Request): Promise<{ userId: string; finance: boolean } | null> {
   const auth = req.headers.get('authorization') ?? ''
   if (!/^Bearer\s+\S+/i.test(auth)) return null
   const asUser = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
@@ -87,9 +89,9 @@ async function financeUser(req: Request): Promise<string | null> {
   const { data: userData } = await asUser.auth.getUser(auth.replace(/^Bearer\s+/i, ''))
   const userId = userData?.user?.id
   if (!userId) return null
-  const { data: isFinance, error } = await asUser.rpc('track_is_finance')
-  if (error || isFinance !== true) return null
-  return userId
+  const [staff, finance] = await Promise.all([asUser.rpc('track_is_staff'), asUser.rpc('track_is_finance')])
+  if (staff.error || staff.data !== true) return null
+  return { userId, finance: finance.data === true }
 }
 
 /** Only our own pages, so the callback can never be used as an open redirect. */
@@ -455,9 +457,110 @@ async function listBills(admin: SupabaseClient) {
         total: Number(b.TotalAmt ?? 0),
         balance: Number(b.Balance ?? 0),
         has_supplier_invoice: withFile.has(String(b.Id)),
+        // The memo carries the Sequel invoice number the bill belongs to
+        // (Andy, 23 Sep) — what links an older bill to its project. The line
+        // descriptions are returned too, in case the number sits there.
+        memo: ((b.PrivateNote as string | undefined) ?? '').trim() || null,
+        line_descriptions: ((b.Line as { Description?: string }[] | undefined) ?? [])
+          .map((l) => (l.Description ?? '').trim())
+          .filter(Boolean),
       }
     })
     .sort((a, b) => (b.txn_date ?? '').localeCompare(a.txn_date ?? '') || Number(b.id) - Number(a.id))
+}
+
+type BillOwner = {
+  project_id: number | null
+  project_label: string | null
+  invoice_number: string | null
+  invoice_uuid: string | null
+  /** How the bill was placed: link (manual), raised (the app raised it), memo, job, or none. */
+  linked_by: 'link' | 'raised' | 'memo' | 'job' | 'none'
+}
+
+/**
+ * Which project each bill belongs to.
+ *
+ * In order: a manual row in track_bill_links; the bill id on an invoice line
+ * (bills the app raised); a four-digit Sequel invoice number in the memo (Andy,
+ * 23 Sep — nearly every bill carries one); a job number such as 230-BAN-26-II
+ * in the memo. Anything else belongs to no project.
+ *
+ * ⚠️ Only FOUR-digit numbers are tried as invoice numbers. The memo also says
+ * "Sequel Track invoice 299" — that is Xano's row id, not an invoice number —
+ * and "PO1017" is a PO, which the word boundary skips.
+ */
+async function billOwners(admin: SupabaseClient, bills: { id: string; memo?: string | null; line_descriptions?: string[] }[]) {
+  const mirror = admin.schema('xano_mirror')
+  const [invoices, projects, lines, links] = await Promise.all([
+    mirror.from('invoices').select('id, invoice_number, uuid, project_master_list_id'),
+    mirror.from('project_master_list').select('id, sequel_no, title'),
+    mirror.from('invoice_line_items').select('invoice_id, qbo_bill_id').not('qbo_bill_id', 'is', null).neq('qbo_bill_id', ''),
+    admin.from('track_bill_links').select('bill_id, project_id, not_project'),
+  ])
+  for (const r of [invoices, projects, lines, links]) if (r.error) throw new Error(r.error.message)
+
+  type Inv = { id: number; invoice_number: string | null; uuid: string | null; project_master_list_id: number | null }
+  type Proj = { id: number; sequel_no: string | null; title: string | null }
+  const invById = new Map((invoices.data as Inv[]).map((i) => [i.id, i]))
+  const invByNumber = new Map(
+    (invoices.data as Inv[]).filter((i) => (i.invoice_number ?? '').trim()).map((i) => [String(i.invoice_number).trim(), i]),
+  )
+  const projById = new Map((projects.data as Proj[]).map((p) => [p.id, p]))
+  const projByNo = new Map(
+    (projects.data as Proj[]).filter((p) => (p.sequel_no ?? '').trim()).map((p) => [String(p.sequel_no).trim().toUpperCase(), p]),
+  )
+  const raised = new Map(
+    (lines.data as { invoice_id: number; qbo_bill_id: string }[]).map((l) => [String(l.qbo_bill_id), l.invoice_id]),
+  )
+  const manual = new Map(
+    (links.data as { bill_id: string; project_id: number | null; not_project: boolean }[]).map((l) => [l.bill_id, l]),
+  )
+
+  const label = (p?: Proj) => (p ? [p.sequel_no, p.title].filter(Boolean).join(' ') || null : null)
+  const fromInvoice = (inv: Inv | undefined, by: BillOwner['linked_by']): BillOwner | null => {
+    if (!inv || inv.project_master_list_id == null) return null
+    return {
+      project_id: inv.project_master_list_id,
+      project_label: label(projById.get(inv.project_master_list_id)),
+      invoice_number: inv.invoice_number,
+      invoice_uuid: inv.uuid,
+      linked_by: by,
+    }
+  }
+  const none: BillOwner = { project_id: null, project_label: null, invoice_number: null, invoice_uuid: null, linked_by: 'none' }
+
+  const out = new Map<string, BillOwner>()
+  for (const b of bills) {
+    const m = manual.get(b.id)
+    if (m) {
+      out.set(
+        b.id,
+        m.not_project || m.project_id == null
+          ? { ...none, linked_by: 'link' }
+          : { ...none, project_id: m.project_id, project_label: label(projById.get(m.project_id)), linked_by: 'link' },
+      )
+      continue
+    }
+    const viaLine = fromInvoice(invById.get(raised.get(b.id) ?? -1), 'raised')
+    if (viaLine) {
+      out.set(b.id, viaLine)
+      continue
+    }
+    const text = [b.memo ?? '', ...(b.line_descriptions ?? [])].join(' ')
+    let found: BillOwner | null = null
+    for (const n of text.matchAll(/\b(\d{4})\b/g)) {
+      found = fromInvoice(invByNumber.get(n[1]), 'memo')
+      if (found) break
+    }
+    if (!found) {
+      const job = text.match(/\b\d{1,4}-[A-Z]{3}-\d{2}-II\b/i)?.[0]?.toUpperCase()
+      const p = job ? projByNo.get(job) : undefined
+      if (p) found = { ...none, project_id: p.id, project_label: label(p), linked_by: 'job' }
+    }
+    out.set(b.id, found ?? none)
+  }
+  return out
 }
 
 /**
@@ -557,11 +660,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(origin) })
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405, origin)
 
-  const userId = await financeUser(req)
-  if (!userId) return json({ error: 'Only finance can use QuickBooks from here.' }, 403, origin)
-
   let body: {
     action?: string
+    project_id?: unknown
     return_to?: unknown
     doc_number?: unknown
     environment?: unknown
@@ -575,6 +676,16 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: 'invalid json' }, 400, origin)
   }
+
+  // ⚠️ Everything here is finance only, except project_bills: every member of
+  // staff sees a project's bills on its Bills tab (Andy, 23 Sep). That action
+  // returns one project's bills and nothing else.
+  const caller = await staffCaller(req)
+  if (!caller) return json({ error: 'Only Sequel staff can use QuickBooks from here.' }, 403, origin)
+  if (body.action !== 'project_bills' && !caller.finance) {
+    return json({ error: 'Only finance can use QuickBooks from here.' }, 403, origin)
+  }
+  const userId = caller.userId
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
     auth: { persistSession: false },
@@ -624,9 +735,27 @@ Deno.serve(async (req) => {
     }
   }
 
+  if (body.action === 'project_bills') {
+    const projectId = Number(body.project_id)
+    if (!Number.isInteger(projectId) || projectId <= 0) return json({ error: 'project_id is required.' }, 400, origin)
+    try {
+      const bills = await listBills(admin)
+      const owners = await billOwners(admin, bills)
+      const mine = bills
+        .map((b) => ({ ...b, ...owners.get(b.id) }))
+        .filter((b) => b.project_id === projectId)
+      return json({ connected: true, bills: mine }, 200, origin)
+    } catch (e) {
+      if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
+      return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
+    }
+  }
+
   if (body.action === 'bills') {
     try {
-      return json({ connected: true, bills: await listBills(admin) }, 200, origin)
+      const bills = await listBills(admin)
+      const owners = await billOwners(admin, bills)
+      return json({ connected: true, bills: bills.map((b) => ({ ...b, ...owners.get(b.id) })) }, 200, origin)
     } catch (e) {
       if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
       return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
