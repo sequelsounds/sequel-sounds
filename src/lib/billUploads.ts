@@ -158,3 +158,16 @@ export async function billUploadToken(billId: string): Promise<string> {
 }
 
 export const billUploadUrl = (token: string) => `${window.location.origin}/bill-upload/${token}`
+
+/** Who REQUEST INVOICE… would email, for the modal to show before anything is sent. */
+export async function billUploadRecipient(billId: string) {
+  return call<{ suggestion: { email: string; supplier: string | null } | null; token: string }>({
+    action: 'bill_upload_recipient',
+    bill_id: billId,
+  })
+}
+
+/** Emails the supplier the bill's upload link. Staff only; the modal confirms first. */
+export async function requestBillInvoice(billId: string, to: string) {
+  return call<{ sent_to: string; cc: string[] }>({ action: 'bill_upload_request', bill_id: billId, to })
+}

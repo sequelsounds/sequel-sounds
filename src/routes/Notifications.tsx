@@ -37,6 +37,10 @@ const KIND_LABEL: Record<string, string> = {
   schedule_a_signed: 'Schedule A signed',
   access_requested: 'Access request',
   supplier_invoice_review: 'Supplier invoice',
+  supplier_invoice_approved: 'Supplier invoice',
+  supplier_invoice_rejected: 'Supplier invoice',
+  bill_ready_to_pay: 'Ready to pay',
+  mcps_licence_due: 'MCPS licence',
 }
 
 const kindLabel = (kind: string) => {

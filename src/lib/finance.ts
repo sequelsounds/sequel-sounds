@@ -123,6 +123,8 @@ export type QboBill = {
   /** The supplier invoice upload for this bill, when a link has been made. */
   upload_status?: 'waiting' | 'review' | 'attached' | 'rejected' | 'failed'
   upload_token?: string
+  /** When REQUEST INVOICE… last emailed the supplier. */
+  upload_requested_at?: string | null
 }
 
 /** Every supplier bill in QuickBooks. Finance only. */
@@ -182,7 +184,7 @@ export function useBillLinks() {
  * Where a supplier bill is, in one word (Andy, 23 Sep):
  *
  *   Awaiting invoice → the supplier's invoice is not in QuickBooks yet
- *   Needs review     → uploaded, but it did not match the bill (finance decides)
+ *   Awaiting approval → uploaded; finance approves it into QuickBooks
  *   Awaiting payment → invoice in, but the client has not paid OUR invoice yet
  *   Ready to pay     → invoice in and the client has paid us
  *   Paid             → the bill's balance is nil
@@ -192,15 +194,15 @@ export function useBillLinks() {
  * bill waits for the client's payment FIRST, then for the invoice:
  * Awaiting payment → Awaiting invoice → Ready to pay → Paid.
  */
-export type BillStage = 'Awaiting invoice' | 'Needs review' | 'Awaiting payment' | 'Ready to pay' | 'Paid'
+export type BillStage = 'Awaiting invoice' | 'Awaiting approval' | 'Awaiting payment' | 'Ready to pay' | 'Paid'
 
-export const BILL_STAGES: BillStage[] = ['Awaiting invoice', 'Needs review', 'Awaiting payment', 'Ready to pay', 'Paid']
+export const BILL_STAGES: BillStage[] = ['Awaiting invoice', 'Awaiting approval', 'Awaiting payment', 'Ready to pay', 'Paid']
 
 export const isMcpsBill = (b: QboBill) => /^mcps\b/i.test((b.vendor_name ?? '').trim())
 
 export function billStage(b: QboBill): BillStage {
   if (b.balance <= 0) return 'Paid'
-  if (b.upload_status === 'review' || b.upload_status === 'failed') return 'Needs review'
+  if (b.upload_status === 'review' || b.upload_status === 'failed') return 'Awaiting approval'
   const hasInvoice = b.has_supplier_invoice || b.upload_status === 'attached'
   const clientPaid = (b.invoice_status ?? '').toLowerCase() === 'paid'
   if (isMcpsBill(b)) {

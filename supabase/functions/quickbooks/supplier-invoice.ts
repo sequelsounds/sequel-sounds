@@ -6,10 +6,9 @@
 //
 //   it is an invoice · same currency · same total (to the penny) · same supplier
 //
-// All four → the file is attached to the bill in QuickBooks, automatically.
-// Anything else → nothing goes to QuickBooks; finance gets a notification and
-// decides on the same page (attach anyway, or reject so the supplier can send
-// a corrected one).
+// Either way it waits for finance (Andy, 23 Sep): finance is told whether it
+// matched, and approves it into QuickBooks on the same page — or rejects it so
+// the supplier can send a corrected one. Nothing is attached automatically.
 //
 // ⚠️ THE BILL IS NEVER EDITED. The only QuickBooks write is an Attachable
 // pointing at the bill. Amounts, lines, dates and the bill number are left
@@ -108,11 +107,15 @@ export async function linkFor(admin: SupabaseClient, bill: BillForLink, staffId:
 
 /** Status and token for each bill that has a row, for the Bills lists. */
 export async function statusesFor(admin: SupabaseClient, billIds: string[]) {
-  const out = new Map<string, { upload_status: SupplierInvoiceRow['status']; upload_token: string }>()
+  type S = { upload_status: SupplierInvoiceRow['status']; upload_token: string; upload_requested_at: string | null }
+  const out = new Map<string, S>()
   if (!billIds.length) return out
-  const { data } = await admin.from('track_supplier_invoices').select('bill_id, status, token').in('bill_id', billIds)
-  for (const r of (data ?? []) as { bill_id: string; status: SupplierInvoiceRow['status']; token: string }[]) {
-    out.set(r.bill_id, { upload_status: r.status, upload_token: r.token })
+  const { data } = await admin
+    .from('track_supplier_invoices')
+    .select('bill_id, status, token, requested_at')
+    .in('bill_id', billIds)
+  for (const r of (data ?? []) as { bill_id: string; status: S['upload_status']; token: string; requested_at: string | null }[]) {
+    out.set(r.bill_id, { upload_status: r.status, upload_token: r.token, upload_requested_at: r.requested_at })
   }
   return out
 }
@@ -121,6 +124,104 @@ async function byToken(admin: SupabaseClient, token: string) {
   if (!/^[0-9a-f]{48}$/.test(token)) return null
   const { data } = await admin.from('track_supplier_invoices').select('*').eq('token', token).maybeSingle()
   return (data as SupplierInvoiceRow | null) ?? null
+}
+
+// ── requesting the invoice ──────────────────────────────────────────────────
+
+const RESEND_API = 'https://api.resend.com/emails'
+const SENDER = Deno.env.get('RELEASE_FORM_FROM') ?? 'notifications@sequelsounds.com'
+
+/**
+ * Who a request goes to: the supplier in the app linked to the bill's
+ * QuickBooks vendor — the one whose name matches it if several are (MCPS's
+ * vendor is shared by a dozen libraries) — and its finance email, else its
+ * contract email, else its brief email. The modal shows it and it can be
+ * changed there; this is only the first guess.
+ */
+export async function suggestedRecipient(admin: SupabaseClient, row: SupplierInvoiceRow) {
+  if (!row.vendor_id) return null
+  const { data } = await admin
+    .schema('xano_mirror')
+    .from('supplier_list')
+    .select('title, finance_email, contract_email, brief_email')
+    .eq('qbo_vendor_id', row.vendor_id)
+  type Sup = { title: string | null; finance_email: string | null; contract_email: string | null; brief_email: string | null }
+  const list = (data ?? []) as Sup[]
+  const vendorWords = words(row.vendor_name ?? '')
+  const best = list.find((s) => words(s.title ?? '').some((w) => vendorWords.includes(w))) ?? (list.length === 1 ? list[0] : null)
+  if (!best) return null
+  const email = [best.finance_email, best.contract_email, best.brief_email]
+    .map((e) => (e ?? '').trim())
+    .find((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
+  return email ? { email, supplier: best.title } : null
+}
+
+/**
+ * Emails the supplier the bill's upload link. The words live in Resend, like
+ * every other Sequel email (template id in SUPPLIER_INVOICE_TEMPLATE_ID); the
+ * sender is the signed-in person on notifications@, with Reply-To and CC set to
+ * them so replies reach the person who asked.
+ */
+export async function requestInvoice(
+  admin: SupabaseClient,
+  row: SupplierInvoiceRow,
+  to: string,
+  caller: { id: number | null; name: string; email: string },
+  appBase: string,
+) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { error: `\u201c${to}\u201d is not an email address.`, status: 400 }
+  if (row.status === 'attached') return { error: 'This bill already has its invoice.', status: 409 }
+  const key = Deno.env.get('RESEND_API_KEY')
+  const template = Deno.env.get('SUPPLIER_INVOICE_TEMPLATE_ID')
+  if (!key) return { error: 'Email is not configured on the server (RESEND_API_KEY).', status: 500 }
+  if (!template) return { error: 'The invoice request email template is not set up yet (SUPPLIER_INVOICE_TEMPLATE_ID).', status: 500 }
+
+  const { data: greeting } = await admin.rpc('track_greeting_for_email', { p_email: to })
+  const cleanName = caller.name.replace(/[\r\n"<>,;:]/g, '').trim()
+  const from = cleanName ? `${cleanName} \u2014 Sequel <${SENDER}>` : `Sequel <${SENDER}>`
+  const mine = caller.email.includes('@') ? caller.email : ''
+  const po = row.invoice_number ?? ''
+  const subject = `Invoice request | PO ${po}${row.project_sequel_no ? ` \u2014 ${row.project_sequel_no}` : ''}`
+
+  let sendError: string | null = null
+  try {
+    const res = await fetch(RESEND_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        ...(mine ? { cc: [mine], reply_to: mine } : {}),
+        subject,
+        // Every variable on every send: Resend refuses a send that omits one,
+        // which is what we want rather than a request with a blank PO.
+        template: {
+          id: template,
+          variables: {
+            greeting: typeof greeting === 'string' && greeting ? greeting : 'Hi there,',
+            po_number: po,
+            sequel_no: row.project_sequel_no ?? '',
+            amount: money(num(row.total), row.currency),
+            upload_url: `${appBase}/bill-upload/${row.token}`,
+          },
+        },
+      }),
+    })
+    if (!res.ok) sendError = `Resend ${res.status}: ${(await res.text()).slice(0, 300)}`
+  } catch (e) {
+    sendError = (e as Error).message
+  }
+
+  await admin
+    .from('track_supplier_invoices')
+    .update(
+      sendError
+        ? { request_error: sendError }
+        : { requested_to: to, requested_at: new Date().toISOString(), requested_by: caller.id, request_error: null },
+    )
+    .eq('bill_id', row.bill_id)
+  if (sendError) return { error: `That did not send. ${sendError}`, status: 502 }
+  return { ok: true, sent_to: to, cc: mine ? [mine] : [], status: 200 }
 }
 
 // ── the page ────────────────────────────────────────────────────────────────
@@ -252,33 +353,24 @@ export async function submit(
     return { ok: true, status: 200 }
   }
 
-  if (!check.pass) {
-    await admin.from('track_supplier_invoices').update({ status: 'review', ai_check: check }).eq('bill_id', row.bill_id)
-    const off = check.items.filter((i) => i.required && !i.ok).map((i) => i.label.toLowerCase())
-    await tellFinance(admin, row, `needs a look (${off.join(', ')} did not match)`)
-    return { ok: true, status: 200 }
-  }
-
-  const attached = await attach(getConn, row, bytes, type, ext, check.read.invoice_number ?? null)
-  await admin
-    .from('track_supplier_invoices')
-    .update(
-      attached.ok
-        ? { status: 'attached', ai_check: check, qbo_attachable_id: attached.id, error: null }
-        : { status: 'failed', ai_check: check, error: attached.detail },
-    )
-    .eq('bill_id', row.bill_id)
-  if (!attached.ok) await tellFinance(admin, row, 'matched, but could not be attached in QuickBooks')
-  // The currency allowance means the bill is higher than what the supplier
-  // actually wants: say so, so it is brought down before anyone pays it.
+  // ⚠️ NOTHING GOES TO QUICKBOOKS WITHOUT FINANCE (Andy, 23 Sep). Every upload
+  // waits for a finance click, match or not; the check is there to make that
+  // click quick, not to replace it.
+  await admin.from('track_supplier_invoices').update({ status: 'review', ai_check: check }).eq('bill_id', row.bill_id)
   const t = num(check.read.total)
   const e = num(row.total)
-  if (attached.ok && mixed && t !== null && e !== null && e - t > 0.01) {
+  if (check.pass) {
+    const under = mixed && t !== null && e !== null && e - t > 0.01
     await tellFinance(
       admin,
       row,
-      `is in QuickBooks: ${money(t, row.currency)} against the bill's ${money(e, row.currency)}. Bring the bill down before paying it`,
+      under
+        ? `matches the bill and is ready to approve. It is ${money(t, row.currency)} against the bill's ${money(e, row.currency)}, so bring the bill down before paying it`
+        : 'matches the bill and is ready to approve',
     )
+  } else {
+    const off = check.items.filter((i) => i.required && !i.ok).map((i) => i.label.toLowerCase())
+    await tellFinance(admin, row, `needs a look (${off.join(', ')} did not match)`)
   }
   return { ok: true, status: 200 }
 }
@@ -303,6 +395,13 @@ export async function decide(
       .from('track_supplier_invoices')
       .update({ status: 'rejected', decided_by: staffId, decided_at: now })
       .eq('bill_id', row.bill_id)
+    await tellSupervisor(
+      admin,
+      row,
+      'supplier_invoice_rejected',
+      'was rejected. Its upload link is open again for a corrected one',
+      staffId,
+    )
     return { ok: true, status: 200 }
   }
   if (decision !== 'attach') return { error: 'decision must be attach or reject.', status: 400 }
@@ -320,6 +419,9 @@ export async function decide(
         : { status: 'failed', error: attached.detail, decided_by: staffId, decided_at: now },
     )
     .eq('bill_id', row.bill_id)
+  if (attached.ok) {
+    await tellSupervisor(admin, row, 'supplier_invoice_approved', 'was approved and is in QuickBooks', staffId)
+  }
   return attached.ok ? { ok: true, status: 200 } : { error: attached.detail, status: 502 }
 }
 
@@ -569,7 +671,7 @@ async function attach(
 async function tellFinance(admin: SupabaseClient, row: SupplierInvoiceRow, what: string) {
   const { data } = await admin.from('track_users').select('id').eq('is_finance', true)
   const who = stripCurrency(row.vendor_name ?? 'A supplier')
-  const ref = row.invoice_number ? ` for invoice ${row.invoice_number}` : ''
+  const ref = row.invoice_number ? ` for PO ${row.invoice_number}` : ''
   // A fresh subject per upload: a corrected upload after a rejection is a new
   // thing to look at, not a repeat.
   const subject = crypto.randomUUID()
@@ -585,6 +687,41 @@ async function tellFinance(admin: SupabaseClient, row: SupplierInvoiceRow, what:
       p_refresh: false,
     })
   }
+}
+
+/**
+ * The project's supervisor, told what finance decided — the person a supplier
+ * chases, and who chases them. Not told about their own decision: the service
+ * role has no signed-in person, so the decider is passed in and skipped here.
+ */
+async function tellSupervisor(
+  admin: SupabaseClient,
+  row: SupplierInvoiceRow,
+  kind: string,
+  what: string,
+  deciderId: number | null,
+) {
+  if (!row.project_id) return
+  const { data } = await admin
+    .schema('xano_mirror')
+    .from('project_master_list')
+    .select('music_supervisor')
+    .eq('id', row.project_id)
+    .maybeSingle()
+  const supervisor = (data as { music_supervisor: number | null } | null)?.music_supervisor
+  if (!supervisor || supervisor === deciderId) return
+  const who = stripCurrency(row.vendor_name ?? 'A supplier')
+  const ref = row.invoice_number ? ` for PO ${row.invoice_number}` : ''
+  await admin.rpc('track_notify', {
+    p_user: supervisor,
+    p_kind: kind,
+    p_message: `${who}'s invoice${ref} ${what}.`,
+    p_project: row.project_id,
+    p_subject_kind: 'supplier_invoice',
+    p_subject: crypto.randomUUID(),
+    p_link: `/bill-upload/${row.token}`,
+    p_refresh: false,
+  })
 }
 
 // ── bytes ───────────────────────────────────────────────────────────────────

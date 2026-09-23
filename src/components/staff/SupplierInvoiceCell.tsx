@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { billUploadToken, billUploadUrl } from '../../lib/billUploads'
-import { billOverdue, billStage, type QboBill } from '../../lib/finance'
-import { ShareIcon } from './RowActions'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { billUploadRecipient, billUploadToken, billUploadUrl, requestBillInvoice } from '../../lib/billUploads'
+import { billOverdue, billStage, isMcpsBill, type QboBill } from '../../lib/finance'
+import { Modal, ShareIcon } from './RowActions'
 
 /** upload, 1rem, stroke 1.5 — drawn to sit beside the share icon. */
 function UploadIcon() {
@@ -31,6 +31,7 @@ export function SupplierInvoiceCell({ bill }: { bill: QboBill }) {
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
   const [note, setNote] = useState<string | null>(null)
+  const [requesting, setRequesting] = useState(false)
 
   const stop = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -87,11 +88,13 @@ export function SupplierInvoiceCell({ bill }: { bill: QboBill }) {
 
   const needsReview = bill.upload_status === 'review' || bill.upload_status === 'failed'
   const canUpload = !bill.has_supplier_invoice && bill.upload_status !== 'attached' && bill.balance > 0
+  const canRequest = canUpload && !isMcpsBill(bill) && bill.upload_status !== 'review' && bill.upload_status !== 'failed'
 
   return (
     <>
       <span className="row-field">
         {billStage(bill)}
+        {billStage(bill) === 'Awaiting invoice' && bill.upload_requested_at ? ` · requested ${shortDay(bill.upload_requested_at)}` : ''}
         {billOverdue(bill) ? ' · overdue' : ''}
       </span>
       {/* Upload: opens the same page the supplier's link opens, where staff
@@ -130,16 +133,128 @@ export function SupplierInvoiceCell({ bill }: { bill: QboBill }) {
             <div className="rf-menu-catch" onClick={(e) => { stop(e); close() }} />
             <div className="rf-menu" role="menu" onClick={stop}>
               <button type="button" className="rf-menu-item" onClick={open}>
-                {needsReview ? 'Review' : 'Open'}
+                {needsReview ? 'Approve' : 'Open'}
               </button>
               <button type="button" className="rf-menu-item" disabled={busy} onClick={copy}>
                 {copied ? 'Link copied' : busy ? 'Copying…' : 'Copy link'}
               </button>
+              {/* Not for MCPS: that invoice comes from taking out the licence,
+                  not from asking for it. Not once an invoice is in. */}
+              {canRequest && (
+                <button
+                  type="button"
+                  className="rf-menu-item"
+                  onClick={() => {
+                    setMenu(false)
+                    setRequesting(true)
+                  }}
+                >
+                  Request invoice…
+                </button>
+              )}
               {note && <span className="rf-menu-note">{note}</span>}
             </div>
           </>
         )}
       </span>
+      {requesting && <RequestInvoiceModal bill={bill} onClose={() => setRequesting(false)} />}
     </>
+  )
+}
+
+const shortDay = (iso: string) => {
+  const d = new Date(iso)
+  return `${d.getDate()} ${d.toLocaleDateString('en-GB', { month: 'short' }).slice(0, 3)}`
+}
+
+/**
+ * REQUEST INVOICE… — says what is about to happen and to whom, and sends only
+ * on CONFIRM (Andy, 23 Sep). The address is the app's best guess for the
+ * supplier and can be changed here. Like the release form send, it does not
+ * close on success: a request that reaches a supplier cannot be taken back, so
+ * the modal says where it went.
+ */
+function RequestInvoiceModal({ bill, onClose }: { bill: QboBill; onClose: () => void }) {
+  const qc = useQueryClient()
+  const recipient = useQuery({
+    queryKey: ['bill-upload-recipient', bill.id],
+    queryFn: () => billUploadRecipient(bill.id),
+    retry: false,
+  })
+  const [edited, setEdited] = useState<string | null>(null)
+  const to = edited ?? recipient.data?.suggestion?.email ?? ''
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [sent, setSent] = useState<{ to: string; cc: string[] } | null>(null)
+  const supplier = bill.vendor_name.replace(/\b(GBP|USD|EUR|EURO|SGD|JPY|YEN)\b|[$£€¥]/gi, '').trim()
+  const po = bill.invoice_number ? `PO ${bill.invoice_number}` : 'this bill'
+
+  const send = () => {
+    if (!to.trim() || sending) return
+    setSending(true)
+    setError(null)
+    requestBillInvoice(bill.id, to.trim())
+      .then((r) => {
+        setSent({ to: r.sent_to, cc: r.cc })
+        void qc.invalidateQueries({ queryKey: ['qbo'] })
+      })
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setSending(false))
+  }
+
+  if (sent) {
+    return (
+      <Modal onClose={onClose}>
+        <div className="rm-header">Invoice requested</div>
+        <div className="rm-subheader">
+          The request for {po} has gone to {sent.to}
+          {sent.cc.length ? ', copied to you' : ''}.
+        </div>
+        <div className="rm-buttons">
+          <button type="button" className="wizard-btn rm-button" onClick={onClose}>
+            CLOSE
+          </button>
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal onClose={onClose} className="am-box cm-box rf-send-box">
+      <div className="rm-header">Request invoice</div>
+      <div className="rm-subheader">
+        {error ??
+          `This emails ${supplier || 'the supplier'} asking for their invoice for ${po}, with a link to upload it. A copy comes to you, and so do any replies.`}
+      </div>
+      <div className="am-form">
+        <div className="am-group">
+          <label className="am-label" htmlFor="bill-request-to">
+            To
+          </label>
+          <input
+            id="bill-request-to"
+            type="email"
+            className="am-input"
+            autoComplete="off"
+            placeholder={recipient.isPending ? 'Finding their email…' : 'accounts@supplier.com'}
+            value={to}
+            onChange={(e) => setEdited(e.target.value)}
+          />
+        </div>
+      </div>
+      <div className="rm-buttons">
+        <button
+          type="button"
+          className="wizard-btn rm-button"
+          disabled={!to.trim() || sending}
+          onClick={send}
+        >
+          {sending ? 'SENDING…' : 'CONFIRM'}
+        </button>
+        <button type="button" className="wizard-btn rm-button" onClick={onClose}>
+          CANCEL
+        </button>
+      </div>
+    </Modal>
   )
 }

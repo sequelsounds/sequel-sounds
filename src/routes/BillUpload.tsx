@@ -11,8 +11,8 @@ import { useBillUploadPage, useDecideBillUpload, useSubmitBillUpload, type BillU
  * (wordmark bar, one card), so a supplier sees the same Sequel as a client.
  *
  * On upload, the quickbooks edge function reads the invoice and compares it
- * with the bill. A match is attached in QuickBooks there and then; anything
- * else waits for finance, who see the comparison on this same page.
+ * with the bill. Nothing goes to QuickBooks until finance approves it here,
+ * with the comparison in front of them (Andy, 23 Sep).
  *
  * ⚠️ A SUPPLIER NEVER SEES THE CHECK. They are told "received" whether it
  * matched or not — whether it needs a second look is Sequel's business.
@@ -33,7 +33,12 @@ function StatusLine({ page }: { page: BillUploadPage }) {
     case 'received':
       return <p className="bu-status">Received{page.uploaded_at ? ` ${when(page.uploaded_at)}` : ''}. Thank you — our finance team will be in touch if anything is missing.</p>
     case 'review':
-      return <p className="bu-status">Uploaded {when(page.uploaded_at)}. It did not match the bill exactly, so it is waiting for finance.</p>
+      return (
+        <p className="bu-status">
+          Uploaded {when(page.uploaded_at)}.{' '}
+          {page.ai_check?.pass ? 'It matches the bill and is waiting for approval.' : 'It does not match the bill exactly.'}
+        </p>
+      )
     case 'failed':
       return <p className="bu-status">Uploaded {when(page.uploaded_at)}. It could not be attached in QuickBooks automatically.</p>
     case 'rejected':
@@ -81,7 +86,7 @@ function Check({ page }: { page: BillUploadPage }) {
               disabled={decide.isPending}
               onClick={() => decide.mutate('attach')}
             >
-              Attach to QuickBooks
+              Approve and add to QuickBooks
             </button>
             {page.status !== 'rejected' && (
               <button

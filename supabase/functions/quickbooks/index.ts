@@ -10,6 +10,8 @@
 //   { action: "bill_upload_view", token }        -> the upload page    PUBLIC (more for staff)
 //   { action: "bill_upload_submit", token, file: { name, data(base64) }, note? } PUBLIC
 //   { action: "bill_upload_decide", token, decision: "attach" | "reject" }       finance
+//   { action: "bill_upload_recipient", bill_id } -> { suggestion, token } ANY STAFF
+//   { action: "bill_upload_request", bill_id, to } -> { sent_to, cc }   ANY STAFF — emails the supplier
 //   { action: "invoice", doc_number } -> { connected, invoices? }  read only
 //   { action: "orphans" }             -> { connected, orphans? }   read only
 //   { action: "raise_check", uuid }   -> { connected, environment, ok, problems, summary }
@@ -36,7 +38,7 @@
 // ⚠️ The connection row is a credential. Nothing here returns or logs it.
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 import { raiseCheck, raiseInvoice, retryBills, type Conn, type Env } from './raise.ts'
-import { decide, linkFor, statusesFor, submit, view } from './supplier-invoice.ts'
+import { decide, linkFor, requestInvoice, statusesFor, submit, suggestedRecipient, view } from './supplier-invoice.ts'
 
 const AUTHORISE_URL = 'https://appcenter.intuit.com/connect/oauth2'
 const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
@@ -691,6 +693,7 @@ Deno.serve(async (req) => {
     file?: { name?: unknown; data?: unknown }
     note?: unknown
     decision?: unknown
+    to?: unknown
     return_to?: unknown
     doc_number?: unknown
     environment?: unknown
@@ -713,7 +716,7 @@ Deno.serve(async (req) => {
   // supplier opens with nothing but the token in its link. They touch one row,
   // found by that token, and never return anything about any other bill.
   const PUBLIC_ACTIONS = new Set(['bill_upload_view', 'bill_upload_submit'])
-  const STAFF_ACTIONS = new Set(['project_bills', 'bill_upload_link'])
+  const STAFF_ACTIONS = new Set(['project_bills', 'bill_upload_link', 'bill_upload_recipient', 'bill_upload_request'])
   const action = body.action ?? ''
   const caller = await staffCaller(req)
   if (!PUBLIC_ACTIONS.has(action)) {
@@ -783,6 +786,38 @@ Deno.serve(async (req) => {
       const owner = (await billOwners(admin, [bill])).get(bill.id)
       const row = await linkFor(admin, { ...bill, ...owner }, await trackIdFor(admin, userId))
       return json({ token: row.token, status: row.status }, 200, origin)
+    } catch (e) {
+      if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
+      return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)
+    }
+  }
+
+  // REQUEST INVOICE…: the modal asks who it would go to, then sends.
+  if (action === 'bill_upload_recipient' || action === 'bill_upload_request') {
+    const billId = typeof body.bill_id === 'string' ? body.bill_id.trim() : ''
+    if (!/^\d+$/.test(billId)) return json({ error: 'bill_id is required.' }, 400, origin)
+    try {
+      const bills = await listBills(admin)
+      const bill = bills.find((b) => b.id === billId)
+      if (!bill) return json({ error: 'That bill is not in QuickBooks.' }, 404, origin)
+      const owner = (await billOwners(admin, [bill])).get(bill.id)
+      const staffId = await trackIdFor(admin, userId)
+      const row = await linkFor(admin, { ...bill, ...owner }, staffId)
+      if (action === 'bill_upload_recipient') {
+        return json({ suggestion: await suggestedRecipient(admin, row), token: row.token }, 200, origin)
+      }
+      const { data: me } = await admin.from('track_users').select('id, full_name, email').eq('id', staffId ?? -1).maybeSingle()
+      const caller = me as { id: number; full_name: string | null; email: string | null } | null
+      const base = (Deno.env.get('APP_BASE_URL') ?? 'https://app.sequelsounds.com').replace(/\/+$/, '')
+      const r = await requestInvoice(
+        admin,
+        row,
+        typeof body.to === 'string' ? body.to.trim() : '',
+        { id: caller?.id ?? null, name: caller?.full_name ?? '', email: caller?.email ?? '' },
+        base,
+      )
+      if ('error' in r) return json({ error: r.error }, r.status, origin)
+      return json({ sent_to: r.sent_to, cc: r.cc }, 200, origin)
     } catch (e) {
       if (e instanceof NotConnected) return json({ connected: false, error: e.message }, 200, origin)
       return json({ error: e instanceof Error ? e.message : 'QuickBooks failed.' }, 502, origin)

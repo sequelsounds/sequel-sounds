@@ -287,7 +287,7 @@ type BillFilter = (typeof BILL_FILTERS)[number]
 /**
  * Supplier bills, read from QuickBooks — every bill, not only the ones the app
  * raised. The Status column is billStage (Andy, 23 Sep): Awaiting invoice,
- * Needs review, Awaiting payment, Ready to pay, Paid. A row opens the
+ * Awaiting approval, Awaiting payment, Ready to pay, Paid. A row opens the
  * bill in QuickBooks; the Invoice cell is filled where the app raised it.
  */
 function SupplierBills() {
