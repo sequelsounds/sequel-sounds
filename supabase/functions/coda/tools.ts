@@ -19,6 +19,7 @@
 // directly, and even there the column grants decide what may be set — the same
 // grants that make the edit pages refuse.
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
+import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.20'
 
 // ------------------------------------------------------------------ people --
 
@@ -721,6 +722,165 @@ const updateRecord: Tool = {
   },
 }
 
+// ------------------------------------------------------- PO from an email --
+
+/**
+ * An app-only Microsoft Graph token for the "Sequel Mail Reader" Entra app.
+ *
+ * ⚠️ WHICH MAILBOXES IT CAN READ IS DECIDED IN EXCHANGE, NOT HERE. The app has
+ * NO tenant-wide Mail.Read grant in Entra; Exchange RBAC for Applications gives
+ * it "Application Mail.Read" over the "Sequel Mail" scope only — mailboxes with
+ * CustomAttribute1 = SequelMail (Andy, Phil, Camila; 23 Sep 2026). Adding a
+ * person is `Set-Mailbox <address> -CustomAttribute1 SequelMail`. Never grant
+ * Mail.Read in Entra as well: the two are a union, and it would open every
+ * mailbox in the company.
+ */
+async function graphToken(): Promise<string> {
+  const tenant = Deno.env.get('MS_TENANT_ID') ?? ''
+  const clientId = Deno.env.get('MS_CLIENT_ID') ?? ''
+  const secret = Deno.env.get('MS_CLIENT_SECRET') ?? ''
+  if (!tenant || !clientId || !secret) {
+    throw new Error('Email access is not set up (MS_TENANT_ID / MS_CLIENT_ID / MS_CLIENT_SECRET).')
+  }
+  const res = await fetch(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: secret,
+      scope: 'https://graph.microsoft.com/.default',
+      grant_type: 'client_credentials',
+    }),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok || !body.access_token) {
+    // The description, never the secret. An expired secret reads AADSTS7000222.
+    throw new Error(`Microsoft refused the sign-in: ${body.error_description ?? res.status}`)
+  }
+  return body.access_token as string
+}
+
+const PO_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'webp'])
+const PO_MAX_BYTES = 25 * 1024 * 1024
+
+const attachPoFromEmail: Tool = {
+  name: 'attach_po_from_email',
+  title: 'Attach a PO from an email',
+  description:
+    "Take a PO file straight from an email in YOUR OWN mailbox and attach it to an invoice as " +
+    "its PO attachment. `message_id` is the email's id as the Outlook / Microsoft 365 tools " +
+    'return it. If the email has more than one file, give `attachment_name` (part of the file ' +
+    'name is enough). Only invoices not yet in QuickBooks can be changed. Say which file and ' +
+    'which invoice before you call this.',
+  requires: 'staff',
+  writes: true,
+  schema: obj(
+    {
+      invoice_id: int('The invoice to attach the PO to.'),
+      message_id: str('The email id, as the Outlook tools give it.'),
+      attachment_name: str('Optional. Part of the file name, when the email has several files.'),
+    },
+    ['invoice_id', 'message_id'],
+  ),
+  run: async (ctx, args) => {
+    // ⚠️ THE CALLER'S OWN MAILBOX, ALWAYS. The Entra app can read every
+    // mailbox in the Sequel Mail scope; this is what stops Camila attaching
+    // something from Andy's inbox. Never take a mailbox as an argument.
+    const mailbox = ctx.who.email
+    if (!mailbox) return bad('This account has no email address, so there is no mailbox to read.')
+
+    const invoiceId = Number(args.invoice_id)
+    // Refuse before touching the mailbox: a missing invoice, a non-staff caller
+    // or an invoice already in QuickBooks all stop here.
+    const editable = await ctx.sb.rpc('track_invoice_editable', { p_invoice_id: invoiceId })
+    if (editable.error) return bad(readable(editable.error))
+
+    let raw = String(args.message_id ?? '').trim()
+    if (!raw) return bad('Which email?')
+    if (raw.includes('%')) raw = decodeURIComponent(raw)
+    const base =
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(mailbox)}` +
+      `/messages/${encodeURIComponent(raw)}/attachments`
+
+    let token: string
+    try {
+      token = await graphToken()
+    } catch (e) {
+      return bad(e instanceof Error ? e.message : String(e))
+    }
+    const auth = { Authorization: `Bearer ${token}` }
+
+    const list = await fetch(`${base}?$select=id,name,contentType,size,isInline`, { headers: auth })
+    if (list.status === 404) return bad(`That email is not in ${mailbox}.`)
+    if (list.status === 403) {
+      return bad(`Sequel is not allowed to read ${mailbox}. Ask Andy to add it to the Sequel Mail scope.`)
+    }
+    if (!list.ok) return bad(`Microsoft would not list the attachments (${list.status}).`)
+
+    type Att = { id: string; name: string; contentType: string; size: number; isInline: boolean; '@odata.type'?: string }
+    const all = ((await list.json()).value ?? []) as Att[]
+    const files = all.filter(
+      (a) =>
+        !a.isInline &&
+        (a['@odata.type'] ?? '#microsoft.graph.fileAttachment') === '#microsoft.graph.fileAttachment' &&
+        PO_EXTENSIONS.has((a.name.split('.').pop() ?? '').toLowerCase()),
+    )
+    const wanted = typeof args.attachment_name === 'string' ? args.attachment_name.toLowerCase().trim() : ''
+    let pick = wanted ? files.filter((a) => a.name.toLowerCase().includes(wanted)) : files
+    // With no name given, a single PDF beats a pile of images.
+    if (!wanted && pick.length > 1) {
+      const pdfs = pick.filter((a) => a.name.toLowerCase().endsWith('.pdf'))
+      if (pdfs.length === 1) pick = pdfs
+    }
+    if (!pick.length) {
+      return bad(
+        files.length
+          ? `No attachment matches "${args.attachment_name}". Files on that email: ${files.map((a) => a.name).join(', ')}.`
+          : 'That email has no PDF, Word or image attachment.',
+      )
+    }
+    if (pick.length > 1) {
+      return bad(`That email has several files — say which: ${pick.map((a) => a.name).join(', ')}.`)
+    }
+    const att = pick[0]
+    if (att.size > PO_MAX_BYTES) return bad(`${att.name} is over 25 MB.`)
+
+    const file = await fetch(`${base}/${encodeURIComponent(att.id)}/$value`, { headers: auth })
+    if (!file.ok) return bad(`Microsoft would not hand over ${att.name} (${file.status}).`)
+    const bytes = new Uint8Array(await file.arrayBuffer())
+
+    // Stored exactly where the app's own PO upload puts it (sign-document), so
+    // the invoice page opens it with no special case.
+    const bucket = Deno.env.get('S3_BUCKET') ?? ''
+    const region = Deno.env.get('S3_REGION') ?? ''
+    const aws = new AwsClient({
+      accessKeyId: Deno.env.get('S3_ACCESS_KEY_ID') ?? '',
+      secretAccessKey: Deno.env.get('S3_SECRET_ACCESS_KEY') ?? '',
+      region,
+      service: 's3',
+    })
+    const ext = (att.name.split('.').pop() ?? 'pdf').toLowerCase()
+    const key = `invoices/po/${crypto.randomUUID()}.${ext}`
+    const put = await aws.fetch(`https://${bucket}.s3.${region}.amazonaws.com/${key}`, {
+      method: 'PUT',
+      body: bytes,
+      headers: { 'Content-Type': att.contentType || 'application/octet-stream' },
+    })
+    if (!put.ok) {
+      console.error('attach_po_from_email: S3 refused', put.status, (await put.text()).slice(0, 300))
+      return bad(`Storage refused the file (${put.status}). Nothing was changed on the invoice.`)
+    }
+
+    const saved = await ctx.sb.rpc('track_update_invoice', {
+      p_invoice_id: invoiceId,
+      p_po_attachment_url: key,
+    })
+    if (saved.error) return bad(readable(saved.error))
+
+    return ok(`Attached ${att.name} to invoice ${invoiceId} as its PO.`)
+  },
+}
+
 const createSupplier: Tool = {
   name: 'create_supplier',
   title: 'Create a supplier',
@@ -1241,6 +1401,7 @@ export const TOOLS: Tool[] = [
   report,
   updateRecord,
   createSupplier,
+  attachPoFromEmail,
   ...ACTIONS.map(actionTool),
 ]
 
