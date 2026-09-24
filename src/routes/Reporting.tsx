@@ -167,17 +167,17 @@ export default function Reporting() {
             })}
           </div>
 
-          <div className="filter-tabs" role="tablist" aria-label="Region">
+          <div className="project-tabs is-plain" role="tablist" aria-label="Region">
             {TABS.map((t) => (
               <button
                 key={t.label}
                 type="button"
                 role="tab"
                 aria-selected={region === t.region}
-                className="filter-tab"
+                className="project-tab"
                 onClick={() => setRegion(t.region)}
               >
-                <span className="filter-tab-text">{t.label}</span>
+                {t.label}
               </button>
             ))}
             {/* Not a region: it narrows whichever region is showing. */}
@@ -185,10 +185,10 @@ export default function Reporting() {
               type="button"
               aria-pressed={attention}
               aria-selected={attention}
-              className="filter-tab report-attention-tab"
+              className="project-tab report-attention-tab"
               onClick={() => setAttention((v) => !v)}
             >
-              <span className="filter-tab-text">Needs attention ({flagged})</span>
+              Needs attention ({flagged})
             </button>
           </div>
 

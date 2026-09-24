@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { NewProject } from '../components/staff/NewProject'
+import { ProjectRowActions } from '../components/staff/RowActions'
 import { useMe, useMyProjects, type Project } from '../lib/xanoMirror'
 
 /**
@@ -109,8 +110,8 @@ export default function Projects() {
         <span className="project-list-head-cell">Job No.</span>
         <span className="project-list-head-cell">Status</span>
         <span className="project-list-head-cell">Service</span>
-        <span className="project-list-head-cell">Share</span>
-        <span className="project-list-head-cell">Delete</span>
+        <span className="project-list-head-cell text-center">Share</span>
+        <span className="project-list-head-cell text-center">Delete</span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
@@ -144,6 +145,7 @@ export default function Projects() {
               <span className="project-list-cell">{p.sequel_no}</span>
               <span className="project-list-cell">{p.stage}</span>
               <span className="project-list-cell">{p.service}</span>
+              <ProjectRowActions id={p.id} />
             </div>
           ))}
         {projects.data && rows.length === 0 && (

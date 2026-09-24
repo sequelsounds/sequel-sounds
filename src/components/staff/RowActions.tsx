@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useArchiveInvoice } from '../../lib/invoiceEdits'
+import { useArchiveProject } from '../../lib/projectWrites'
 import { useArchiveQuote } from '../../lib/quoteWrites'
 import { useArchiveSupplier } from '../../lib/supplierWrites'
 import { useIsFinance } from '../../lib/xanoMirror'
@@ -102,6 +103,96 @@ export function SupplierArchiveAction({ id }: { id: number }) {
           archive={archive}
           onConfirm={() => archive.mutate(id, { onSuccess: () => setOpen(false) })}
           onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  )
+}
+
+/**
+ * The share and delete cells on a /projects row. Share opens a menu on the
+ * icon (Andy, 23 Sep): the internal link is the project's own page, for staff;
+ * the external link, for clients, is not built yet. Delete archives, as the
+ * old app's delete_project_button does, with its wording.
+ */
+export function ProjectRowActions({ id }: { id: number }) {
+  const [menu, setMenu] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  const [archiving, setArchiving] = useState(false)
+  const archive = useArchiveProject()
+  const stop = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  const close = () => {
+    setMenu(false)
+    setCopied(false)
+    setNote(null)
+  }
+  const internal = `${window.location.origin}/projects/${id}`
+  const copy = () => {
+    navigator.clipboard.writeText(internal).then(
+      () => {
+        setCopied(true)
+        window.setTimeout(close, 1200)
+      },
+      // The browser refuses the clipboard in some contexts: show the link.
+      () => setNote(internal),
+    )
+  }
+  return (
+    <>
+      <span className="row-action rf-menu-wrap">
+        <button
+          type="button"
+          className="row-action-button"
+          aria-label="Share this project"
+          aria-expanded={menu}
+          onClick={(e) => {
+            stop(e)
+            if (menu) close()
+            else setMenu(true)
+          }}
+        >
+          <ShareIcon />
+        </button>
+        {menu && (
+          <>
+            <div className="rf-menu-catch" onClick={(e) => { stop(e); close() }} />
+            <div className="rf-menu" role="menu" onClick={stop}>
+              <button type="button" className="rf-menu-item" onClick={copy}>
+                {copied ? 'Link copied' : 'Copy internal link'}
+              </button>
+              <button type="button" className="rf-menu-item" disabled>
+                External link — coming soon
+              </button>
+              {note && <span className="rf-menu-note">{note}</span>}
+            </div>
+          </>
+        )}
+      </span>
+      <span className="row-action">
+        <button
+          type="button"
+          className="row-action-button"
+          aria-label="Delete this project"
+          onClick={(e) => {
+            stop(e)
+            archive.reset()
+            setArchiving(true)
+          }}
+        >
+          <ArchiveIcon />
+        </button>
+      </span>
+      {archiving && (
+        <ArchiveModal
+          header="Are you sure you want to delete this project?"
+          subheader="It will no longer appear in the projects list. Contracts, quotes, invoices, assets and songs attached to it are kept."
+          archive={archive}
+          onConfirm={() => archive.mutate(id, { onSuccess: () => setArchiving(false) })}
+          onClose={() => setArchiving(false)}
         />
       )}
     </>

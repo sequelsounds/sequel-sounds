@@ -440,6 +440,7 @@
   .tab[aria-selected='true'] {
     color: var(--color-sequel-ink);
     border-color: var(--color-sequel-brown);
+    font-weight: 500;
   }
 
   .tab .count {
@@ -1904,7 +1905,7 @@
     color: var(--color-sequel-brown);
     font-family: var(--font-sans);
     font-size: 0.7rem;
-    font-weight: 500;
+    font-weight: 400;
     line-height: 1;
     text-align: center;
     cursor: pointer;
@@ -1914,6 +1915,12 @@
      pixel above it, one on it, one below. A border cannot do that - it stops
      at the tab's edge - so it is drawn as a bar hung 2px below that edge,
      which puts its three pixels either side of the 1px rule. */
+  /* Andy, 23 Sep 2026: every tab strip follows the Dashboard's - unselected
+     tabs at 400, the selected one at 500. */
+  .project-tab[aria-selected='true'] {
+    font-weight: 500;
+  }
+
   .project-tab[aria-selected='true']::after {
     content: '';
     position: absolute;
@@ -2800,8 +2807,12 @@
     font-family: var(--font-sans);
     font-size: 0.7rem;
     line-height: 1.25rem;
-    font-weight: 500;
+    font-weight: 400;
     text-align: center;
+  }
+
+  .filter-tab[aria-selected='true'] .filter-tab-text {
+    font-weight: 500;
   }
 
   /* partner_row: five columns and the same 0.025rem hairline gap as the quote

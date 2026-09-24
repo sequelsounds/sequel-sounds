@@ -177,17 +177,17 @@ function ClientInvoices() {
         </div>
       )}
 
-      <div className="filter-tabs" role="tablist" aria-label="Invoices">
+      <div className="project-tabs is-plain" role="tablist" aria-label="Invoices">
         {filters.map((f) => (
           <button
             key={f}
             type="button"
             role="tab"
             aria-selected={filter === f}
-            className="filter-tab"
+            className="project-tab"
             onClick={() => setFilter(f)}
           >
-            <span className="filter-tab-text">{f}</span>
+            {f}
           </button>
         ))}
       </div>
@@ -344,17 +344,17 @@ function SupplierBills() {
         ))}
       </div>
 
-      <div className="filter-tabs" role="tablist" aria-label="Bills">
+      <div className="project-tabs is-plain" role="tablist" aria-label="Bills">
         {BILL_FILTERS.map((f) => (
           <button
             key={f}
             type="button"
             role="tab"
             aria-selected={filter === f}
-            className="filter-tab"
+            className="project-tab"
             onClick={() => setFilter(f)}
           >
-            <span className="filter-tab-text">{f}</span>
+            {f}
           </button>
         ))}
       </div>

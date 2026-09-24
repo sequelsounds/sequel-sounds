@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { mirror } from './xanoMirror'
+import { supabase } from './supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Editing and creating a project.
@@ -182,6 +184,27 @@ export function useCreateProject() {
       return data as { id: number; sequel_no: string | null }
     },
 
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mirror', 'projects'] })
+    },
+  })
+}
+
+/**
+ * Delete on a /projects row. It archives, as the old app's archive_project
+ * does; the project's quotes, invoices, contracts, assets and songs stay.
+ * `track_archive_project` (0080) also stops the hourly sync un-archiving it.
+ */
+export function useArchiveProject() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (projectId: number) => {
+      const { error } = await (supabase as unknown as SupabaseClient).rpc(
+        'track_archive_project',
+        { p_project_id: projectId },
+      )
+      if (error) throw error
+    },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['mirror', 'projects'] })
     },

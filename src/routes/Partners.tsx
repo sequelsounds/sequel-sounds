@@ -147,17 +147,17 @@ export default function Partners() {
         <Counter label="Met" value={count(5)} />
       </div>
 
-      <div className="filter-tabs" role="tablist" aria-label="Region">
+      <div className="project-tabs is-plain" role="tablist" aria-label="Region">
         {TABS.map((t) => (
           <button
             key={t.label}
             type="button"
             role="tab"
             aria-selected={region === t.region}
-            className="filter-tab"
+            className="project-tab"
             onClick={() => setRegion(t.region)}
           >
-            <span className="filter-tab-text">{t.label}</span>
+            {t.label}
           </button>
         ))}
       </div>
