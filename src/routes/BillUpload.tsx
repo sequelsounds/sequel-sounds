@@ -130,9 +130,7 @@ export default function BillUpload() {
       <div className="sf-main">
         <div className="sf-card">
           {page.isPending && (
-            <div className="flex justify-center py-16">
-              <Loader />
-            </div>
+            <Loader />
           )}
           {page.error && (
             <div className="sf-error">This link is not valid. It may be incomplete — ask Sequel for a new one.</div>

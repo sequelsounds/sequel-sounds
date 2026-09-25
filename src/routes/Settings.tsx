@@ -21,9 +21,7 @@ export default function Settings() {
 
   if (me.isPending) {
     return (
-      <div className="flex flex-1 justify-center py-16">
-        <Loader />
-      </div>
+      <Loader />
     )
   }
   if (me.error) return <p className="form-error px-8 py-8">{me.error.message}</p>

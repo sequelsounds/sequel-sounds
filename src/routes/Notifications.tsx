@@ -41,6 +41,13 @@ const KIND_LABEL: Record<string, string> = {
   supplier_invoice_rejected: 'Supplier invoice',
   bill_ready_to_pay: 'Ready to pay',
   mcps_licence_due: 'MCPS licence',
+  roster_details_received: 'New roster team',
+  agreement_to_sign: 'Agreement to sign',
+  agreement_signed: 'Agreement signed',
+  agreement_sent: 'Agreement sent',
+  agreement_opened: 'Agreement opened',
+  roster_invite_stalled: 'Roster reminder',
+  agreement_stalled: 'Agreement reminder',
 }
 
 const kindLabel = (kind: string) => {
@@ -63,8 +70,12 @@ function when(iso: string) {
   return `${day} ${month} ${then.getFullYear()}`
 }
 
-const project = (n: Notification) =>
-  [n.project_sequel_no, n.project_title].filter(Boolean).join(' ') || '—'
+/** The About column (Andy, 25 Sep 2026): the project's name, not its number;
+ *  for the things that are not about a project, the part of the app they are
+ *  about, so no row is left with an empty dash. */
+const about = (n: Notification) =>
+  n.project_title?.trim() ||
+  (n.subject_kind === 'supplier' ? 'Roster' : n.subject_kind === 'user' ? 'Users' : '—')
 
 function Counter({ label, value }: { label: string; value: string | number }) {
   return (
@@ -89,7 +100,7 @@ export default function Notifications() {
     const term = q.trim().toLowerCase()
     if (!term) return all
     return all.filter((n) =>
-      [n.message, project(n), kindLabel(n.kind)].join(' ').toLowerCase().includes(term),
+      [n.message, about(n), kindLabel(n.kind)].join(' ').toLowerCase().includes(term),
     )
   }, [notifications.data, q])
 
@@ -138,16 +149,14 @@ export default function Notifications() {
 
       <div className="nt-grid project-list-head">
         <span className="project-list-head-cell">Notification</span>
-        <span className="project-list-head-cell">Project</span>
+        <span className="project-list-head-cell">About</span>
         <span className="project-list-head-cell">Type</span>
         <span className="project-list-head-cell">When</span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
         {notifications.isPending && (
-          <div className="flex justify-center py-16">
-            <Loader />
-          </div>
+          <Loader />
         )}
         {notifications.error && (
           <p className="form-error px-8 py-4">{notifications.error.message}</p>
@@ -164,8 +173,8 @@ export default function Notifications() {
               <span className="project-list-cell" title={n.message}>
                 {n.message}
               </span>
-              <span className="project-list-cell" title={project(n)}>
-                {project(n)}
+              <span className="project-list-cell" title={about(n)}>
+                {about(n)}
               </span>
               <span className="project-list-cell">{kindLabel(n.kind)}</span>
               <span className="project-list-cell">{when(n.created_at)}</span>

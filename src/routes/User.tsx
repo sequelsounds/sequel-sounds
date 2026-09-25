@@ -182,9 +182,7 @@ export default function User() {
 
   if (user.isPending) {
     return (
-      <div className="flex flex-1 justify-center py-16">
-        <Loader />
-      </div>
+      <Loader />
     )
   }
   if (user.error) return <p className="form-error px-8 py-8">{user.error.message}</p>
@@ -283,9 +281,7 @@ export default function User() {
         {tab === 'Projects' && (
           <>
             {projects.isPending && (
-              <div className="flex justify-center py-16">
-                <Loader />
-              </div>
+              <Loader />
             )}
             {projects.error && (
               <p className="form-error px-8 py-4">{projects.error.message}</p>

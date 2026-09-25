@@ -795,6 +795,16 @@ export type RosterMember = {
   region_text: string | null
   /** Who receives and signs the Schedule A (new, Andy 16 Sep). */
   contract_email: string | null
+  /** Party B on the composer agreement, and its address (24 Sep). */
+  legal_name: string | null
+  business_address: string | null
+  /** Invited (emailed the form; the row cannot be opened) / Details received / null. */
+  onboarding_status: string | null
+  /** awaiting_sequel (Andy to sign) / awaiting_composer (sent) / null. */
+  agreement_stage: string | null
+  ca_signed_at: string | null
+  /** A signed agreement is stored and can be opened. */
+  has_agreement: boolean | null
 }
 
 /**

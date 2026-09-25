@@ -29,9 +29,7 @@ export default function Projects() {
 
       <div className="min-h-0 flex-1 overflow-auto">
         {projects.isPending && (
-          <div className="flex justify-center py-16">
-            <Loader />
-          </div>
+          <Loader />
         )}
         {projects.error && (
           <p className="form-error px-7 py-4">{projects.error.message}</p>

@@ -168,9 +168,7 @@ export default function Partners() {
         <div className="h-8" />
 
         {partners.isPending && (
-          <div className="flex justify-center py-16">
-            <Loader />
-          </div>
+          <Loader />
         )}
         {partners.error && <p className="form-error px-8 py-4">{partners.error.message}</p>}
 

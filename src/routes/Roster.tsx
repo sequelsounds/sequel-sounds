@@ -2,9 +2,8 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { useRoster, type RosterMember } from '../lib/xanoMirror'
-import { NewSupplier } from '../components/staff/NewSupplier'
 import { SupplierArchiveAction } from '../components/staff/RowActions'
-import { COMPOSITION_TEAM } from '../lib/supplierWrites'
+import { InviteTeamModal } from '../components/staff/RosterOnboarding'
 
 /**
  * Sequel Track's `/roster`, rebuilt — and this one does not reproduce what
@@ -88,26 +87,17 @@ export default function Roster() {
         <div className="page-eyebrow">Composition</div>
         <div className="title-row">
           <h1 className="page-title">Roster</h1>
-          <button
-            type="button"
-            className="btn btn-mono btn-outline"
-            onClick={() => setAdding((v) => !v)}
-          >
-            {adding ? 'Close' : '+ Add team'}
+          <button type="button" className="btn btn-mono btn-outline" onClick={() => setAdding(true)}>
+            + Add team
           </button>
         </div>
         <div className="page-subtitle">Manage our partners...</div>
       </div>
 
-      {/* The type is not asked for here: /roster IS the composition teams, so
-          anything added from this page is one. */}
-      {adding && (
-        <NewSupplier
-          fixedType={COMPOSITION_TEAM}
-          onCancel={() => setAdding(false)}
-          onCreated={(uuid) => navigate(`/roster/${uuid}`)}
-        />
-      )}
+      {/* Andy, 24 Sep: a team is added by email only, and fills in its own
+          details from the link it is sent. Until it has, its row cannot be
+          opened. */}
+      {adding && <InviteTeamModal onClose={() => setAdding(false)} />}
 
       {/* Two tiles, not six. Signed is CA Status "Complete" — the composer
           agreement is back. Both are the whole roster whatever is filtered,
@@ -157,9 +147,7 @@ export default function Roster() {
         <div className="h-8" />
 
         {roster.isPending && (
-          <div className="flex justify-center py-16">
-            <Loader />
-          </div>
+          <Loader />
         )}
         {roster.error && <p className="form-error px-8 py-4">{roster.error.message}</p>}
 
@@ -167,8 +155,9 @@ export default function Roster() {
           rows.map((m) => (
             <div
               key={m.id}
-              className="project-row project-row-roster"
-              onClick={() => navigate(`/roster/${m.uuid}`)}
+              className={`project-row project-row-roster${m.onboarding_status === 'Invited' ? ' is-invited' : ''}`}
+              title={m.onboarding_status === 'Invited' ? 'Waiting for the team to add their details' : undefined}
+              onClick={() => m.onboarding_status !== 'Invited' && navigate(`/roster/${m.uuid}`)}
             >
               <span className="row-title" title={m.title ?? undefined}>
                 {m.title}
@@ -176,7 +165,15 @@ export default function Roster() {
               {/* Both blank on Track. The data was always there. */}
               <span className="row-field">{m.city}</span>
               <span className="row-field">{m.country_text}</span>
-              <span className="row-type">{m.ca_status}</span>
+              <span className="row-type">
+                {m.onboarding_status === 'Invited'
+                  ? 'Invited'
+                  : m.agreement_stage === 'awaiting_sequel'
+                    ? 'To sign'
+                    : m.agreement_stage === 'awaiting_composer'
+                      ? 'Sent'
+                      : m.ca_status}
+              </span>
               <span className="row-action is-inert" title="Email — not rebuilt yet">
                 <MailIcon />
               </span>

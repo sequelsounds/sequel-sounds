@@ -181,9 +181,7 @@ export default function Song() {
 
   if (song.isPending) {
     return (
-      <div className="flex flex-1 justify-center py-16">
-        <Loader />
-      </div>
+      <Loader />
     )
   }
   if (song.error) return <p className="form-error px-8 py-8">{song.error.message}</p>

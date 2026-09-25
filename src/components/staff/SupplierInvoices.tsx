@@ -32,9 +32,7 @@ export function SupplierInvoices({ supplierId }: { supplierId: number | undefine
 
   if (invoices.isPending) {
     return (
-      <div className="flex justify-center py-16">
-        <Loader />
-      </div>
+      <Loader />
     )
   }
   if (invoices.error) return <p className="form-error px-8 py-4">{invoices.error.message}</p>

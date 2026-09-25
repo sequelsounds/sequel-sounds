@@ -137,9 +137,7 @@ export default function Songs() {
 
       <div className="min-h-0 flex-1 overflow-auto">
         {songs.isPending && (
-          <div className="flex justify-center py-16">
-            <Loader />
-          </div>
+          <Loader />
         )}
         {songs.error && <p className="form-error px-8 py-4">{songs.error.message}</p>}
 

@@ -385,9 +385,7 @@ export default function Quote() {
 
   if (quote.isPending) {
     return (
-      <div className="flex flex-1 justify-center py-16">
-        <Loader />
-      </div>
+      <Loader />
     )
   }
   if (quote.error) return <p className="form-error px-8 py-8">{quote.error.message}</p>
@@ -453,7 +451,7 @@ export default function Quote() {
         <h2 className="quote-heading">Fees</h2>
         <Row desc="Service Type" qty="Quantity" subtotal="Subtotal" bold />
 
-        {lines.isPending && <p className="quote-para">Loading fees…</p>}
+        {lines.isPending && <Loader />}
         {lines.error && <p className="form-error">{lines.error.message}</p>}
 
         {sections.map((s) => (

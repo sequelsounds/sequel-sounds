@@ -79,9 +79,7 @@ export default function Partner() {
 
   if (partner.isPending) {
     return (
-      <div className="flex flex-1 justify-center py-16">
-        <Loader />
-      </div>
+      <Loader />
     )
   }
   if (partner.error) return <p className="form-error px-8 py-8">{partner.error.message}</p>

@@ -181,10 +181,7 @@ export default function SharedFile() {
       <div className="qw-foot" />
 
       {!ready && (
-        <div className="sf-loading" role="status">
-          <div className="sf-loading-text">sequel</div>
-          <Loader />
-        </div>
+        <Loader />
       )}
     </div>
   )

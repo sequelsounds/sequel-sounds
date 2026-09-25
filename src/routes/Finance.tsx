@@ -203,9 +203,7 @@ function ClientInvoices() {
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             {times.isPending && (
-              <div className="flex justify-center py-16">
-                <Loader />
-              </div>
+              <Loader />
             )}
             {times.error && <p className="form-error px-8 py-4">{times.error.message}</p>}
             {times.data && !times.data.connected && (
@@ -241,9 +239,7 @@ function ClientInvoices() {
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             {invoices.isPending && (
-              <div className="flex justify-center py-16">
-                <Loader />
-              </div>
+              <Loader />
             )}
             {invoices.error && <p className="form-error px-8 py-4">{invoices.error.message}</p>}
             {rows.map((i) => {
@@ -374,9 +370,7 @@ function SupplierBills() {
 
       <div className="min-h-0 flex-1 overflow-auto">
         {bills.isPending && (
-          <div className="flex justify-center py-16">
-            <Loader />
-          </div>
+          <Loader />
         )}
         {bills.error && <p className="form-error px-8 py-4">{bills.error.message}</p>}
         {bills.data && !bills.data.connected && (

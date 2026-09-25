@@ -8,6 +8,8 @@ import Brief from './routes/Brief'
 import SharedFile from './routes/SharedFile'
 import BillUpload from './routes/BillUpload'
 import SongConfirmation from './routes/SongConfirmation'
+import JoinRoster from './routes/JoinRoster'
+import Agreement from './routes/Agreement'
 import Client from './routes/Client'
 import Clients from './routes/Clients'
 import Library from './routes/Library'
@@ -110,6 +112,10 @@ export default function App() {
       {/* The composer's song form and Schedule A. /song-confirmation?uuid= is
           the old app's shape, so the emails' links keep working. */}
       <Route path="/song-confirmation" element={<SongConfirmation />} />
+      {/* A composition team adds its details, then signs the composer
+          agreement (24 Sep). The token in each email is the credential. */}
+      <Route path="/join-roster/:token" element={<JoinRoster />} />
+      <Route path="/agreement/:token" element={<Agreement />} />
       <Route path="/p/:token" element={<SharedPlaylist />} />
       <Route path="/t/:token" element={<SharedTrack />} />
 

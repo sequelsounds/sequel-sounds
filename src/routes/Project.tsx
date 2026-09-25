@@ -418,9 +418,7 @@ function Rows<T>({
     <>
       <PaneBar title={title} action={action} onAction={onAction} menu={menu} />
       {state.isPending && (
-        <div className="flex justify-center py-16">
-          <Loader />
-        </div>
+        <Loader />
       )}
       {state.error && <p className="form-error px-8 py-4">{state.error.message}</p>}
       {/* An empty string suppresses it: the Contracting tab has release forms
@@ -497,9 +495,11 @@ export default function Project() {
 
   const quotes = useProjectQuotes(projectId)
   const invoices = useProjectInvoices(projectId)
-  // Supplier bills live in QuickBooks, so they are only fetched when the tab is
-  // open: every read is a round trip to Intuit.
-  const billsQuery = useProjectBills(projectId, tab === 'Bills')
+  // Supplier bills live in QuickBooks, not Supabase. They are fetched in the
+  // background as soon as the page opens (Andy, 25 Sep 2026) so the Bills tab
+  // is ready when clicked; the loader only shows if it is clicked before the
+  // QuickBooks call has come back. Cached for 5 minutes (useProjectBills).
+  const billsQuery = useProjectBills(projectId, true)
   const bills = {
     isPending: billsQuery.isPending,
     error: billsQuery.error ?? (billsQuery.data && !billsQuery.data.connected
@@ -583,9 +583,7 @@ export default function Project() {
 
   if (project.isPending) {
     return (
-      <div className="flex justify-center py-16">
-        <Loader />
-      </div>
+      <Loader />
     )
   }
   if (project.error) {

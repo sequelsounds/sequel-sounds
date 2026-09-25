@@ -121,9 +121,7 @@ export default function Project() {
 
   if (project.isPending) {
     return (
-      <div className="flex justify-center py-16">
-        <Loader />
-      </div>
+      <Loader />
     )
   }
   if (project.error) {
@@ -428,9 +426,7 @@ function Rows<T>({
     <>
       {title && <PaneBar title={title} action={action} />}
       {state.isPending && (
-        <div className="flex justify-center py-16">
-          <Loader />
-        </div>
+        <Loader />
       )}
       {state.error && <p className="form-error px-8 py-4">{state.error.message}</p>}
       {state.data && state.data.length === 0 && (

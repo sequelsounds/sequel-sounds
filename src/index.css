@@ -2528,3 +2528,156 @@
     margin-top: 1px;
   }
 }
+
+/* Roster onboarding and the composer agreement — 24 Sep 2026. */
+@layer components {
+  /* A team that has not added its details yet: listed, not openable. */
+  /* A team's Agreements tab: document, brand / production, signed, status.
+     A row with no signed copy does not open, so it does not light up. */
+  .project-row-agreement {
+    grid-template-columns: 0.9fr 0.7fr 0.3fr 0.5fr;
+    gap: 16px;
+  }
+  .project-row.is-static:hover {
+    background-color: transparent;
+    color: var(--color-sequel-brown);
+  }
+
+  .project-row-roster.is-invited {
+    cursor: default;
+    opacity: 0.55;
+  }
+
+  /* The header button on a team's page, with a line saying where the
+     agreement is. */
+  .agreement-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .agreement-note {
+    font-size: 0.75rem;
+    font-weight: 300;
+    color: var(--color-sequel-brown);
+    text-align: right;
+  }
+
+  /* Review and sign: the agreement's own pages, then the signature. */
+  .rm-message.ag-box {
+    display: flex;
+    max-width: 760px;
+    max-height: calc(100vh - 4rem);
+    flex-direction: column;
+    padding: 2.5rem 2.5rem 1.5rem;
+  }
+
+  .ag-doc {
+    min-height: 12rem;
+    flex: 1 1 auto;
+    margin: 0.5rem 0 1.25rem;
+    overflow-y: auto;
+    border: 1px solid var(--color-sequel-brown);
+  }
+
+  .ag-sign {
+    flex: none;
+  }
+
+  .ag-signature {
+    min-height: 3rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px dotted var(--color-sequel-brown);
+    font-family: 'Mrs Saint Delafield', cursive;
+    font-size: 2.25rem;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ag-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin: 0.75rem 0 0.25rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    cursor: pointer;
+  }
+
+  .ag-wait {
+    margin-top: 0;
+  }
+
+  /* The team's signing page: the agreement above the signature. */
+  .ag-page-doc {
+    margin-bottom: 2.5rem;
+    border: 1px solid var(--color-sequel-brown);
+  }
+
+  /* The team's details form: /brief's bp-* styles, plus the welcome video
+     filling the photo's half of the screen. */
+  /* The Sequel sage the song and release form pages use (Andy, 24 Sep). */
+  .bp-wrap.jr-wrap {
+    background-color: #d0dbcd;
+  }
+
+  /* The welcome sized like withradiance.com's hero (Andy, 24 Sep): a 48px
+     heading on 1.2, a 20px subtitle on 26px, 24px between them. */
+  .jr-wrap .bp-welcome-content {
+    position: relative;
+  }
+
+  .jr-wrap .bp-welcome-heading {
+    max-width: 36rem;
+    margin-bottom: 1.25rem;
+    font-size: 2.5rem;
+    line-height: 1.2;
+  }
+
+  .jr-wrap .bp-welcome-content .bp-help {
+    max-width: 24rem;
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+    line-height: 1.35;
+  }
+
+  /* Every button on this form: transparent with a brown rule, brown fill on
+     hover (Andy, 24 Sep). */
+  .jr-wrap .bp-button,
+  .jr-wrap .bp-button.is-ghost {
+    color: var(--color-sequel-brown);
+    background-color: transparent;
+    border: 1px solid var(--color-sequel-brown);
+  }
+
+  .jr-wrap .bp-button:hover:not(:disabled):not(.is-disabled),
+  .jr-wrap .bp-button.is-ghost:hover {
+    /* Sage text on the brown, the page's own colour (Andy, 24 Sep). */
+    color: #d0dbcd;
+    background-color: var(--color-sequel-brown);
+    border-color: var(--color-sequel-brown);
+  }
+
+  .bp-hero.jr-hero {
+    background-color: var(--color-sequel-brown);
+    background-position: 40% 50%;
+  }
+
+  .jr-select {
+    appearance: auto;
+    cursor: pointer;
+  }
+}
+
+/* A single field in one of the standard modals (New composition team): it
+   sits between the subheader and the buttons, and the modal's own spacing does
+   the rest, so the box reads exactly like the archive and delete modals. */
+@layer components {
+  .modal-field {
+    display: flex;
+    flex-direction: column;
+    margin-top: 1.5rem;
+  }
+}

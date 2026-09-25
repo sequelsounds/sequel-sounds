@@ -250,9 +250,7 @@ export default function Invoice() {
 
   if (invoice.isPending) {
     return (
-      <div className="flex flex-1 justify-center py-16">
-        <Loader />
-      </div>
+      <Loader />
     )
   }
   if (invoice.error) return <p className="form-error px-8 py-8">{invoice.error.message}</p>
@@ -549,9 +547,7 @@ export default function Invoice() {
         {tab === 'Supplier costs' && (
           <>
             {lines.isPending && (
-              <div className="flex justify-center py-8">
-                <Loader />
-              </div>
+              <Loader />
             )}
             {lines.error && <p className="form-error px-8 py-4">{lines.error.message}</p>}
             {lines.data?.length === 0 && <p className="empty-note">No supplier costs.</p>}

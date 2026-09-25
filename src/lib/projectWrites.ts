@@ -360,3 +360,47 @@ export function useProjectPeople() {
     },
   })
 }
+
+/** The client-side user types a project can be for (CLIENT_SIDE, by name). */
+export const CLIENT_USER_TYPES = ['Agency', 'Brand', 'Freelance'] as const
+
+export type NewClientUser = {
+  name: string
+  email: string
+  /** The client's company name, exactly as the agencies picker shows it. */
+  company: string
+  user_type: (typeof CLIENT_USER_TYPES)[number]
+}
+
+/**
+ * "Add new user" from the New Project wizard's first step (Andy, 25 Sep 2026).
+ * Goes through `track_create_user` (0065), which checks the email is unique,
+ * resolves the company by name and gives the person their `track_users` row.
+ * Created Active, so they can sign in to see the project.
+ *
+ * Waits for the people list to reload before returning, so the wizard can pick
+ * the new person straight away and the search box shows their name.
+ */
+export function useCreateClientUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (u: NewClientUser) => {
+      const { data, error } = await (supabase as unknown as SupabaseClient).rpc(
+        'track_create_user',
+        {
+          p_name: u.name.trim(),
+          p_email: u.email.trim(),
+          p_company: u.company,
+          p_user_type: u.user_type,
+          p_status: 'Active',
+        },
+      )
+      if (error) throw error
+      const row = (Array.isArray(data) ? data[0] : data) as { id: number; uuid: string } | null
+      if (!row) throw new Error('Not saved: the database returned no user.')
+      await qc.invalidateQueries({ queryKey: ['mirror', 'project-people'] })
+      void qc.invalidateQueries({ queryKey: ['mirror', 'users'] })
+      return row
+    },
+  })
+}

@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  CLIENT_USER_TYPES,
+  useCreateClientUser,
   useCreateProject,
   useProjectLookups,
   useProjectPeople,
+  type NewClientUser,
   type NewProjectInput,
   type Option,
 } from '../../lib/projectWrites'
@@ -110,6 +113,9 @@ function Typeahead({
   secondary,
   emptyNote,
   onPick,
+  addLabel,
+  onAdd,
+  autoFocus = true,
 }: {
   placeholder: string
   options: Option[] | undefined
@@ -118,6 +124,10 @@ function Typeahead({
   secondary?: (id: number) => string | undefined
   emptyNote: string
   onPick: (id: number) => void
+  /** Offered under the empty note when nothing matches, e.g. ADD NEW USER. */
+  addLabel?: string
+  onAdd?: (term: string) => void
+  autoFocus?: boolean
 }) {
   const picked = options?.find((o) => o.id === value)
   const [term, setTerm] = useState(picked?.label ?? '')
@@ -135,40 +145,53 @@ function Typeahead({
   // close the list, not leave it open on the one match.
   const searching = term.trim() !== '' && term.trim() !== picked?.label
 
+  // A dropdown: the results float over the dialog under the box (styles in
+  // design-system.css, .wizard-results-slot).
   return (
     <div className="wizard-search">
       <input
         className="edit-field-input"
         value={term}
-        autoFocus
+        autoFocus={autoFocus}
         placeholder={placeholder}
         onChange={(e) => {
           setTerm(e.target.value)
           setOpen(true)
         }}
       />
-      {open && searching && (
-        <div className="wizard-results">
-          {matches.length === 0 && <div className="wizard-result-empty">{emptyNote}</div>}
-          {matches.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              className={`wizard-result${o.id === value ? ' is-picked' : ''}`}
-              onClick={() => {
-                onPick(o.id)
-                setTerm(o.label)
-                setOpen(false)
-              }}
-            >
-              <span className="wizard-result-name">{o.label}</span>
-              {secondary?.(o.id) && (
-                <span className="wizard-result-sub">{secondary(o.id)}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="wizard-results-slot">
+        {open && searching && matches.length === 0 && (
+          <div className="wizard-result-empty">
+            <span>{emptyNote}</span>
+            {addLabel && onAdd && (
+              <button type="button" className="wizard-btn" onClick={() => onAdd(term.trim())}>
+                {addLabel}
+              </button>
+            )}
+          </div>
+        )}
+        {open && searching && matches.length > 0 && (
+          <div className="wizard-results">
+            {matches.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className={`wizard-result${o.id === value ? ' is-picked' : ''}`}
+                onClick={() => {
+                  onPick(o.id)
+                  setTerm(o.label)
+                  setOpen(false)
+                }}
+              >
+                <span className="wizard-result-name">{o.label}</span>
+                {secondary?.(o.id) && (
+                  <span className="wizard-result-sub">{secondary(o.id)}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -209,12 +232,16 @@ export function NewProject({
   onCreated: (id: number) => void
 }) {
   const create = useCreateProject()
+  const createUser = useCreateClientUser()
   const lookups = useProjectLookups()
   const people = useProjectPeople()
 
   const [step, setStep] = useState(1)
   const [a, setA] = useState<Answers>(EMPTY)
   const [created, setCreated] = useState<{ id: number; sequel_no: string | null } | null>(null)
+  // Step 1's "ADD NEW USER": while this is set, step 1 is the new-user form.
+  const [adding, setAdding] = useState<NewClientUser | null>(null)
+  const [addingCompany, setAddingCompany] = useState<number | null>(null)
 
   const set = <K extends keyof Answers>(key: K, v: Answers[K]) => {
     setA((prev) => ({ ...prev, [key]: v }))
@@ -239,6 +266,10 @@ export function NewProject({
       if ((e.target as HTMLElement | null)?.tagName === 'BUTTON') return
       e.preventDefault()
       if (step === SUCCESS) return
+      if (adding) {
+        void addUser()
+        return
+      }
       if (step === LAST_QUESTION) void submit()
       else next()
     }
@@ -252,6 +283,18 @@ export function NewProject({
   function next() {
     if (!answered(a, step)) return
     setStep((s) => Math.min(s + 1, LAST_QUESTION))
+  }
+
+  const newUserReady = (u: NewClientUser | null): u is NewClientUser =>
+    !!u && u.name.trim() !== '' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(u.email.trim()) && u.company !== ''
+
+  async function addUser() {
+    if (!newUserReady(adding) || createUser.isPending) return
+    const row = await createUser.mutateAsync(adding)
+    set('client_user_id', row.id)
+    setAdding(null)
+    setAddingCompany(null)
+    createUser.reset()
   }
 
   async function submit() {
@@ -287,7 +330,7 @@ export function NewProject({
         {/* Closing is the X, as it is on Track's own modals — they carry it in
             the header rather than a button in the footer. */}
         <button type="button" className="wizard-close" aria-label="Close" onClick={onClose} />
-        {step === 1 && (
+        {step === 1 && !adding && (
           <>
             <div className="wizard-question">Which user is this project for?*</div>
             <Typeahead
@@ -297,7 +340,65 @@ export function NewProject({
               secondary={(id) => people.data?.emails?.[id]}
               emptyNote="No user found"
               onPick={(id) => set('client_user_id', id)}
+              addLabel="ADD NEW USER"
+              onAdd={(term) =>
+                // What was typed is most likely their name, or their email.
+                setAdding({
+                  name: term.includes('@') ? '' : term,
+                  email: term.includes('@') ? term : '',
+                  company: '',
+                  user_type: 'Agency',
+                })
+              }
             />
+          </>
+        )}
+
+        {step === 1 && adding && (
+          <>
+            <div className="wizard-question">Add a new user</div>
+            <label className="wizard-label">Name*</label>
+            <input
+              className="edit-field-input"
+              value={adding.name}
+              autoFocus
+              onChange={(e) => setAdding({ ...adding, name: e.target.value })}
+            />
+            <label className="wizard-label">Email*</label>
+            <input
+              className="edit-field-input"
+              type="email"
+              value={adding.email}
+              onChange={(e) => setAdding({ ...adding, email: e.target.value })}
+            />
+            <label className="wizard-label">User type*</label>
+            <select
+              className="edit-field-input edit-field-select"
+              value={adding.user_type}
+              onChange={(e) =>
+                setAdding({ ...adding, user_type: e.target.value as NewClientUser['user_type'] })
+              }
+            >
+              {CLIENT_USER_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+            <label className="wizard-label">Company*</label>
+            <Typeahead
+              placeholder="Search"
+              options={agencies}
+              value={addingCompany}
+              secondary={(id) => lookups.data?.agencyCountries?.[id]}
+              emptyNote="No company found"
+              onPick={(id) => {
+                setAddingCompany(id)
+                setAdding({ ...adding, company: agencies?.find((o) => o.id === id)?.label ?? '' })
+              }}
+              autoFocus={false}
+            />
+            {createUser.error && <p className="form-error mt-2">{createUser.error.message}</p>}
           </>
         )}
 
@@ -433,7 +534,31 @@ export function NewProject({
         {create.error && <p className="form-error mt-4">{create.error.message}</p>}
 
         <div className="wizard-buttons">
-          {step > 1 && step < SUCCESS && (
+          {adding && (
+            <>
+              <button
+                type="button"
+                className="wizard-btn"
+                onClick={() => {
+                  setAdding(null)
+                  setAddingCompany(null)
+                  createUser.reset()
+                }}
+              >
+                BACK
+              </button>
+              <button
+                type="button"
+                className="wizard-btn wizard-btn-right"
+                disabled={!newUserReady(adding) || createUser.isPending}
+                onClick={() => void addUser()}
+              >
+                {createUser.isPending ? 'ADDING…' : 'ADD USER'}
+              </button>
+            </>
+          )}
+
+          {!adding && step > 1 && step < SUCCESS && (
             <button
               type="button"
               className="wizard-btn"
@@ -446,7 +571,7 @@ export function NewProject({
           {/* Not filled in. A dark NEXT sitting there before you have answered
               reads as "press this", on a screen where the thing to do is
               answer the question. */}
-          {step < LAST_QUESTION && (
+          {!adding && step < LAST_QUESTION && (
             <button
               type="button"
               className="wizard-btn wizard-btn-right"

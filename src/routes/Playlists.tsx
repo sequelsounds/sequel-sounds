@@ -74,9 +74,7 @@ export default function Playlists() {
 
       <div className="min-h-0 flex-1 overflow-auto">
         {playlists.isPending && (
-          <div className="flex justify-center py-16">
-            <Loader />
-          </div>
+          <Loader />
         )}
         {playlists.error && (
           <p className="form-error px-7 py-4">{playlists.error.message}</p>

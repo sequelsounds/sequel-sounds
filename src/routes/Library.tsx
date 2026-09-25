@@ -31,9 +31,7 @@ export default function Library() {
 
       <div className="min-h-0 flex-1 overflow-auto">
         {tracks.isPending && (
-          <div className="flex justify-center py-16">
-            <Loader />
-          </div>
+          <Loader />
         )}
         {tracks.error && (
           <p className="form-error px-7 py-4">{tracks.error.message}</p>

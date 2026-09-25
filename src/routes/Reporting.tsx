@@ -112,9 +112,7 @@ export default function Reporting() {
 
   if (finance.isPending) {
     return (
-      <div className="flex justify-center py-16">
-        <Loader />
-      </div>
+      <Loader />
     )
   }
 
@@ -205,9 +203,7 @@ export default function Reporting() {
 
           <div className="min-h-0 flex-1 overflow-auto">
             {report.isPending && (
-              <div className="flex justify-center py-16">
-                <Loader />
-              </div>
+              <Loader />
             )}
             {report.error && <p className="form-error px-8 py-4">{report.error.message}</p>}
 

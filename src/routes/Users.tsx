@@ -95,9 +95,7 @@ export default function Users() {
 
       <div className="min-h-0 flex-1 overflow-auto">
         {users.isPending && (
-          <div className="flex justify-center py-16">
-            <Loader />
-          </div>
+          <Loader />
         )}
         {users.error && <p className="form-error px-8 py-4">{users.error.message}</p>}
 

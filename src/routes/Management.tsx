@@ -463,9 +463,7 @@ export default function Management() {
       </div>
 
       {query.isPending && (
-        <div className="flex justify-center py-16">
-          <Loader />
-        </div>
+        <Loader />
       )}
       {query.error && <p className="form-error px-8 py-4">{query.error.message}</p>}
 

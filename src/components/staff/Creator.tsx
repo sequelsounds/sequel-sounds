@@ -767,9 +767,7 @@ export default function Creator() {
           <p>Pick another on the Playlists tab.</p>
         </div>
       ) : !data ? (
-        <div className="flex justify-center py-10">
-          <Loader />
-        </div>
+        <Loader />
       ) : (
         <>
           <div className="flex items-center gap-[10px] border-b border-sequel-line px-[18px] py-[14px]">

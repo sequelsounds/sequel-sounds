@@ -63,6 +63,9 @@ export type SupplierPatch = {
   brief_email?: string | null
   /** Who receives and signs the Schedule A — new, Andy 16 Sep. */
   contract_email?: string | null
+  /** Party B on the composer agreement, and its address — 24 Sep. */
+  legal_name?: string | null
+  business_address?: string | null
   phone_number?: string | null
   website?: string | null
   city?: string | null

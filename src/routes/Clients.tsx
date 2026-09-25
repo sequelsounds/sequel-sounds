@@ -166,9 +166,7 @@ export default function Clients() {
         <div className="h-8" />
 
         {clients.isPending && (
-          <div className="flex justify-center py-16">
-            <Loader />
-          </div>
+          <Loader />
         )}
         {clients.error && <p className="form-error px-8 py-4">{clients.error.message}</p>}
 

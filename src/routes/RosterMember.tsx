@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { EditEnum, EditField, EditSelect } from '../components/staff/EditField'
 import { QboBillingAddress, QboVendorField } from '../components/staff/QboVendorField'
@@ -7,6 +7,8 @@ import { QboBillingAddress, QboVendorField } from '../components/staff/QboVendor
 // same as /management and /dashboard. Pennies belong on an invoice, not a tile.
 import { money } from '../components/staff/reporting'
 import { SupplierInvoices } from '../components/staff/SupplierInvoices'
+import { AgreementActions } from '../components/staff/RosterOnboarding'
+import { SupplierAgreements } from '../components/staff/SupplierAgreements'
 import { useRosterMember, useSupplierStats } from '../lib/xanoMirror'
 import {
   BRIEFING_LISTS,
@@ -33,7 +35,7 @@ import {
  * all, on either side.
  */
 
-const TABS = ['Overview', 'Contact', 'Invoices', 'Finance'] as const
+const TABS = ['Overview', 'Contact', 'Agreements', 'Invoices', 'Finance'] as const
 type Tab = (typeof TABS)[number]
 
 function Stat({
@@ -55,6 +57,8 @@ function Stat({
 
 export default function RosterMember() {
   const { uuid } = useParams()
+  // ?agreement=1: Andy's notification opens the agreement to review and sign.
+  const [params] = useSearchParams()
   const member = useRosterMember(uuid)
   const stats = useSupplierStats(member.data?.id)
   const countries = useCountries()
@@ -63,9 +67,7 @@ export default function RosterMember() {
 
   if (member.isPending) {
     return (
-      <div className="flex flex-1 justify-center py-16">
-        <Loader />
-      </div>
+      <Loader />
     )
   }
   if (member.error) return <p className="form-error px-8 py-8">{member.error.message}</p>
@@ -82,6 +84,7 @@ export default function RosterMember() {
         <div className="page-eyebrow">Roster</div>
         <div className="title-row">
           <h1 className="page-title">{m.title ?? `Untitled (#${m.id})`}</h1>
+          <AgreementActions member={m} openReview={params.get('agreement') === '1'} />
         </div>
         <div className="page-subtitle">Edit our partners&rsquo; details...</div>
       </div>
@@ -178,6 +181,15 @@ export default function RosterMember() {
           <div className="edit-form">
             {/* "Contact Email" here, "Briefing Email" on the partner page.
                 Same column, Brief_Email. */}
+            {/* New, 24 Sep: the composer agreement is made with this name, at
+                this address. The team fills both in on its onboarding form. */}
+            <EditField label="Legal Name" value={m.legal_name} onSave={text('legal_name')} />
+            <EditField
+              label="Business Address"
+              value={m.business_address}
+              textarea
+              onSave={text('business_address')}
+            />
             <EditField label="Contact Email" value={m.brief_email} onSave={text('brief_email')} />
             {/* New, Andy 16 Sep: who a Schedule A goes to and is signed by.
                 Seeded from Contact Email for every roster team. */}
@@ -208,6 +220,8 @@ export default function RosterMember() {
             heading, nothing was ever built. So there is nothing to reproduce,
             and it is invoices rather than projects because an invoice line is
             the only place a supplier is actually named. Andy's call. */}
+        {tab === 'Agreements' && <SupplierAgreements member={m} />}
+
         {tab === 'Invoices' && <SupplierInvoices supplierId={m.id} />}
 
         {tab === 'Finance' && (
