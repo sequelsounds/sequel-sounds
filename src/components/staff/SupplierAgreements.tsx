@@ -25,14 +25,16 @@ type SongRow = {
   schedule_a_pdf_path: string | null
 }
 
-function useTeamSchedules(supplierId: number) {
+/** Exported so `/roster/:uuid` can load it with the page, not on the tab. */
+export function useTeamSchedules(supplierId: number | undefined) {
   return useQuery({
+    enabled: Number.isFinite(supplierId),
     queryKey: ['mirror', 'team-schedules', supplierId],
     queryFn: async (): Promise<SongRow[]> => {
       const { data, error } = await mirror
         .from('sequel_songs')
         .select('id, track_title, project, brand, schedule_a_status, schedule_a_signed_at, schedule_a_pdf_path')
-        .eq('supplier_list_id', supplierId)
+        .eq('supplier_list_id', supplierId!)
         .order('id', { ascending: false })
       if (error) throw error
       return (data ?? []) as SongRow[]

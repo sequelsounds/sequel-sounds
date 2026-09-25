@@ -8,8 +8,14 @@ import { QboBillingAddress, QboVendorField } from '../components/staff/QboVendor
 import { money } from '../components/staff/reporting'
 import { SupplierInvoices } from '../components/staff/SupplierInvoices'
 import { AgreementActions } from '../components/staff/RosterOnboarding'
-import { SupplierAgreements } from '../components/staff/SupplierAgreements'
-import { useRosterMember, useSupplierStats } from '../lib/xanoMirror'
+import { SupplierAgreements, useTeamSchedules } from '../components/staff/SupplierAgreements'
+import { useQboVendors } from '../lib/quickbooks'
+import {
+  useIsFinance,
+  useRosterMember,
+  useSupplierInvoices,
+  useSupplierStats,
+} from '../lib/xanoMirror'
 import {
   BRIEFING_LISTS,
   CA_STATUSES,
@@ -61,6 +67,12 @@ export default function RosterMember() {
   const [params] = useSearchParams()
   const member = useRosterMember(uuid)
   const stats = useSupplierStats(member.data?.id)
+  // Every tab's data loads with the page (Andy, 25 Sep 2026), so switching tabs
+  // never shows the loader. Same query keys as the tabs, so they read the cache.
+  useTeamSchedules(member.data?.id)
+  useSupplierInvoices(member.data?.id)
+  const finance = useIsFinance()
+  useQboVendors(finance.data === true)
   const countries = useCountries()
   const save = useSaveSupplier(uuid)
   const [tab, setTab] = useState<Tab>('Overview')
