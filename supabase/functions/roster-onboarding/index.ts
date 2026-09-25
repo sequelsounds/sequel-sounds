@@ -65,6 +65,8 @@ const TEMPLATE = {
   signed: Deno.env.get('ROSTER_SIGNED_TEMPLATE_ID') ?? 'e397037e-a9d4-408f-b633-da14f3340bc2',
   // To Andy when someone else requests an agreement (Andy, 24 Sep).
   toSign: Deno.env.get('ROSTER_TO_SIGN_TEMPLATE_ID') ?? 'c92d53e5-a67a-40da-bd52-56a74845f8d5',
+  // Navy, for partners (Andy, 25 Sep). Alias partner-invite.
+  partnerInvite: Deno.env.get('PARTNER_INVITE_TEMPLATE_ID') ?? '57556970-86a3-437b-b7e3-4ecd0188368f',
 }
 const useTemplate = (id: string, variables: Record<string, string>) => (id ? { id, variables } : undefined)
 
@@ -391,12 +393,14 @@ strong { font-weight: 700; }
 
 function inviteEmail(to: string, url: string, replyTo: string, kind: Kind = 'roster') {
   if (kind === 'partner') {
-    // Built here, not a Resend template yet: the roster invite's wording is
-    // roster-specific. Same shell as every other Sequel email.
+    // The navy "Partner invite" Resend template (Andy, 25 Sep); the html
+    // below is only the fallback if no template id is set.
     return sendEmail({
       to,
       replyTo: REPLY_TO,
+      bcc: [replyTo],
       subject: 'Work with Sequel | Add your details',
+      template: useTemplate(TEMPLATE.partnerInvite, { details_url: url }),
       html: sequelEmail({
         title: 'Work with Sequel',
         greeting: 'Hey there!',
@@ -412,6 +416,7 @@ function inviteEmail(to: string, url: string, replyTo: string, kind: Kind = 'ros
   return sendEmail({
     to,
     replyTo: REPLY_TO,
+    bcc: [replyTo],
     subject: 'Join the Sequel roster | Add your details',
     template: useTemplate(TEMPLATE.invite, { details_url: url }),
     html: sequelEmail({

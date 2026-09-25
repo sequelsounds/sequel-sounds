@@ -95,7 +95,7 @@ export default function Rail() {
           Here the session is Supabase's, so signing out is the whole job. */}
       <button
         type="button"
-        onClick={() => void supabase.auth.signOut()}
+        onClick={() => void supabase.auth.signOut({ scope: 'local' })}
         className="nav-link-app cursor-pointer text-left"
       >
         Logout

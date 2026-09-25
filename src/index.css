@@ -2670,6 +2670,52 @@
     appearance: auto;
     cursor: pointer;
   }
+
+  /* The partner form: Sequel navy with silver, as the partner emails (Andy,
+     25 Sep). Same layout as the roster form; only the colours change. */
+  .bp-wrap.jr-wrap.is-partner {
+    color: #d5d1d0;
+    background-color: #27405b;
+  }
+
+  .jr-wrap.is-partner .bp-logo {
+    filter: brightness(0) invert(0.83);
+  }
+
+  .jr-wrap.is-partner .bp-welcome-heading,
+  .jr-wrap.is-partner .bp-heading,
+  .jr-wrap.is-partner .bp-help,
+  .jr-wrap.is-partner .bp-hint,
+  .jr-wrap.is-partner .bp-input {
+    color: #d5d1d0;
+  }
+
+  .jr-wrap.is-partner .bp-input {
+    border-bottom-color: #d5d1d0;
+  }
+
+  /* The dropdown list itself is the browser's white, so its options stay dark. */
+  .jr-wrap.is-partner .jr-select option {
+    color: var(--color-sequel-brown);
+  }
+
+  .jr-wrap.is-partner .bp-button,
+  .jr-wrap.is-partner .bp-button.is-ghost {
+    color: #d5d1d0;
+    background-color: transparent;
+    border-color: #d5d1d0;
+  }
+
+  .jr-wrap.is-partner .bp-button:hover:not(:disabled):not(.is-disabled),
+  .jr-wrap.is-partner .bp-button.is-ghost:hover {
+    color: #27405b;
+    background-color: #d5d1d0;
+    border-color: #d5d1d0;
+  }
+
+  .jr-wrap.is-partner .bp-hero.jr-hero {
+    background-color: #27405b;
+  }
 }
 
 /* A single field in one of the standard modals (New composition team): it

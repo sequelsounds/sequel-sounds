@@ -68,7 +68,7 @@ function RequireStaff({ children }: { children: React.ReactNode }) {
         <button
           type="button"
           className="mt-3 underline"
-          onClick={() => supabase.auth.signOut()}
+          onClick={() => supabase.auth.signOut({ scope: 'local' })}
         >
           Sign out
         </button>

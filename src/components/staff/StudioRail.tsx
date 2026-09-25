@@ -45,7 +45,7 @@ export default function StudioRail() {
       </Link>
       <button
         type="button"
-        onClick={() => void supabase.auth.signOut()}
+        onClick={() => void supabase.auth.signOut({ scope: 'local' })}
         className="nav-link-app cursor-pointer text-left"
       >
         Logout

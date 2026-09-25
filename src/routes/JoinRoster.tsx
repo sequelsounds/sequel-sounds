@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { submitTeamForm, teamForm, type Option, type TeamFields } from '../lib/rosterOnboarding'
 
 /**
@@ -16,6 +16,11 @@ import { submitTeamForm, teamForm, type Option, type TeamFields } from '../lib/r
 
 const HERO_IMAGE =
   'https://images.unsplash.com/photo-1550634912-40b4a12c75ae?auto=format&fit=crop&w=1400&q=80'
+
+// The partner form is Sequel navy with its own photo (Andy, 25 Sep): "Blues
+// night" by Miljan Mijatović on Unsplash (free licence), a red and black lamp.
+const PARTNER_HERO_IMAGE =
+  'https://images.unsplash.com/photo-1604531381875-c7d3d8edca0f?auto=format&fit=crop&w=1400&q=80'
 
 type Kind = 'text' | 'long' | 'email' | 'country' | 'choice'
 type Question = { key: string; title: string; help?: string; kind: Kind; required?: boolean; max?: number }
@@ -155,7 +160,11 @@ export default function JoinRoster() {
   const [step, setStep] = useState(0)
   const [fields, setFields] = useState<TeamFields>({})
   const [countries, setCountries] = useState<Option[]>([])
-  const [kind, setKind] = useState<'roster' | 'partner'>('roster')
+  // From the address first, so the page is the right colour before it loads.
+  const { pathname } = useLocation()
+  const [kind, setKind] = useState<'roster' | 'partner'>(
+    pathname.startsWith('/join-partner/') ? 'partner' : 'roster',
+  )
   const [types, setTypes] = useState<string[]>([])
   const partner = kind === 'partner'
   const questions = partner ? PARTNER_QUESTIONS : QUESTIONS
@@ -250,7 +259,7 @@ export default function JoinRoster() {
     error ?? (badEmail ? "That doesn't look like an email address." : null)
 
   return (
-    <div className="bp-wrap jr-wrap">
+    <div className={`bp-wrap jr-wrap${partner ? ' is-partner' : ''}`}>
       <img
         // Brown on every screen, the welcome photo included (Andy, 24 Sep).
         className="bp-logo qw-logo"
@@ -269,7 +278,7 @@ export default function JoinRoster() {
 
       {screen === 'welcome' && (
         <div className="bp-welcome">
-          <div className="bp-hero jr-hero" style={{ backgroundImage: `url('${HERO_IMAGE}')` }} />
+          <div className="bp-hero jr-hero" style={{ backgroundImage: `url('${partner ? PARTNER_HERO_IMAGE : HERO_IMAGE}')` }} />
           <div className="bp-welcome-content">
             <h1 className="bp-welcome-heading">
               {partner ? (
