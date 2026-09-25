@@ -17,7 +17,7 @@ import { submitTeamForm, teamForm, type Option, type TeamFields } from '../lib/r
 const HERO_IMAGE =
   'https://images.unsplash.com/photo-1550634912-40b4a12c75ae?auto=format&fit=crop&w=1400&q=80'
 
-type Kind = 'text' | 'long' | 'email' | 'country'
+type Kind = 'text' | 'long' | 'email' | 'country' | 'choice'
 type Question = { key: string; title: string; help?: string; kind: Kind; required?: boolean; max?: number }
 
 /** Enough for an intro, not a life story (Andy, 24 Sep). The server holds the same cap. */
@@ -66,6 +66,73 @@ const QUESTIONS: Question[] = [
   { key: 'library_link', title: 'A link to your music library', help: 'If you have one.', kind: 'text' },
 ]
 
+/**
+ * `/join-partner/:token` — the same form for partners (Andy, 25 Sep 2026):
+ * every supplier that is not a composition team. They choose their own type,
+ * and must give at least one creative, one clearance and one finance contact.
+ * No agreement follows, so no legal name or address.
+ */
+const PARTNER_QUESTIONS: Question[] = [
+  {
+    key: 'title',
+    title: "What's your company called?",
+    help: "This is how you'll appear on our partner list.",
+    kind: 'text',
+    required: true,
+  },
+  { key: 'supplier_type', title: 'What kind of company are you?', kind: 'choice', required: true },
+  { key: 'city', title: 'Which city are you based in?', kind: 'text' },
+  { key: 'countries_list_id', title: 'And which country?', kind: 'country' },
+  {
+    key: 'creative_team_member_1_name',
+    title: "Who's your main creative contact?",
+    help: 'The person we send briefs and creative questions to.',
+    kind: 'text',
+    required: true,
+  },
+  { key: 'creative_team_member_1_email', title: "What's their email?", kind: 'email', required: true },
+  {
+    key: 'clearance_contact_name_1',
+    title: 'Who handles clearances?',
+    help: 'The person who confirms rights and quotes licences.',
+    kind: 'text',
+    required: true,
+  },
+  { key: 'clearance_contact_email_1', title: "What's their email?", kind: 'email', required: true },
+  { key: 'finance_email', title: 'Where should invoices and remittances go?', kind: 'email', required: true },
+  {
+    key: 'brief_email',
+    title: 'Where should we send our briefs?',
+    help: 'A shared inbox, if you have one.',
+    kind: 'email',
+  },
+  { key: 'contract_email', title: 'Who signs our licences?', help: 'Their email address.', kind: 'email' },
+  { key: 'phone_number', title: "What's the best number to reach you on?", kind: 'text' },
+  { key: 'website', title: 'Do you have a website?', kind: 'text' },
+  {
+    key: 'bio',
+    title: 'Give us a short intro to your company.',
+    help: 'Who you are and what you do, in a few lines.',
+    kind: 'long',
+    max: BIO_MAX,
+  },
+  { key: 'strengths', title: 'What are your strengths?', help: 'Genres, catalogue, what you are known for.', kind: 'long' },
+  {
+    key: 'creative_team_member_2_name',
+    title: 'Anyone else we should send briefs to?',
+    help: 'A second creative contact, if you have one.',
+    kind: 'text',
+  },
+  { key: 'creative_team_member_2_email', title: 'Their email?', kind: 'email' },
+  {
+    key: 'clearance_contact_name_2',
+    title: 'A second clearance contact?',
+    help: 'If you have one.',
+    kind: 'text',
+  },
+  { key: 'clearance_contact_email_2', title: 'Their email?', kind: 'email' },
+]
+
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const MAX_LINES = 4
 
@@ -88,16 +155,21 @@ export default function JoinRoster() {
   const [step, setStep] = useState(0)
   const [fields, setFields] = useState<TeamFields>({})
   const [countries, setCountries] = useState<Option[]>([])
+  const [kind, setKind] = useState<'roster' | 'partner'>('roster')
+  const [types, setTypes] = useState<string[]>([])
+  const partner = kind === 'partner'
+  const questions = partner ? PARTNER_QUESTIONS : QUESTIONS
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    document.title = 'Sequel | Join the roster'
     let live = true
     teamForm(token)
       .then((r) => {
         if (!live) return
         if (r.state !== 'open') return setScreen(r.state)
+        setKind(r.kind === 'partner' ? 'partner' : 'roster')
+        setTypes(r.types ?? [])
         setFields(r.fields)
         setCountries(r.countries)
         setScreen('welcome')
@@ -108,8 +180,12 @@ export default function JoinRoster() {
     }
   }, [token])
 
-  const q = QUESTIONS[step]
-  const last = step === QUESTIONS.length - 1
+  useEffect(() => {
+    document.title = partner ? 'Sequel | Partner with us' : 'Sequel | Join the roster'
+  }, [partner])
+
+  const q = questions[step]
+  const last = step === questions.length - 1
   const value = q ? (fields[q.key] == null ? '' : String(fields[q.key])) : ''
   const missing = !!q?.required && !value.trim()
   const badEmail = q?.kind === 'email' && !!value.trim() && !EMAIL_RE.test(value.trim())
@@ -138,7 +214,7 @@ export default function JoinRoster() {
 
   const next = () => {
     if (!canAdvance) return
-    setStep((s) => Math.min(QUESTIONS.length - 1, s + 1))
+    setStep((s) => Math.min(questions.length - 1, s + 1))
   }
   const back = () => {
     setError(null)
@@ -196,12 +272,24 @@ export default function JoinRoster() {
           <div className="bp-hero jr-hero" style={{ backgroundImage: `url('${HERO_IMAGE}')` }} />
           <div className="bp-welcome-content">
             <h1 className="bp-welcome-heading">
-              Sign up to the
-              <br />
-              Sequel Roster
+              {partner ? (
+                <>
+                  Partner with
+                  <br />
+                  Sequel
+                </>
+              ) : (
+                <>
+                  Sign up to the
+                  <br />
+                  Sequel Roster
+                </>
+              )}
             </h1>
             <p className="bp-help">
-              All we need is some details on you and your work, it&rsquo;ll only take 5 minutes.
+              {partner
+                ? 'All we need is a few details on your company and who to contact, it\u2019ll only take 5 minutes.'
+                : 'All we need is some details on you and your work, it\u2019ll only take 5 minutes.'}
             </p>
             <button
               type="button"
@@ -221,7 +309,9 @@ export default function JoinRoster() {
         <div className="bp-screen">
           <h2 className="bp-heading">Thank you — we've got your details.</h2>
           <p className="bp-help">
-            We'll be in touch when a brief comes up that suits you. You can close this window.
+            {partner
+              ? "We'll be in touch. You can close this window."
+              : "We'll be in touch when a brief comes up that suits you. You can close this window."}
           </p>
         </div>
       )}
@@ -274,6 +364,19 @@ export default function JoinRoster() {
                 {countries.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.country}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {q.kind === 'choice' && (
+            <div className="bp-panel" data-rise>
+              <select className="bp-input jr-select" value={value} onChange={(e) => set(e.target.value)}>
+                <option value="">Choose one…</option>
+                {types.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
                   </option>
                 ))}
               </select>

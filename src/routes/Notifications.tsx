@@ -42,6 +42,7 @@ const KIND_LABEL: Record<string, string> = {
   bill_ready_to_pay: 'Ready to pay',
   mcps_licence_due: 'MCPS licence',
   roster_details_received: 'New roster team',
+  partner_details_received: 'New partner',
   agreement_to_sign: 'Agreement to sign',
   agreement_signed: 'Agreement signed',
   agreement_sent: 'Agreement sent',
@@ -75,7 +76,13 @@ function when(iso: string) {
  *  about, so no row is left with an empty dash. */
 const about = (n: Notification) =>
   n.project_title?.trim() ||
-  (n.subject_kind === 'supplier' ? 'Roster' : n.subject_kind === 'user' ? 'Users' : '—')
+  (n.subject_kind === 'supplier'
+    ? n.link?.startsWith('/partners')
+      ? 'Partners'
+      : 'Roster'
+    : n.subject_kind === 'user'
+      ? 'Users'
+      : '—')
 
 function Counter({ label, value }: { label: string; value: string | number }) {
   return (

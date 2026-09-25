@@ -12,6 +12,7 @@ import {
   useResendAgreement,
   useResendInvite,
   type AgreementPreview,
+  type InviteKind,
 } from '../../lib/rosterOnboarding'
 
 /**
@@ -19,9 +20,16 @@ import {
  * a team's page (Andy, 24 Sep 2026). The flow is in `lib/rosterOnboarding.ts`.
  */
 
-/** + Add team: one field. The team fills in the rest itself. */
-export function InviteTeamModal({ onClose }: { onClose: () => void }) {
-  const invite = useInviteTeam()
+/** + Add team / + Add partner: one field. They fill in the rest themselves. */
+export function InviteTeamModal({
+  onClose,
+  kind = 'roster',
+}: {
+  onClose: () => void
+  kind?: InviteKind
+}) {
+  const invite = useInviteTeam(kind)
+  const partner = kind === 'partner'
   const [email, setEmail] = useState('')
   const [missing, setMissing] = useState(false)
   const done = invite.data
@@ -30,10 +38,12 @@ export function InviteTeamModal({ onClose }: { onClose: () => void }) {
   if (done) {
     return (
       <Modal onClose={onClose}>
-        <div className="rm-header">{done.emailed ? 'Invite sent' : 'Team added, but the email did not send'}</div>
+        <div className="rm-header">
+          {done.emailed ? 'Invite sent' : `${partner ? 'Partner' : 'Team'} added, but the email did not send`}
+        </div>
         <div className="rm-subheader">
           {done.emailed
-            ? `We've emailed ${email.trim()} a link to add their details. They'll show on the Roster as Invited until they do.`
+            ? `We've emailed ${email.trim()} a link to add their details. They'll show on ${partner ? 'Partners' : 'the Roster'} as Invited until they do.`
             : done.email_error}
         </div>
         <div className="rm-buttons">
@@ -54,12 +64,14 @@ export function InviteTeamModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal onClose={onClose}>
-      <div className="rm-header">New composition team</div>
+      <div className="rm-header">{partner ? 'New partner' : 'New composition team'}</div>
       <div className="rm-subheader">
         {invite.error?.message ??
           (missing
             ? 'Please enter their email address.'
-            : "We'll email them a link to add their details. Once they have, you can send the composer agreement.")}
+            : partner
+              ? "We'll email them a link to add their company's details."
+              : "We'll email them a link to add their details. Once they have, you can send the composer agreement.")}
       </div>
       <label className="modal-field">
         <span className="am-label">Email</span>
@@ -68,7 +80,7 @@ export function InviteTeamModal({ onClose }: { onClose: () => void }) {
           className="am-input"
           autoComplete="off"
           autoFocus
-          placeholder="hello@composer.com"
+          placeholder={partner ? 'hello@label.com' : 'hello@composer.com'}
           value={email}
           onChange={(e) => {
             setEmail(e.target.value)

@@ -115,6 +115,7 @@ export default function App() {
       {/* A composition team adds its details, then signs the composer
           agreement (24 Sep). The token in each email is the credential. */}
       <Route path="/join-roster/:token" element={<JoinRoster />} />
+      <Route path="/join-partner/:token" element={<JoinRoster />} />
       <Route path="/agreement/:token" element={<Agreement />} />
       <Route path="/p/:token" element={<SharedPlaylist />} />
       <Route path="/t/:token" element={<SharedTrack />} />

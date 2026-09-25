@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader } from '../components/Loader'
 import { usePartners, type Partner } from '../lib/xanoMirror'
-import { NewSupplier } from '../components/staff/NewSupplier'
+import { InviteTeamModal } from '../components/staff/RosterOnboarding'
 import { SupplierArchiveAction } from '../components/staff/RowActions'
 
 /**
@@ -107,20 +107,18 @@ export default function Partners() {
           <button
             type="button"
             className="btn btn-mono btn-outline"
-            onClick={() => setAdding((v) => !v)}
+            onClick={() => setAdding(true)}
           >
-            {adding ? 'Close' : '+ Add partner'}
+            + Add partner
           </button>
         </div>
         <div className="page-subtitle">Manage our music suppliers...</div>
       </div>
 
-      {adding && (
-        <NewSupplier
-          onCancel={() => setAdding(false)}
-          onCreated={(uuid) => navigate(`/partners/${uuid}`)}
-        />
-      )}
+      {/* Andy, 25 Sep 2026: a partner is added by email only and fills in its
+          own details from the link, as roster teams do. Until it has, its row
+          cannot be opened. */}
+      {adding && <InviteTeamModal kind="partner" onClose={() => setAdding(false)} />}
 
       <div className="tab-band">
         <div className="tab-band-search is-narrow">
@@ -176,14 +174,17 @@ export default function Partners() {
           rows.map((p) => (
             <div
               key={p.id}
-              className="project-row project-row-client"
-              onClick={() => navigate(`/partners/${p.uuid}`)}
+              className={`project-row project-row-client${p.onboarding_status === 'Invited' ? ' is-invited' : ''}`}
+              title={p.onboarding_status === 'Invited' ? 'Waiting for them to add their details' : undefined}
+              onClick={() => p.onboarding_status !== 'Invited' && navigate(`/partners/${p.uuid}`)}
             >
               <span className="row-title" title={p.title ?? undefined}>
                 {p.title}
               </span>
               <span className="row-field">{p.country_text}</span>
-              <span className="row-type">{p.supplier_type}</span>
+              <span className="row-type">
+                {p.onboarding_status === 'Invited' ? 'Invited' : p.supplier_type}
+              </span>
               {/* Track's mail mark opens the brief address. It is drawn on
                   every row, including the ones that have no address. */}
               <span className="row-action is-inert" title="Email — not rebuilt yet">

@@ -902,50 +902,59 @@ const attachPoFromEmail: Tool = {
   },
 }
 
-const createSupplier: Tool = {
-  name: 'create_supplier',
-  title: 'Create a supplier',
+/**
+ * Suppliers are never created by Coda (Andy, 25 Sep 2026): they fill in their
+ * own details. What she can do is send the form — the same invite as
+ * + Add team on the Roster and + Add partner on Partners, through the
+ * roster-onboarding function, as the caller.
+ */
+const inviteSupplier: Tool = {
+  name: 'invite_supplier',
+  title: 'Invite a supplier',
   description:
-    'Create a supplier with a name and a type. Everything else is editable afterwards with ' +
-    'update_record, which is why only two fields are asked for. A type of "Composition Team" ' +
-    'puts the record on the Roster; every other type puts it on Partners.',
+    'Email someone a link to a form where they add their own details, which puts them on the ' +
+    'Roster or on Partners. You cannot create a supplier any other way. kind "roster" is for a ' +
+    'composition team (composers); kind "partner" is for everyone else: labels, publishers, ' +
+    'libraries, agents, managers, sync reps, musicologists. Only an email is needed. Say who ' +
+    'you are inviting and to which (Roster or Partners) and wait for a yes.',
   requires: 'staff',
   writes: true,
   schema: obj(
     {
-      title: str("The supplier's name."),
-      supplier_type: {
+      email: str('Their email address. The form link is sent here.'),
+      kind: {
         type: 'string',
-        enum: [
-          'Agent',
-          'Manager',
-          'Publisher',
-          'Label',
-          'MCPS Library',
-          'Non-MCPS Library',
-          'Sync Rep',
-          'Composition Team',
-          'Partner Library',
-          'Musicologist',
-        ],
-        description: 'What kind of supplier.',
+        enum: ['roster', 'partner'],
+        description: 'roster for a composition team, partner for any other supplier.',
       },
     },
-    ['title', 'supplier_type'],
+    ['email', 'kind'],
   ),
   run: async (ctx, args) => {
-    const { data, error } = await ctx.sb
-      .schema(MIRROR)
-      .from('supplier_list')
-      .insert({ title: args.title, supplier_type: args.supplier_type })
-      .select('id, uuid')
-      .single()
-
-    if (error) return bad(readable(error))
-    const row = data as { id: number; uuid: string | null }
-    if (!row?.uuid) return bad('The supplier was created but has no link. Tell Andy.')
-    const page = args.supplier_type === 'Composition Team' ? 'roster' : 'partners'
-    return ok(`Created supplier ${row.id} — ${args.title}\n${ctx.appBase}/${page}/${row.uuid}`)
+    const email = String(args.email ?? '').trim().toLowerCase()
+    const kind = args.kind === 'roster' ? 'roster' : 'partner'
+    const { data, error } = await ctx.sb.functions.invoke('roster-onboarding', {
+      body: { action: 'invite', email, kind },
+    })
+    if (error) {
+      let message = error.message
+      const res = (error as { context?: Response }).context
+      if (res && typeof res.json === 'function') {
+        try {
+          const b = (await res.json()) as { error?: string }
+          if (b?.error) message = b.error
+        } catch {
+          /* keep the generic message */
+        }
+      }
+      return bad(message)
+    }
+    const r = data as { uuid?: string; emailed?: boolean; email_error?: string } | null
+    const where = kind === 'roster' ? 'the Roster' : 'Partners'
+    if (!r?.emailed) {
+      return bad(`Added to ${where} as Invited, but the email did not send: ${r?.email_error ?? 'no reason given'}`)
+    }
+    return ok(`Invited ${email}. They show on ${where} as Invited until they fill in the form.`)
   },
 }
 
@@ -1421,7 +1430,9 @@ export const TOOLS: Tool[] = [
   getRecord,
   report,
   updateRecord,
-  createSupplier,
+  inviteSupplier,
+  // No create_supplier (Andy, 25 Sep 2026): suppliers fill in their own
+  // details through a form, as roster teams do with /join-roster.
   attachPoFromEmail,
   ...ACTIONS.map(actionTool),
 ]

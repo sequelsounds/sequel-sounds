@@ -8,7 +8,8 @@
 // Complete. This replaces adding teams by hand and BoldSign.
 //
 // Staff (a signed-in staff session):
-//   { action: "invite", email }                   -> { uuid, emailed, email_error? }
+//   { action: "invite", email, kind? }            -> { uuid, emailed, email_error? }
+//                                                   kind "partner" onboards a partner (no agreement)
 //   { action: "resend_invite", supplier_id }      -> { emailed, email_error? }
 //   { action: "request_agreement", supplier_id }  -> { stage }
 //   { action: "preview", supplier_id }            -> { pdf (base64), stage, can_sign, consent }
@@ -71,6 +72,24 @@ const useTemplate = (id: string, variables: Record<string, string>) => (id ? { i
 // whoever pressed the button.
 const REPLY_TO = 'support@sequelsounds.com'
 const COMPOSITION_TEAM = 'Composition Team'
+
+// Partners (every supplier that is not a composition team) are onboarded the
+// same way since 25 Sep 2026 (Andy): an email, then their own form at
+// /join-partner/:token. They pick their own type there, so an invited partner
+// has none yet. There is no agreement step for partners.
+const PARTNER_TYPES = [
+  'Agent',
+  'Manager',
+  'Publisher',
+  'Label',
+  'MCPS Library',
+  'Non-MCPS Library',
+  'Sync Rep',
+  'Partner Library',
+  'Musicologist',
+] as const
+type Kind = 'roster' | 'partner'
+const joinPath = (k: Kind) => (k === 'roster' ? '/join-roster/' : '/join-partner/')
 const CONSENT =
   'I agree to sign this agreement electronically, and that typing my name here is my signature.'
 const SIGNATORY = (Deno.env.get('AGREEMENT_SIGNATORY_EMAIL') ?? 'andy@sequelsounds.com').toLowerCase()
@@ -246,6 +265,7 @@ async function notify(db: Client, userId: number | null, kind: string, message: 
   if (error) console.warn('notify failed', kind, error.message)
 }
 
+const kindOf = (t: Team): Kind => (t.supplier_type === COMPOSITION_TEAM ? 'roster' : 'partner')
 const teamName = (t: Team) => (t.title ?? '').trim() || t.brief_email || 'A composition team'
 const sendTo = (t: Team) => t.contract_email || t.brief_email
 
@@ -369,7 +389,26 @@ strong { font-weight: 700; }
 </html>`
 }
 
-function inviteEmail(to: string, url: string, replyTo: string) {
+function inviteEmail(to: string, url: string, replyTo: string, kind: Kind = 'roster') {
+  if (kind === 'partner') {
+    // Built here, not a Resend template yet: the roster invite's wording is
+    // roster-specific. Same shell as every other Sequel email.
+    return sendEmail({
+      to,
+      replyTo: REPLY_TO,
+      subject: 'Work with Sequel | Add your details',
+      html: sequelEmail({
+        title: 'Work with Sequel',
+        greeting: 'Hey there!',
+        before: [
+          'We&rsquo;d like to add you to <strong style="font-weight: 700;">Sequel&rsquo;s partners</strong>. Please add your company&rsquo;s details using the button below.',
+        ],
+        button: { label: 'Add your details', url },
+        after: ['Any questions, just reply to this email.'],
+      }),
+      text: `Hey there!\n\nWe'd like to add you to Sequel's partners. Please add your company's details here:\n${url}\n\nAny questions, just reply to this email.\n\nThanks,\nSequel`,
+    })
+  }
   return sendEmail({
     to,
     replyTo: REPLY_TO,
@@ -639,27 +678,89 @@ const REQUIRED: [FieldName, string][] = [
   ['brief_email', 'a contact email'],
 ]
 
+// The partner form (Andy, 25 Sep 2026): at least one creative, one clearance
+// and one finance contact, plus the name and the type they pick.
+const PARTNER_FIELDS = {
+  title: 200,
+  supplier_type: 60,
+  bio: 600,
+  strengths: 1000,
+  brief_email: 200,
+  contract_email: 200,
+  finance_email: 200,
+  phone_number: 60,
+  website: 300,
+  city: 120,
+  creative_team_member_1_name: 200,
+  creative_team_member_1_email: 200,
+  creative_team_member_2_name: 200,
+  creative_team_member_2_email: 200,
+  creative_team_member_3_name: 200,
+  creative_team_member_3_email: 200,
+  clearance_contact_name_1: 200,
+  clearance_contact_email_1: 200,
+  clearance_contact_name_2: 200,
+  clearance_contact_email_2: 200,
+} as const
+const PARTNER_REQUIRED: [string, string][] = [
+  ['title', 'your company name'],
+  ['supplier_type', 'what kind of company you are'],
+  ['creative_team_member_1_name', 'a creative contact'],
+  ['creative_team_member_1_email', "your creative contact's email"],
+  ['clearance_contact_name_1', 'a clearance contact'],
+  ['clearance_contact_email_1', "your clearance contact's email"],
+  ['finance_email', 'a finance email'],
+]
+const PARTNER_EMAIL_FIELDS = [
+  'brief_email',
+  'contract_email',
+  'finance_email',
+  'creative_team_member_1_email',
+  'creative_team_member_2_email',
+  'creative_team_member_3_email',
+  'clearance_contact_email_1',
+  'clearance_contact_email_2',
+]
+
+const fieldsFor = (kind: Kind): Record<string, number> => (kind === 'roster' ? FIELDS : PARTNER_FIELDS)
+
 async function formPayload(db: Client, t: Team, row: Onboarding) {
+  const kind = kindOf(t)
   const [{ data: countries }, { data: full }] = await Promise.all([
     db.from('countries_list').select('id, country').order('country'),
-    db.from('supplier_list').select(`${Object.keys(FIELDS).join(', ')}, countries_list_id, regions_id`).eq('id', t.id).single(),
+    db
+      .from('supplier_list')
+      .select(`${Object.keys(fieldsFor(kind)).join(', ')}, countries_list_id, regions_id`)
+      .eq('id', t.id)
+      .single(),
   ])
   const fields = { ...(full as unknown as Record<string, unknown>) }
   // The row is titled with the email until the team names itself.
   if (fields.title === row.invite_email) fields.title = ''
-  return { email: row.invite_email, countries: countries ?? [], fields }
+  return {
+    kind,
+    email: row.invite_email,
+    countries: countries ?? [],
+    fields,
+    ...(kind === 'partner' ? { types: PARTNER_TYPES } : {}),
+  }
 }
 
-function cleanFields(raw: unknown): { patch: Record<string, unknown>; error?: string } {
+function cleanFields(raw: unknown, kind: Kind): { patch: Record<string, unknown>; error?: string } {
   const f = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   const patch: Record<string, unknown> = {}
-  for (const [name, max] of Object.entries(FIELDS) as [FieldName, number][]) {
+  for (const [name, max] of Object.entries(fieldsFor(kind))) {
     const v = typeof f[name] === 'string' ? (f[name] as string).trim() : ''
     patch[name] = v ? v.slice(0, max) : null
   }
-  for (const [name, label] of REQUIRED) if (!patch[name]) return { patch, error: `Please add ${label}.` }
-  for (const name of EMAIL_FIELDS) {
+  const required = kind === 'roster' ? REQUIRED : PARTNER_REQUIRED
+  for (const [name, label] of required) if (!patch[name]) return { patch, error: `Please add ${label}.` }
+  const emails: string[] = kind === 'roster' ? EMAIL_FIELDS : PARTNER_EMAIL_FIELDS
+  for (const name of emails) {
     if (patch[name] && !EMAIL_RE.test(patch[name] as string)) return { patch, error: `“${patch[name]}” is not an email address.` }
+  }
+  if (kind === 'partner' && !(PARTNER_TYPES as readonly string[]).includes(patch.supplier_type as string)) {
+    return { patch, error: 'Please choose what kind of company you are.' }
   }
   if (!patch.contract_email) patch.contract_email = patch.brief_email
   const country = Number(f.countries_list_id)
@@ -693,34 +794,41 @@ Deno.serve(async (req) => {
       const isSignatory = me.email === SIGNATORY
 
       if (action === 'invite') {
+        const kind: Kind = body.kind === 'partner' ? 'partner' : 'roster'
         const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
         if (!EMAIL_RE.test(email)) return json({ error: 'Please enter an email address.' }, 400, origin)
-        const { data: clash } = await db
+        const { data: sameEmail } = await db
           .from('supplier_list')
-          .select('id, title')
-          .eq('supplier_type', COMPOSITION_TEAM)
+          .select('id, title, supplier_type')
           .eq('status', 'Active')
           .or(`brief_email.ilike.${email},contract_email.ilike.${email}`)
-          .limit(1)
+        // A clash is the same email on the same side: a roster team, or a partner.
+        const clash = ((sameEmail ?? []) as { title: string; supplier_type: string | null }[]).filter(
+          (r) => (r.supplier_type === COMPOSITION_TEAM) === (kind === 'roster'),
+        )
         if (clash && clash.length) {
           return json({ error: `${(clash[0] as { title: string }).title} already uses that email.` }, 400, origin)
         }
         const { data: created, error } = await db
           .from('supplier_list')
-          .insert({
-            title: email,
-            supplier_type: COMPOSITION_TEAM,
-            brief_email: email,
-            contract_email: email,
-            ca_status: 'Not Sent',
-            onboarding_status: 'Invited',
-          })
+          .insert(
+            kind === 'roster'
+              ? {
+                  title: email,
+                  supplier_type: COMPOSITION_TEAM,
+                  brief_email: email,
+                  contract_email: email,
+                  ca_status: 'Not Sent',
+                  onboarding_status: 'Invited',
+                }
+              : { title: email, supplier_type: null, brief_email: email, onboarding_status: 'Invited' },
+          )
           .select(TEAM_COLS)
           .single()
         if (error || !created) return json({ error: error?.message ?? 'The team could not be added.' }, 400, origin)
         const team = created as Team
         const token = newToken()
-        const emailError = await inviteEmail(email, `${appOrigin(req)}/join-roster/${token}`, me.email)
+        const emailError = await inviteEmail(email, `${appOrigin(req)}${joinPath(kind)}${token}`, me.email, kind)
         await onboarding(db).insert({
           supplier_id: team.id,
           invite_token: token,
@@ -740,7 +848,13 @@ Deno.serve(async (req) => {
         if (team.onboarding_status !== 'Invited' || !row?.invite_token || !row.invite_email) {
           return json({ error: 'This team has already added its details.' }, 400, origin)
         }
-        const emailError = await inviteEmail(row.invite_email, `${appOrigin(req)}/join-roster/${row.invite_token}`, me.email)
+        const kind = kindOf(team)
+        const emailError = await inviteEmail(
+          row.invite_email,
+          `${appOrigin(req)}${joinPath(kind)}${row.invite_token}`,
+          me.email,
+          kind,
+        )
         await onboarding(db).update({ invite_email_error: emailError }).eq('supplier_id', team.id)
         return json({ emailed: !emailError, email_error: emailError ?? undefined }, 200, origin)
       }
@@ -862,7 +976,8 @@ Deno.serve(async (req) => {
       if (team.onboarding_status !== 'Invited') return json({ state: 'done' }, 200, origin)
       if (action === 'form') return json({ state: 'open', ...(await formPayload(db, team, row)) }, 200, origin)
 
-      const { patch, error } = cleanFields(body.fields)
+      const kind = kindOf(team)
+      const { patch, error } = cleanFields(body.fields, kind)
       if (error) return json({ state: 'open', error }, 200, origin)
       // The region follows the country (Andy, 24 Sep): the form does not ask.
       if (patch.countries_list_id) {
@@ -885,7 +1000,11 @@ Deno.serve(async (req) => {
       }
       await onboarding(db).update({ details_at: new Date().toISOString() }).eq('supplier_id', team.id)
       const fresh = (await teamById(db, team.id)) ?? team
-      await notify(db, row.invited_by, 'roster_details_received', `${teamName(fresh)} added their details to the roster.`, fresh, `/roster/${fresh.uuid}`)
+      if (kind === 'roster') {
+        await notify(db, row.invited_by, 'roster_details_received', `${teamName(fresh)} added their details to the roster.`, fresh, `/roster/${fresh.uuid}`)
+      } else {
+        await notify(db, row.invited_by, 'partner_details_received', `${teamName(fresh)} added their details as a partner.`, fresh, `/partners/${fresh.uuid}`)
+      }
       return json({ state: 'done' }, 200, origin)
     }
 

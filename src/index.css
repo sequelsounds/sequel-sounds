@@ -2543,7 +2543,8 @@
     color: var(--color-sequel-brown);
   }
 
-  .project-row-roster.is-invited {
+  /* An invited team or partner: no details yet, so it cannot be opened. */
+  .project-row.is-invited {
     cursor: default;
     opacity: 0.55;
   }

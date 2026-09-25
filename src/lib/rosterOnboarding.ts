@@ -44,13 +44,20 @@ function useRosterMutation<V, T>(run: (v: V) => Promise<T>) {
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ['mirror', 'roster'] })
       void qc.invalidateQueries({ queryKey: ['mirror', 'roster-member'] })
+      void qc.invalidateQueries({ queryKey: ['mirror', 'partners'] })
     },
   })
 }
 
-export const useInviteTeam = () =>
+/** Roster teams, and since 25 Sep 2026 partners too (kind 'partner'). */
+export type InviteKind = 'roster' | 'partner'
+
+export const useInviteTeam = (kind: InviteKind = 'roster') =>
   useRosterMutation((email: string) =>
-    rosterCall<Emailed & { uuid: string }>({ action: 'invite', email }, "The team couldn't be added. Please try again."),
+    rosterCall<Emailed & { uuid: string }>(
+      { action: 'invite', email, kind },
+      kind === 'partner' ? "The partner couldn't be added. Please try again." : "The team couldn't be added. Please try again.",
+    ),
   )
 
 export const useResendInvite = () =>
@@ -113,7 +120,16 @@ export type TeamFields = Record<string, string | number | null>
 
 export type FormState =
   | { state: 'invalid' | 'done' }
-  | { state: 'open'; email: string; countries: Option[]; fields: TeamFields; error?: string }
+  | {
+      state: 'open'
+      kind: InviteKind
+      email: string
+      countries: Option[]
+      fields: TeamFields
+      /** Partners only: the supplier types they choose from. */
+      types?: string[]
+      error?: string
+    }
 
 export const teamForm = (token: string) =>
   rosterCall<FormState>({ action: 'form', token }, 'This link could not be opened.')

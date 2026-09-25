@@ -693,6 +693,8 @@ export type Partner = {
   country_text: string | null
   region_id: number | null
   region_text: string | null
+  /** Invited: emailed the partner form, no details yet (0085). */
+  onboarding_status: string | null
 }
 
 /**
