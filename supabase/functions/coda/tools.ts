@@ -20,6 +20,14 @@
 // grants that make the edit pages refuse.
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.20'
+import {
+  priceMcps,
+  type McpsAnswers,
+  type McpsPrice,
+  type McpsReference,
+  type RateCardRow,
+  type TerritoryStructure,
+} from '../_shared/mcpsPricing.ts'
 
 // ------------------------------------------------------------------ people --
 
@@ -601,6 +609,24 @@ const REPORTS: Record<string, { rpc: string; requires: Role; args: string[]; wha
     requires: 'staff',
     args: ['uuid'],
     what: 'What has happened to a release form — sent, opened, signed.',
+  },
+  project_licences: {
+    rpc: 'track_project_composition_licences',
+    requires: 'staff',
+    args: ['project_id'],
+    what: 'Every composition and library licence on a project (kind says which).',
+  },
+  licence_detail: {
+    rpc: 'track_composition_licence_detail',
+    requires: 'staff',
+    args: ['uuid'],
+    what: 'One licence in full, composition or library.',
+  },
+  licence_activity: {
+    rpc: 'track_licence_activity',
+    requires: 'staff',
+    args: ['uuid'],
+    what: 'Who a licence was sent to, and whether each has opened or downloaded it.',
   },
   match_supplier: {
     rpc: 'track_match_supplier',
@@ -1306,43 +1332,49 @@ const ACTIONS: ActionDef[] = [
     name: 'share',
     title: 'Make a share link',
     description:
-      'Mint a link to send outside Sequel. `kind` is asset, contract, project_assets or ' +
-      'release_form. Assets, contracts and release forms take a uuid; project_assets takes a ' +
-      'project id.',
+      'Mint a link to send outside Sequel. `kind` is asset, contract, project_assets, ' +
+      'release_form or licence. Assets, contracts, release forms and licences take a uuid; ' +
+      'project_assets takes a project id.',
     requires: 'staff',
     rpc: '',
     schema: obj(
       {
         kind: {
           type: 'string',
-          enum: ['asset', 'contract', 'project_assets', 'release_form'],
+          enum: ['asset', 'contract', 'project_assets', 'release_form', 'licence'],
           description: 'What to share.',
         },
-        uuid: str("The record's uuid, for asset, contract and release_form."),
+        uuid: str("The record's uuid, for asset, contract, release_form and licence."),
         project_id: int('The project, for project_assets.'),
       },
       ['kind'],
     ),
-    say: (r) => `Link: ${JSON.stringify(first(r))}`,
+    say: (r, a, ctx) => {
+      const row = first(r)
+      // A licence link opens the licence page, as the app's Copy link does.
+      if (a.kind === 'licence' && row?.code) return `Link: ${ctx.appBase}/licence?id=${row.code}`
+      return `Link: ${JSON.stringify(row)}`
+    },
   },
   {
     name: 'archive',
     title: 'Archive a record',
     description:
       'Archiving is what "delete" means across Sequel — the record leaves the lists and keeps ' +
-      'its history. `kind` is invoice, quote, supplier, brief, contract or release_form. ' +
-      'Invoices, quotes, suppliers and briefs take an id; contracts and release forms a uuid.',
+      'its history. `kind` is invoice, quote, supplier, brief, contract, release_form or ' +
+      'licence. Invoices, quotes, suppliers and briefs take an id; contracts, release forms ' +
+      'and licences a uuid.',
     requires: 'staff',
     rpc: '',
     schema: obj(
       {
         kind: {
           type: 'string',
-          enum: ['invoice', 'quote', 'supplier', 'brief', 'contract', 'release_form'],
+          enum: ['invoice', 'quote', 'supplier', 'brief', 'contract', 'release_form', 'licence'],
           description: 'What to archive.',
         },
         id: int('The numeric id, for invoice, quote, supplier and brief.'),
-        uuid: str('The uuid, for contract and release_form.'),
+        uuid: str('The uuid, for contract, release_form and licence.'),
       },
       ['kind'],
     ),
@@ -1355,6 +1387,7 @@ const SHARE_RPCS: Record<string, { rpc: string; arg: 'uuid' | 'project_id' }> = 
   asset: { rpc: 'track_share_asset', arg: 'uuid' },
   contract: { rpc: 'track_share_contract', arg: 'uuid' },
   release_form: { rpc: 'track_share_release_form', arg: 'uuid' },
+  licence: { rpc: 'track_share_composition_licence', arg: 'uuid' },
   project_assets: { rpc: 'track_share_project_assets', arg: 'project_id' },
 }
 
@@ -1365,6 +1398,7 @@ const ARCHIVE_RPCS: Record<string, { rpc: string; arg: 'id' | 'uuid'; param: str
   brief: { rpc: 'track_archive_brief', arg: 'id', param: 'p_brief_id' },
   contract: { rpc: 'track_archive_contract', arg: 'uuid', param: 'p_uuid' },
   release_form: { rpc: 'track_archive_release_form', arg: 'uuid', param: 'p_uuid' },
+  licence: { rpc: 'track_archive_composition_licence', arg: 'uuid', param: 'p_uuid' },
 }
 
 function actionTool(def: ActionDef): Tool {
@@ -1420,6 +1454,567 @@ function actionTool(def: ActionDef): Tool {
   }
 }
 
+// ---------------------------------------------------------- the contracts --
+//
+// Licences (composition and library) and release forms, through the SAME edge
+// functions the app's modals use, as the caller — so every rule the app has
+// (invoice first, paythrough only for library, 100% share on library, the key
+// the PDF goes to) is the database's and the function's, not repeated here.
+// Added 26 Sep 2026 for the MCP (Andy: "the thing that gets Phil excited").
+//
+// ⚠️ PREVIEW FIRST. Creating a licence fills most of it from the project and
+// the invoice. `preview: true` returns exactly what would be printed and
+// creates nothing, so the person sees the whole document's details and says
+// yes once — Andy, 25 Sep: gather everything, one confirmation.
+//
+// ⚠️ SENDING IS ITS OWN TOOL AND ITS OWN YES. An email to a client cannot be
+// taken back. The address must be one the person gave — never looked up.
+
+/** Call one of our own edge functions as the caller; its error text, not a generic one. */
+async function invokeFn(
+  ctx: Ctx,
+  name: string,
+  body: Record<string, unknown>,
+): Promise<{ data: Record<string, unknown> | null; error: string | null }> {
+  const { data, error } = await ctx.sb.functions.invoke(name, { body })
+  if (!error) return { data: (data ?? null) as Record<string, unknown> | null, error: null }
+  let message = error.message
+  const res = (error as { context?: Response }).context
+  if (res && typeof res.json === 'function') {
+    try {
+      const b = (await res.json()) as { error?: string }
+      if (b?.error) message = b.error
+    } catch {
+      /* keep the generic message */
+    }
+  }
+  return { data: null, error: message }
+}
+
+const LICENCE_FIELDS = [
+  'licensee_name', 'licensee_address', 'rights_granted', 'licensor_share', 'composition_title',
+  'writer_names', 'production_name', 'client_name', 'brand', 'campaign', 'scripts', 'cutdowns',
+  'media', 'territory', 'term', 'first_transmission', 'licence_fee',
+] as const
+type LicenceField = (typeof LICENCE_FIELDS)[number]
+
+const LICENCE_LABELS: Record<LicenceField, string> = {
+  licensee_name: 'Licensee', licensee_address: 'Licensee address', rights_granted: 'Rights granted',
+  licensor_share: "Licensor's share", composition_title: 'Title', writer_names: 'Writer(s)',
+  production_name: 'Production', client_name: 'Client', brand: 'Brand', campaign: 'Campaign',
+  scripts: 'Scripts', cutdowns: 'Cutdowns included', media: 'Media', territory: 'Territory',
+  term: 'Term', first_transmission: 'First transmission', licence_fee: 'Licence fee',
+}
+
+type Parts = { currency: string | null; master: number; publishing: number }
+
+/** The fee follows the rights granted — the app's feeFor(), the same rule. */
+function licenceFee(rights: string, parts: Parts | null): string {
+  if (!parts) return ''
+  const n =
+    rights === 'Master Only'
+      ? Number(parts.master)
+      : rights === 'Publishing Only'
+        ? Number(parts.publishing)
+        : Number(parts.master) + Number(parts.publishing)
+  if (!(n > 0)) return ''
+  const s = n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return `${parts.currency ?? ''} ${s}`.trim()
+}
+
+const licenceKindName = (k: string) => (k === 'library' ? 'Library Licence' : 'Composition Licence')
+
+const createLicence: Tool = {
+  name: 'create_licence',
+  title: 'Create a licence',
+  description:
+    'Create a composition or library licence for a client — Sequel is the licensor. ' +
+    'INVOICE FIRST: it is made from a RAISED invoice on the project (Awaiting Payment or Paid), ' +
+    'whose number prints on it; the licence comes into effect when that invoice is paid. ' +
+    'kind "library": only invoices with a paythrough library line qualify, the fee is the ' +
+    "library's lines only and the licensor's share is always 100%. " +
+    'Everything the project and invoice know is filled in for you (licensee, address, brand, ' +
+    'campaign, production, scripts, media, territory, term, first transmission, fee); pass a ' +
+    'field only to change it. Composition licences take the title and writers from the ' +
+    "project's song when there is one; otherwise give writer_names (individual writers, " +
+    'never a composer team). ALWAYS call with preview true first, show the person every field ' +
+    'it returns, and only call again with preview false once they say yes. Leave invoice_id ' +
+    'out to be told which invoices qualify.',
+  requires: 'staff',
+  writes: true,
+  schema: obj(
+    {
+      project_id: int('The project (project_list id).'),
+      kind: { type: 'string', enum: ['composition', 'library'], description: 'Which licence.' },
+      invoice_id: int('The raised licence invoice (invoice id, not its number).'),
+      preview: bool('True: show what would be created and create nothing. False: create it.'),
+      licensee_name: str('Optional override.'),
+      licensee_address: str('Optional override. Lines separated by commas.'),
+      rights_granted: {
+        type: 'string',
+        enum: ['Master & Publishing', 'Master Only', 'Publishing Only'],
+        description: 'Optional. Default Master & Publishing. The fee follows it.',
+      },
+      licensor_share: str('Optional, composition only, e.g. "100%". Library is always 100%.'),
+      composition_title: str('Optional override. The track title.'),
+      writer_names: str('Individual writers, comma separated.'),
+      production_name: str('Optional override.'),
+      client_name: str('Optional override, e.g. "Unilever".'),
+      brand: str('Optional override.'),
+      campaign: str('Optional override.'),
+      scripts: str('Optional override, e.g. 1 x 30".'),
+      cutdowns: { type: 'string', enum: ['Yes', 'No'], description: 'Optional override.' },
+      media: str('Optional override.'),
+      territory: str('Optional override.'),
+      term: str('Optional override.'),
+      first_transmission: str('Optional override, written as it prints, e.g. "1 October 2026".'),
+      licence_fee: str('Optional override, with currency code, e.g. "SGD 8,242.00".'),
+    },
+    ['project_id', 'kind', 'preview'],
+  ),
+  run: async (ctx, args) => {
+    const projectId = Number(args.project_id)
+    const kind = args.kind === 'library' ? 'library' : 'composition'
+    const library = kind === 'library'
+
+    const inv = await ctx.sb.rpc('track_licence_invoices', { p_project_id: projectId })
+    if (inv.error) return bad(readable(inv.error))
+    type Inv = { id: number; invoice_number: string; total: number; currency: string; client: string; licences: number; library_fee?: boolean }
+    const eligible = ((inv.data ?? []) as Inv[]).filter((i) => !library || i.library_fee)
+    const listing = eligible
+      .map((i) => `invoice_id ${i.id} = invoice ${i.invoice_number} (${i.currency} ${i.total}, ${i.client ?? ''}${i.licences ? ', already has a licence' : ''})`)
+      .join('\n')
+    if (!eligible.length) {
+      return bad(
+        library
+          ? 'No raised invoice on this project has a paythrough library fee. Raise the licence invoice first. If the client pays the library direct, the library issues the licence, not Sequel.'
+          : 'There is no raised invoice on this project yet. Raise the licence invoice first — its number prints on the licence.',
+      )
+    }
+    let invoiceId = args.invoice_id === undefined || args.invoice_id === null ? NaN : Number(args.invoice_id)
+    if (!Number.isFinite(invoiceId)) {
+      if (eligible.length > 1) return bad(`Which invoice? The ones that qualify:\n${listing}`)
+      invoiceId = eligible[0].id
+    }
+    const chosen = eligible.find((i) => i.id === invoiceId)
+    if (!chosen) return bad(`That invoice does not qualify. The ones that do:\n${listing}`)
+
+    const pre = await ctx.sb.rpc('track_licence_prefill', { p_project_id: projectId, p_invoice_id: invoiceId })
+    if (pre.error) return bad(readable(pre.error))
+    const p = (pre.data ?? {}) as Record<string, unknown>
+
+    const f = {} as Record<LicenceField, string>
+    for (const k of LICENCE_FIELDS) f[k] = String(p[k] ?? '').trim()
+
+    if (!library) {
+      const songs = await ctx.sb.rpc('track_licence_songs', { p_project_id: projectId })
+      const list = (songs.data ?? []) as { title: string; writers: string }[]
+      if (list.length === 1) {
+        f.composition_title = list[0].title
+        f.writer_names = list[0].writers
+      }
+    }
+    // Overrides, then the rules.
+    for (const k of LICENCE_FIELDS) {
+      const v = args[k]
+      if (typeof v === 'string' && v.trim()) f[k] = v.trim()
+    }
+    if (!f.rights_granted) f.rights_granted = 'Master & Publishing'
+    if (!(typeof args.licence_fee === 'string' && args.licence_fee.trim())) {
+      const parts = (library ? p.library_parts : p.fee_parts) as Parts | null
+      f.licence_fee = licenceFee(f.rights_granted, parts)
+    }
+    if (library) f.licensor_share = '100%'
+
+    const missing = LICENCE_FIELDS.filter((k) => k !== 'licensee_address' && !f[k])
+    const shown =
+      `${licenceKindName(kind)} on invoice ${chosen.invoice_number}\n` +
+      LICENCE_FIELDS.map((k) => `${LICENCE_LABELS[k]}: ${f[k] || '— missing —'}`).join('\n')
+
+    if (missing.length) {
+      return bad(
+        `${shown}\n\nStill needed before it can be created: ${missing.map((k) => LICENCE_LABELS[k]).join(', ')}.` +
+          (!f.licence_fee ? ' (Nothing is billed for those rights on this invoice — ask what the fee is.)' : ''),
+      )
+    }
+    if (args.preview !== false) {
+      return ok(`${shown}\n\nNothing created yet. Show these to the person; on a yes, call again with preview false (and any changes they asked for).`)
+    }
+
+    const r = await invokeFn(ctx, 'composition-licence', {
+      action: 'create',
+      project_id: projectId,
+      invoice_id: invoiceId,
+      kind,
+      fields: f,
+    })
+    if (r.error) return bad(r.error)
+    return ok(
+      `Created ${licenceKindName(kind)} ${r.data?.ref} (uuid ${r.data?.uuid}). Not sent — use send_licence for that.\n` +
+        `PDF (link works for an hour): ${r.data?.url}\n` +
+        `Project: ${ctx.appBase}/projects/${projectId} → Contracting`,
+    )
+  },
+}
+
+const sendLicence: Tool = {
+  name: 'send_licence',
+  title: 'Email a licence',
+  description:
+    'Email a licence to someone outside Sequel: a button to the licence page, from you, with ' +
+    "you copied in and replies coming to you; you're notified when they open it. The address " +
+    'MUST be one the person gave you in this conversation — never look one up or reuse a stored ' +
+    'one. Say who it is going to and which licence, and wait for a yes. It cannot be unsent.',
+  requires: 'staff',
+  writes: true,
+  schema: obj(
+    { uuid: str("The licence's uuid."), to: str('The email address the person gave you.') },
+    ['uuid', 'to'],
+  ),
+  run: async (ctx, args) => {
+    const r = await invokeFn(ctx, 'composition-licence', {
+      action: 'send',
+      uuid: String(args.uuid ?? ''),
+      to: String(args.to ?? '').trim(),
+    })
+    if (r.error) return bad(r.error)
+    const cc = (r.data?.cc as string[] | undefined) ?? []
+    return ok(`Sent to ${r.data?.sent_to}${cc.length ? `, copied to ${cc.join(', ')}` : ''}.`)
+  },
+}
+
+const RELEASE_FIELDS = [
+  'recipient_name', 'recipient_address', 'track_name', 'brand', 'campaign',
+  'term', 'territory', 'media', 'scripts',
+] as const
+
+const createReleaseForm: Tool = {
+  name: 'create_release_form',
+  title: 'Create a release form',
+  description:
+    'Create a music release form: Sequel confirming to a broadcaster (or whoever asked) that ' +
+    'ONE track is cleared, and on what terms. It never shows money. One track per form. The ' +
+    'track is just its name — no owner in brackets. Brand, campaign, term, territory, media ' +
+    'and scripts usually come from the project (get_record project_detail); the recipient ' +
+    'name and address come from the person. ALWAYS call with preview true first and show the ' +
+    'person every field; call again with preview false once they say yes.',
+  requires: 'staff',
+  writes: true,
+  schema: obj(
+    {
+      project_id: int('The project (project_list id).'),
+      preview: bool('True: show what would be created and create nothing. False: create it.'),
+      recipient_name: str('Who it is addressed to (the company or person).'),
+      recipient_address: str('Optional. Their address, commas between lines.'),
+      track_name: str('The track title only.'),
+      brand: str('The brand.'),
+      campaign: str('The campaign.'),
+      term: str('e.g. "12 months".'),
+      territory: str('e.g. "Singapore".'),
+      media: str('e.g. "All Media".'),
+      scripts: str('e.g. 1 x 30".'),
+    },
+    ['project_id', 'preview', 'recipient_name', 'track_name', 'brand', 'campaign', 'term', 'territory', 'media', 'scripts'],
+  ),
+  run: async (ctx, args) => {
+    const f: Record<string, string> = {}
+    for (const k of RELEASE_FIELDS) f[k] = String(args[k] ?? '').trim()
+    const missing = RELEASE_FIELDS.filter((k) => k !== 'recipient_address' && !f[k])
+    const shown = 'Release form\n' + RELEASE_FIELDS.map((k) => `${k.replace(/_/g, ' ')}: ${f[k] || '— missing —'}`).join('\n')
+    if (missing.length) return bad(`${shown}\n\nStill needed: ${missing.join(', ')}.`)
+    if (args.preview !== false) {
+      return ok(`${shown}\n\nNothing created yet. On a yes, call again with preview false.`)
+    }
+    const r = await invokeFn(ctx, 'release-form', {
+      action: 'create',
+      project_id: Number(args.project_id),
+      ...f,
+    })
+    if (r.error) return bad(r.error)
+    return ok(
+      `Created release form ${r.data?.ref} (uuid ${r.data?.uuid}). Not sent — use send_release_form for that.\n` +
+        `PDF (link works for an hour): ${r.data?.url}\n` +
+        `Project: ${ctx.appBase}/projects/${args.project_id} → Contracting`,
+    )
+  },
+}
+
+const sendReleaseForm: Tool = {
+  name: 'send_release_form',
+  title: 'Email a release form',
+  description:
+    'Email a release form to someone outside Sequel, from you, with you copied in. The address ' +
+    'MUST be one the person gave you in this conversation — never look one up or reuse a stored ' +
+    'one. Say who it is going to and which form, and wait for a yes. It cannot be unsent.',
+  requires: 'staff',
+  writes: true,
+  schema: obj(
+    { uuid: str("The release form's uuid."), to: str('The email address the person gave you.') },
+    ['uuid', 'to'],
+  ),
+  run: async (ctx, args) => {
+    const r = await invokeFn(ctx, 'release-form', {
+      action: 'send',
+      uuid: String(args.uuid ?? ''),
+      to: String(args.to ?? '').trim(),
+    })
+    if (r.error) return bad(r.error)
+    const cc = (r.data?.cc as string[] | undefined) ?? []
+    return ok(`Sent to ${r.data?.sent_to}${cc.length ? `, copied to ${cc.join(', ')}` : ''}.`)
+  },
+}
+
+// ------------------------------------------------ the library (MCPS) estimate --
+//
+// The app's seventh quote path, for the MCP (Andy, 26 Sep 2026: "library
+// estimates as they are the estimates we raise the most of"). Same engine as
+// the wizard — `_shared/mcpsPricing.ts`, the very file the browser imports —
+// same reference tables, same classifier function, same write
+// (`track_create_mcps_quote`). Nothing about the price is decided here.
+//
+// ⚠️ THE CLASSIFIER REFUSES RATHER THAN GUESSING (Andy, 14 Sep). A territory it
+// cannot read stops the estimate; there is no fallback to Worldwide here either.
+//
+// ⚠️ PREVIEW FIRST, as with licences: the whole priced estimate is shown and
+// nothing is written until the person says yes.
+
+const MCPS_MEDIA = [
+  'All Media', 'Linear TV (Excluding VOD)', 'Video On Demand',
+  'Online incl. Social (Excluding VOD)', 'Social Media (Only)', 'Radio',
+  'Public Location', 'Cinema / DVD',
+]
+const MCPS_DURATIONS = ['Longer than 30 seconds', '30 seconds or less']
+
+function mcpsRateEnum(rate: McpsPrice['rateType']): string {
+  if (rate === 'campaign_rate') return 'Campaign_Rate'
+  if (rate === 'track_rate') return 'Track_Rate'
+  return 'Per_30s'
+}
+
+async function mcpsReference(ctx: Ctx): Promise<McpsReference> {
+  const m = ctx.sb.schema(MIRROR)
+  const [rates, fx, minimums, searches] = await Promise.all([
+    m.from('mcps_rate_card').select('id, media, territory, per_30s, track_rate, campaign_rate'),
+    m.from('fx_rates').select('*').eq('base_currency', 'GBP').limit(1),
+    m.from('unilever_minimum_licensing_fees').select('*'),
+    m.from('unilever_library_search_fees').select('*'),
+  ])
+  const failed = [rates, fx, minimums, searches].find((r) => r.error)
+  if (failed?.error) throw new Error(readable(failed.error))
+  // Exactly the wizard's shaping (src/lib/mcpsQuote.ts useMcpsReference).
+  const perRegion = (list: Record<string, unknown>[]) => {
+    const out: Record<string, Record<string, number>> = {}
+    for (const row of list) {
+      const region = String(row.region ?? '')
+      if (!region) continue
+      const cols: Record<string, number> = {}
+      for (const [k, val] of Object.entries(row)) {
+        if (k === 'region' || k === 'id' || k === 'created_at') continue
+        const n = Number(val)
+        if (Number.isFinite(n)) cols[k] = n
+      }
+      out[region] = cols
+    }
+    return out
+  }
+  const fxRow = ((fx.data ?? [])[0] ?? {}) as Record<string, unknown>
+  const fxRates: Record<string, number> = {}
+  for (const [k, val] of Object.entries(fxRow)) {
+    if (k === 'id' || k === 'created_at' || k === 'base_currency') continue
+    const n = Number(val)
+    if (Number.isFinite(n)) fxRates[k] = n
+  }
+  return {
+    rateCard: (rates.data ?? []) as RateCardRow[],
+    fx: fxRates,
+    minimumFees: perRegion((minimums.data ?? []) as Record<string, unknown>[]),
+    searchFees: perRegion((searches.data ?? []) as Record<string, unknown>[]),
+  }
+}
+
+const createLibraryEstimate: Tool = {
+  name: 'create_library_estimate',
+  title: 'Create a library (MCPS) estimate',
+  description:
+    'Price and create an MCPS library music estimate — the app\'s LIBRARY (MCPS) quote, with ' +
+    'the same pricing engine. Nobody types an amount: the price comes from the MCPS rate card, ' +
+    "the client's region and the quote currency. The territory is read by the same classifier " +
+    'as the app; if it cannot be read, say so and ask — never guess Worldwide. Media values ' +
+    `must be exactly: ${MCPS_MEDIA.join(' | ')}. ` +
+    'Use find / get_record for the project, the client (client_list id) and the currency ' +
+    '(currencies_bank_accounts id — the currency the client is billed in). ALWAYS call with ' +
+    'preview true first and show the person the whole priced estimate; call again with ' +
+    'preview false only on a yes. Searches-only estimates need just searches.',
+  requires: 'staff',
+  writes: true,
+  schema: obj(
+    {
+      project_id: int('The project (project_list id).'),
+      client_id: int('The client being quoted (client_list id). Its region sets the minimum and the search fee.'),
+      currency_id: int('The quote currency (currencies_bank_accounts id).'),
+      description: str('A short description, e.g. "Library music: Mozart, Queen of the Night".'),
+      preview: bool('True: price it and show it, create nothing. False: create it.'),
+      searches_only: bool('Optional. True for a searches-only estimate. Default false.'),
+      media: {
+        type: 'array',
+        items: { type: 'string', enum: MCPS_MEDIA },
+        description: 'The media, as the exact values listed.',
+      },
+      worldwide: bool('True for a worldwide licence (the territory text is then ignored).'),
+      territory: str('Where it runs, as the client said it, e.g. "Spain, France". Needed unless worldwide.'),
+      online_worldwide: bool('Optional. Online usage worldwide? Default true — it usually is.'),
+      multiple_scripts: bool('More than one script?'),
+      duration: { type: 'string', enum: MCPS_DURATIONS, description: 'The longest edit.' },
+      cutdowns: bool('Are there cutdowns?'),
+      tracks: int('Optional. How many tracks the estimate covers. Leave out for one.'),
+      searches: int('Optional. Searches requested, 0–10. Default 0.'),
+      song_name: str('Optional. The track title.'),
+      artist_name: str('Optional. The artist / library.'),
+    },
+    ['project_id', 'client_id', 'currency_id', 'description', 'preview'],
+  ),
+  run: async (ctx, args) => {
+    const searchesOnly = args.searches_only === true
+    const searches = Math.max(0, Math.min(10, Math.trunc(Number(args.searches ?? 0)) || 0))
+    const rawMedia = Array.isArray(args.media)
+      ? args.media
+      : typeof args.media === 'string'
+        ? (asArray(args.media).length ? asArray(args.media) : String(args.media).split(','))
+        : []
+    const media = rawMedia.map((x) => String(x).trim()).filter(Boolean)
+    const unknown = media.filter((x) => !MCPS_MEDIA.includes(x))
+    if (unknown.length) return bad(`Not an MCPS medium: ${unknown.join(', ')}. Use exactly: ${MCPS_MEDIA.join(' | ')}.`)
+
+    const worldwide = args.worldwide === true
+    const territoryText = String(args.territory ?? '').trim()
+    const duration = String(args.duration ?? '')
+    if (!searchesOnly) {
+      const missing: string[] = []
+      if (!media.length) missing.push('media')
+      if (!worldwide && !territoryText) missing.push('territory (or worldwide)')
+      if (typeof args.multiple_scripts !== 'boolean') missing.push('multiple scripts yes/no')
+      if (!MCPS_DURATIONS.includes(duration)) missing.push('duration')
+      if (typeof args.cutdowns !== 'boolean') missing.push('cutdowns yes/no')
+      if (missing.length) return bad(`Still needed: ${missing.join(', ')}.`)
+    } else if (searches < 1) {
+      return bad('A searches-only estimate needs at least one search.')
+    }
+
+    // Currency label as table 48 stores it ("EURO", not "EUR") — the engine's key.
+    const cur = await ctx.sb.schema(MIRROR).from('currencies_bank_accounts')
+      .select('id, currency').eq('id', Number(args.currency_id)).maybeSingle()
+    if (cur.error) return bad(readable(cur.error))
+    const currency = String(cur.data?.currency ?? '')
+    if (!currency) return bad('No such currency id. Look it up in currencies_bank_accounts.')
+
+    const cl = await ctx.sb.schema(MIRROR).from('clients')
+      .select('id, company, region').eq('id', Number(args.client_id)).maybeSingle()
+    if (cl.error) return bad(readable(cl.error))
+    if (!cl.data) return bad('No such client id.')
+    let region = ''
+    if (cl.data.region) {
+      const rg = await ctx.sb.schema(MIRROR).from('regions').select('region').eq('id', cl.data.region).maybeSingle()
+      if (rg.error) return bad(readable(rg.error))
+      region = String(rg.data?.region ?? '')
+    }
+    if (!region) return bad(`${cl.data.company} has no region set, so the minimum and search fee cannot be priced. Set the client's region first.`)
+
+    let structure: TerritoryStructure = {
+      is_worldwide: worldwide, whole_continents: [], countries: [], distinct_continents: [],
+    }
+    if (!searchesOnly && !worldwide) {
+      const c = await invokeFn(ctx, 'classify-territory', { text: territoryText })
+      if (c.error) return bad(`The territory could not be read: ${c.error}`)
+      const body = c.data as { ok?: boolean; error?: string; territory?: TerritoryStructure } | null
+      if (!body?.ok || !body.territory) return bad(`The territory could not be read: ${body?.error ?? 'no reason given'}`)
+      structure = body.territory
+    }
+
+    let reference: McpsReference
+    try {
+      reference = await mcpsReference(ctx)
+    } catch (e) {
+      return bad(e instanceof Error ? e.message : String(e))
+    }
+
+    const tracksRaw = args.tracks === undefined || args.tracks === null ? null : Math.trunc(Number(args.tracks))
+    const answers: McpsAnswers = {
+      media,
+      territoryText,
+      worldwideAnswer: worldwide,
+      territory: structure,
+      multipleScripts: args.multiple_scripts === true,
+      duration,
+      cutdowns: args.cutdowns === true,
+      onlineWorldwide: args.online_worldwide !== false,
+      tracks: tracksRaw !== null && Number.isFinite(tracksRaw) ? tracksRaw : null,
+      searchesCount: searches,
+      searchesOnly,
+    }
+    const p = priceMcps(answers, reference, { region, currency })
+
+    const money = (minor: number) =>
+      `${currency} ${(minor / 100).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const shown = [
+      `Library (MCPS) estimate — ${String(args.description ?? '').trim()}`,
+      `Client: ${cl.data.company} (region ${region})`,
+      ...(searchesOnly
+        ? []
+        : [
+            `Media bought: ${p.mediaBought.join(', ')}${p.capped ? ' (capped at All Media)' : ''}`,
+            `Territory bought: ${p.territory}${p.territoriesAsked && p.territoriesAsked !== p.territory ? ` (asked: ${p.territoriesAsked})` : ''}`,
+            ...(p.onlineWorldwide !== null ? [`Online worldwide: ${p.onlineWorldwide ? 'yes' : 'no'}`] : []),
+            `Term: ${p.term} · Scripts: ${p.scripts} · Duration: ${p.duration} · Cutdowns: ${p.cutdowns ? 'yes' : 'no'}`,
+            `Rate: ${mcpsRateEnum(p.rateType).replace('_', ' ')} · Tracks: ${p.tracks}`,
+            ...(p.notSoldAtScope ? ['Note: a medium is not sold at that scope, so it is priced at All Media.'] : []),
+            `MCPS licence fee: ${money(p.licenceFeeLocal)}`,
+            `Sequel licensing fee: ${money(p.sequelLicensingFee)}`,
+          ]),
+      `Search fee: ${money(p.searchFee)}${searches ? ` (${searches} search${searches === 1 ? '' : 'es'})` : ''}`,
+      `Total: ${money(p.grandTotal)}`,
+      ...(p.note ? [`Note on the estimate: ${p.note}`] : []),
+    ].join('\n')
+
+    if (args.preview !== false) {
+      return ok(`${shown}\n\nNothing created yet. Show this to the person; on a yes, call again with preview false and the same answers.`)
+    }
+
+    const song = String(args.song_name ?? '').trim()
+    const artist = String(args.artist_name ?? '').trim()
+    const { data, error } = await ctx.sb.rpc('track_create_mcps_quote', {
+      p_project_id: Number(args.project_id),
+      p_client_id: Number(args.client_id),
+      p_currency_id: Number(args.currency_id),
+      p_description: String(args.description ?? '').trim(),
+      p_song_name: song || null,
+      p_artist_name: artist || null,
+      p_tracks_quoted: answers.tracks,
+      p_term: p.term || null,
+      p_territory: p.territory || null,
+      p_mcps_territories: p.territoriesAsked || null,
+      p_scripts: p.scripts || null,
+      p_duration: p.duration || null,
+      p_cutdowns: p.cutdowns,
+      p_note: p.note,
+      p_track_rate: mcpsRateEnum(p.rateType),
+      p_media: p.mediaBought,
+      p_media_mcps: answers.media,
+      p_online_worldwide: p.onlineWorldwide,
+      p_region: null,
+      p_mcps_fee_gbp: p.perTrackGbp * p.tracks,
+      p_mcps_local_fee: p.licenceFeeLocal,
+      p_sequel_licensing_fee: p.sequelLicensingFee,
+      p_search_fee: p.searchFee,
+      p_searches_requested: answers.searchesCount,
+      p_grand_total: p.grandTotal,
+    })
+    if (error) return bad(readable(error))
+    const row = first(data)
+    if (!row?.uuid) return bad('The estimate was created but came back with no link. Tell Andy.')
+    return ok(`Created estimate ${row.id} — ${money(p.grandTotal)}.\n${ctx.appBase}/quotes/${row.uuid}`)
+  },
+}
+
 // ------------------------------------------------------------------ export --
 
 export const TOOLS: Tool[] = [
@@ -1434,6 +2029,11 @@ export const TOOLS: Tool[] = [
   // No create_supplier (Andy, 25 Sep 2026): suppliers fill in their own
   // details through a form, as roster teams do with /join-roster.
   attachPoFromEmail,
+  createLibraryEstimate,
+  createLicence,
+  sendLicence,
+  createReleaseForm,
+  sendReleaseForm,
   ...ACTIONS.map(actionTool),
 ]
 

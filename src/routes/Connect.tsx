@@ -86,8 +86,11 @@ export default function Connect() {
 
   return (
     <div className="bp-wrap">
+      {/* The brown II mark, top left where the brief and join pages put the
+          wordmark (Andy, 26 Sep). */}
+      <img className="bp-logo h-16 w-16" src="/sequel-mark.png" alt="Sequel" width={400} height={400} />
       <div className="bp-screen">
-        <h2 className="bp-heading">Connect {clientName ?? '…'} to Sequel Track?</h2>
+        <h2 className="bp-heading">Connect {clientName ?? '…'} to Sequel?</h2>
 
         <p className="bp-help">
           It will be able to do what you can do, as you — read projects, clients, quotes,
