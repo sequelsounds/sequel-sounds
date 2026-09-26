@@ -809,7 +809,6 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
                 DEMOS
               </button>
             </div>
-            <p className="qw-note">Library (MCPS) prices itself from the MCPS rate card.</p>
           </Question>
         )}
 
@@ -1079,7 +1078,10 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
                     </span>
                   </div>
                 )}
-                {estimate.capped && (
+                {/* Only when the media was actually widened — not when All
+                    Media is what was asked for (Andy, 26 Sep 2026). */}
+                {estimate.capped &&
+                  !(a.mcpsMedia.length === 1 && a.mcpsMedia[0] === 'All Media') && (
                   <p className="qw-note">
                     All Media works out cheaper than the media chosen, so that is what is being
                     bought. The territory is unchanged.

@@ -1806,6 +1806,13 @@
     font-weight: 500;
   }
 
+  /* A note between summary rows keeps the rows' own rhythm, not the 1.5rem
+     gap .qw-note leaves under a button grid (Andy, 26 Sep 2026). */
+  .qw-summary-row + .qw-note {
+    margin-top: 0;
+    padding: 0.5rem 0;
+  }
+
   .qw-summary-amount {
     font-variant-numeric: tabular-nums;
   }
