@@ -14,9 +14,31 @@ import {
   useSendLicence,
   useUpdateLicence,
   type LicenceActivity,
+  type LicenceFeeParts,
   type LicenceFields,
   type LicenceRow,
 } from '../../lib/compositionLicences'
+
+/** First transmission is picked from a calendar but STORED AS THE PRINTED
+ *  TEXT ("1 October 2026"): the certificate draws the column as-is and the
+ *  prefill already writes that form. These convert for the date input only. */
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+  'August', 'September', 'October', 'November', 'December']
+
+function toIsoDate(s: string): string {
+  const t = s.trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t
+  const m = /^(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})$/.exec(t)
+  if (!m) return ''
+  const mi = MONTHS.findIndex((x) => x.slice(0, 3).toLowerCase() === m[2].slice(0, 3).toLowerCase())
+  if (mi < 0) return ''
+  return `${m[3]}-${String(mi + 1).padStart(2, '0')}-${m[1].padStart(2, '0')}`
+}
+
+function fromIsoDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  return m ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : ''
+}
 
 /**
  * COMPOSITION CONTRACT on the Contracting tab, and the row it leaves behind.
@@ -67,6 +89,24 @@ const REQUIRED = (Object.keys(LABELS) as (keyof LicenceFields)[]).filter(
 
 const money = (n: number | null, cur: string | null) =>
   n === null ? '' : `${cur ?? ''} ${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim()
+
+/**
+ * ⚠️ THE FEE FOLLOWS THE RIGHTS GRANTED (Andy, 26 Sep): a pay-through
+ * re-record licenses the master only — the publishing money is on our invoice
+ * but the publisher issues their own licence — so the fee is the master part
+ * alone. Both sides are read off the invoice's lines (track_invoice_licence_parts),
+ * never the total, which can include demos. Empty when that side is nothing.
+ */
+function feeFor(rights: string, parts: LicenceFeeParts | null): string {
+  if (!parts) return ''
+  const n =
+    rights === 'Master Only'
+      ? Number(parts.master)
+      : rights === 'Publishing Only'
+        ? Number(parts.publishing)
+        : Number(parts.master) + Number(parts.publishing)
+  return n > 0 ? money(n, parts.currency) : ''
+}
 
 export function LicenceModal({
   mode,
@@ -130,13 +170,24 @@ function LicenceEditor({
   const [invoiceId, setInvoiceId] = useState<number | null>(fixedInvoice?.id ?? null)
   const [error, setError] = useState<string | null>(null)
   const [filling, setFilling] = useState(false)
+  /** The chosen invoice's total — a hint in the fee box, never its value. */
+  const [invoiceTotal, setInvoiceTotal] = useState('')
+  /** The chosen invoice's master and publishing parts. Null when editing. */
+  const [feeParts, setFeeParts] = useState<LicenceFeeParts | null>(null)
 
   const invoices = useLicenceInvoices(projectId, !editing)
   const songs = useLicenceSongs(projectId)
   const create = useCreateLicence(projectId)
   const update = useUpdateLicence(projectId)
 
-  const set = (k: keyof LicenceFields) => (v: string) => setF((p) => ({ ...p, [k]: v }))
+  const set = (k: keyof LicenceFields) => (v: string) =>
+    setF((p) => {
+      if (k !== 'rights_granted') return { ...p, [k]: v }
+      // A fee still as filled in follows the new rights; one typed over is left.
+      const auto = feeFor(p.rights_granted, feeParts)
+      const typed = p.licence_fee.trim() !== '' && p.licence_fee !== auto
+      return { ...p, rights_granted: v, licence_fee: typed ? p.licence_fee : feeFor(v, feeParts) }
+    })
 
   /** Picking the invoice fills the boxes from the invoice and the project. */
   const chooseInvoice = (id: number | null) => {
@@ -147,8 +198,16 @@ function LicenceEditor({
     fetchLicencePrefill(projectId, id)
       .then((pre) => {
         const next = pickFields(pre)
+        /* ⚠️ THE FEE IS FILLED FROM THE INVOICE'S LINES, NOT ITS TOTAL (Andy,
+         * 26 Sep). 1167 on Bisma bills "Demo & Licence Fees" at SGD 15,200, of
+         * which 3,600 is demos: the fee is the master and/or publishing part,
+         * whichever the rights granted cover (feeFor). Still editable. */
+        const parts = pre.fee_parts ?? null
+        setFeeParts(parts)
+        setInvoiceTotal(next.licence_fee)
         setF((p) => ({
           ...next,
+          licence_fee: feeFor(next.rights_granted, parts),
           // A song already picked is kept: the invoice does not know the writers.
           composition_title: p.composition_title || next.composition_title,
           writer_names: p.writer_names || next.writer_names,
@@ -186,6 +245,14 @@ function LicenceEditor({
           placeholder={placeholder}
           value={f[k]}
           onChange={(e) => set(k)(e.target.value)}
+        />
+      ) : k === 'first_transmission' ? (
+        <input
+          id={`cl-${k}`}
+          type="date"
+          className={`am-input${f[k].trim() === '' ? ' needs-input' : ''}`}
+          value={toIsoDate(f[k])}
+          onChange={(e) => set(k)(fromIsoDate(e.target.value))}
         />
       ) : (
         <input
@@ -277,7 +344,14 @@ function LicenceEditor({
             {input('brand', 'e.g. Dove')}
             {input('campaign')}
             {input('production_name')}
-            {input('licence_fee', 'e.g. GBP 5,000.00')}
+            {input(
+              'licence_fee',
+              feeParts
+                ? `Nothing billed for ${f.rights_granted.toLowerCase()} on this invoice`
+                : invoiceTotal
+                  ? `Invoice total ${invoiceTotal} — enter the licence part`
+                  : 'e.g. GBP 5,000.00',
+            )}
           </div>
 
           <div className="cm-col">
@@ -313,7 +387,7 @@ function LicenceEditor({
             {input('media')}
             {input('territory')}
             {input('term')}
-            {input('first_transmission', 'e.g. 1 October 2026')}
+            {input('first_transmission')}
           </div>
         </div>
 
@@ -342,15 +416,19 @@ function LicenceEditor({
 const shortDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
-/** "Sent 26 Sep · opened twice · downloaded 27 Sep". ⚠️ "Opened", never "read
- *  by": the link can be forwarded. Nothing until it has been sent. */
-function activityLine(a: LicenceActivity): string | null {
-  if (!a.sent_at) return null
-  const parts = [`Sent ${shortDate(a.sent_at)}`]
-  if (a.views === 0) parts.push('not opened yet')
-  else parts.push(a.views === 1 ? 'opened once' : `opened ${a.views} times`)
-  if (a.downloads > 0) parts.push(`downloaded ${a.last_download ? shortDate(a.last_download) : ''}`.trim())
-  return parts.join(' · ')
+/** One line per address it went to: "dane@agency.com · sent 26 Sep · opened
+ *  twice · downloaded 27 Sep". ⚠️ "Opened", never "read by": the link can be
+ *  forwarded. Nothing until it has been sent. */
+function activityLines(a: LicenceActivity): string[] {
+  if (!a.sent_at) return []
+  return (a.recipients ?? []).map((r) => {
+    const parts = [r.to, `sent ${shortDate(r.sent_at)}`]
+    if (r.views === 0) parts.push('not opened yet')
+    else parts.push(r.views === 1 ? 'opened once' : `opened ${r.views} times`)
+    if (r.downloads > 0)
+      parts.push(`downloaded ${r.last_download ? shortDate(r.last_download) : ''}`.trim())
+    return parts.join(' · ')
+  })
 }
 
 export function LicenceRowActions({
@@ -363,7 +441,7 @@ export function LicenceRowActions({
   const archive = useArchiveLicence(projectId)
   const [menu, setMenu] = useState(false)
   const activity = useLicenceActivity(licence.uuid, menu && Boolean(licence.sent_at))
-  const line = activity.data ? activityLine(activity.data) : null
+  const lines = activity.data ? activityLines(activity.data) : []
   const [archiving, setArchiving] = useState(false)
   const [sending, setSending] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -438,7 +516,11 @@ export function LicenceRowActions({
               }}
             />
             <div className="rf-menu" role="menu" onClick={stop}>
-              {line && <span className="rf-menu-head">{line}</span>}
+              {lines.map((l) => (
+                <span key={l} className="rf-menu-head">
+                  {l}
+                </span>
+              ))}
               <button type="button" className="rf-menu-item" onClick={fetchInto(false)}>
                 Open
               </button>
@@ -557,7 +639,7 @@ function SendLicenceModal({
       <button type="button" className="wizard-close rm-close" aria-label="Close" onClick={onClose} />
       <div className="rm-header">Send Licence {licence.ref}</div>
       <div className="rm-subheader">
-        {error ?? 'A link to the licence, not an attachment. A copy comes to you, and so do any replies.'}
+        {error ?? 'They get an email with a button to open the licence. You’re copied in, replies come to you, and you’ll get a notification when they open it.'}
       </div>
       <div className="am-form">
         <div className="am-group">

@@ -6,6 +6,7 @@ import { supabase } from './lib/supabase'
 import Inbox from './routes/Inbox'
 import Brief from './routes/Brief'
 import SharedFile from './routes/SharedFile'
+import Licence from './routes/Licence'
 import BillUpload from './routes/BillUpload'
 import SongConfirmation from './routes/SongConfirmation'
 import JoinRoster from './routes/JoinRoster'
@@ -107,6 +108,8 @@ export default function App() {
       <Route path="/brief" element={<Brief />} />
       {/* A shared project file. /link?id= is the old app's shape. */}
       <Route path="/link" element={<SharedFile />} />
+      {/* A sent composition licence: its own page, not the asset page (Andy, 26 Sep). */}
+      <Route path="/licence" element={<Licence />} />
       {/* A supplier sends their invoice for a QuickBooks bill. The token is the credential. */}
       <Route path="/bill-upload/:token" element={<BillUpload />} />
       {/* The composer's song form and Schedule A. /song-confirmation?uuid= is

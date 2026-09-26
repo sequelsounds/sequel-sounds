@@ -349,7 +349,10 @@ function PaneBar({
     <div className="pane-bar">
       <div className="pane-title">{title}</div>
       {action && shown && (
-        <div className="pane-menu">
+        // Keyed on what it holds, so a nested menu (CREATE CONTRACT's two)
+        // mounts afresh and slides in like the first set rather than
+        // swapping in place (Andy, 26 Sep).
+        <div className="pane-menu" key={shown.map((m) => m.label).join('|')}>
           {shown.map((m) => (
             <button
               key={m.label}
@@ -1089,9 +1092,11 @@ export default function Project() {
               {
                 label: 'CREATE CONTRACT',
                 menu: [
-                  { label: 'LIBRARY CONTRACT', onClick: undefined },
+                  // Just the kind — Andy, 26 Sep. CREATE CONTRACT already
+                  // said what they are.
+                  { label: 'LIBRARY', onClick: undefined },
                   {
-                    label: 'COMPOSITION CONTRACT',
+                    label: 'COMPOSITION',
                     // Built 25 Sep. Created from a RAISED invoice, whose
                     // number prints on the licence (Andy: invoice first).
                     onClick: edit ? () => setLicenceModal({ kind: 'new' }) : undefined,

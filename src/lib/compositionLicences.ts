@@ -162,8 +162,12 @@ export async function fetchLicencePrefill(projectId: number, invoiceId: number) 
     p_invoice_id: invoiceId,
   })
   if (error) throw error
-  return data as LicenceFields
+  return data as LicenceFields & { fee_parts?: LicenceFeeParts | null }
 }
+
+/** The invoice's master and publishing parts (0088), read off its lines. The
+ *  licence fee is whichever side(s) the rights granted cover. */
+export type LicenceFeeParts = { currency: string | null; master: number; publishing: number }
 
 export function useLicenceDetail(uuid: string | undefined) {
   return useQuery({
@@ -216,7 +220,7 @@ export async function shareLicence(uuid: string): Promise<{ link: string; expire
   const { data, error } = await rpc('track_share_composition_licence', { p_uuid: uuid })
   if (error) throw error
   const d = data as { code: string; expires_at: string }
-  return { link: `${window.location.origin}/link?id=${d.code}`, expires: d.expires_at }
+  return { link: `${window.location.origin}/licence?id=${d.code}`, expires: d.expires_at }
 }
 
 /** ⚠️ Archives. The licence was issued; the record is kept. Its share link goes. */
@@ -254,6 +258,18 @@ export function useSendLicence(projectId: number | undefined) {
 export type LicenceActivity = {
   sent_at: string | null
   sent_to: string | null
+  views: number
+  downloads: number
+  last_view: string | null
+  last_download: string | null
+  /** One per address it was sent to (0088): opens and downloads of THAT
+   *  address's link. ⚠️ A forwarded email carries the same link. */
+  recipients: LicenceRecipientActivity[]
+}
+
+export type LicenceRecipientActivity = {
+  to: string
+  sent_at: string
   views: number
   downloads: number
   last_view: string | null

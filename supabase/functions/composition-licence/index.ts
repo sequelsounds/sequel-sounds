@@ -284,13 +284,15 @@ Deno.serve(async (req) => {
 
     const { data: linkRow, error: linkErr } = await asCaller.rpc('track_licence_send_link', {
       p_uuid: String(body.uuid ?? ''),
+      p_to: to,
     })
     if (linkErr) {
       const e = dbError(linkErr)
       return json({ error: e.message }, e.status, origin)
     }
     const base = (Deno.env.get('APP_BASE_URL') ?? 'https://app.sequelsounds.com').replace(/\/+$/, '')
-    const link = `${base}/link?id=${linkRow.code}`
+    // ⚠️ The licence page, not /link (the asset page) — Andy, 26 Sep.
+    const link = `${base}/licence?id=${linkRow.code}`
 
     const { data: greeting } = await asCaller.rpc('track_greeting_for_email', { p_email: to })
     const { data: meRows } = await asCaller.rpc('track_me')

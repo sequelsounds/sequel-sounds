@@ -2728,3 +2728,94 @@
     margin-top: 1.5rem;
   }
 }
+
+/* The client's licence page (/licence) — 26 Sep 2026. The staff contract
+   page's layout (.ct-*); these are only what that page does not have. */
+@layer components {
+  /* The Sequel No. keeps its own case — .ct-meta-item capitalises. */
+  .lc-no-case {
+    text-transform: none;
+  }
+
+  .lc-terms {
+    margin: 0;
+    border-top: 1px solid var(--color-sequel-brown);
+  }
+
+  .lc-term {
+    display: grid;
+    grid-template-columns: 9.5rem 1fr;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgb(55 43 41 / 0.2);
+    color: #3b2e2a;
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .lc-term dt {
+    font-weight: 500;
+  }
+
+  .lc-term dd {
+    margin: 0;
+    white-space: pre-line;
+  }
+
+  .lc-effect {
+    margin: 0 0 1.5rem;
+    color: #3b2e2a;
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  /* Pinned at the panel's foot: no margin below, a gap above the terms. */
+  .am-submit.lc-download {
+    flex: none;
+    margin-top: 1.25rem;
+    margin-bottom: 0;
+  }
+
+  .lc-error {
+    padding: 3rem 2.5rem;
+    color: var(--color-sequel-brown);
+    font-size: 1rem;
+  }
+
+  /* A client may well open this on a phone: the terms above the document,
+     the page scrolling rather than two panels. */
+  @media (max-width: 840px) {
+    .lc-meta {
+      display: none;
+    }
+
+    .lc-split {
+      height: auto;
+      flex-direction: column;
+      overflow: visible;
+    }
+
+    .lc-panel {
+      width: 100%;
+      height: auto;
+      padding: 24px 16px;
+      border-right: 0;
+      border-bottom: 1px solid var(--color-sequel-brown);
+    }
+
+    .lc-pdf {
+      width: 100%;
+      height: auto;
+    }
+
+    .lc-pdf .ct-frame {
+      height: auto;
+      overflow: visible;
+    }
+
+    .lc-term {
+      grid-template-columns: 8rem 1fr;
+    }
+  }
+}

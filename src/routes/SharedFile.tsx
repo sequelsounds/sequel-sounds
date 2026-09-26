@@ -69,8 +69,15 @@ export default function SharedFile() {
          * The view is already recorded by the openShare call above, so the
          * tracking survives the redirect. `replace` rather than `href` so the
          * back button returns to the email, not to this page. */
-        // Composition licences (26 Sep) too — same reasoning.
-        if (r.kind === 'release_form' || r.kind === 'licence') {
+        /* ⚠️ A licence has its own page, /licence (Andy, 26 Sep). Links sent
+         * before it existed point here, so they are passed on. The open was
+         * recorded just now AND will be again there — one extra view on an
+         * old link, not worth a second code path. */
+        if (r.kind === 'licence') {
+          window.location.replace(`/licence?id=${encodeURIComponent(code)}`)
+          return
+        }
+        if (r.kind === 'release_form') {
           window.location.replace(r.url)
           return
         }

@@ -202,6 +202,8 @@ Deno.serve(async (req) => {
         expires_at: data.expires_at,
         kind: data.kind ?? 'asset',
         peaks: data.peaks ?? null,
+        // A licence's terms, for the /licence page (0088). Absent otherwise.
+        details: data.details ?? null,
         url: await sign(data.key, 'GET', READ_TTL_SECONDS),
         download_url: await sign(data.key, 'GET', READ_TTL_SECONDS, fileName),
       },

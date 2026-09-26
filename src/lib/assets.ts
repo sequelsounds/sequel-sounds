@@ -164,6 +164,30 @@ export type SharedFile = {
   kind: 'asset' | 'contract' | 'release_form' | 'licence'
   /** The waveform, if it has been worked out yet. */
   peaks: number[] | null
+  /** A composition licence's terms, for the /licence page (0088). */
+  details?: LicenceShareDetails | null
+}
+
+export type LicenceShareDetails = {
+  sequel_no: string
+  issued_on: string
+  invoice_number: string
+  licensee_name: string
+  composition_title: string
+  writer_names: string
+  rights_granted: string
+  licensor_share: string
+  production_name: string
+  client_name: string
+  brand: string
+  campaign: string
+  scripts: string
+  cutdowns: string
+  media: string
+  territory: string
+  term: string
+  first_transmission: string
+  licence_fee: string
 }
 
 /** `null` with a reason when the code is unknown, expired or throttled. */
