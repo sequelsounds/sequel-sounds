@@ -1073,7 +1073,7 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
             ) : (
               <p className="qw-note">
                 {region.data === null && !region.isPending
-                  ? 'That client has no region set, so the uplift and the minimum fee cannot be worked out. Set it on the client first.'
+                  ? 'That client has no region set, so the minimum fee and the search fee cannot be worked out. Set it on the client first.'
                   : 'Working out the price…'}
               </p>
             )}

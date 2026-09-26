@@ -73,7 +73,7 @@ export function useMarkNotificationsRead() {
 /** Where a notification points, when it points anywhere. */
 export function notificationHref(n: Notification): string | null {
   if (n.link) return n.link
-  if (n.subject_kind === 'release_form' && n.project_id) {
+  if ((n.subject_kind === 'release_form' || n.subject_kind === 'licence') && n.project_id) {
     return `/projects/${n.project_id}?tab=Contracting`
   }
   return n.project_id ? `/projects/${n.project_id}` : null

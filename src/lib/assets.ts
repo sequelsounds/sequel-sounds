@@ -161,7 +161,7 @@ export type SharedFile = {
   download_url: string
   /** 'asset' | 'contract' | 'release_form'. `sign-asset` has always returned
    *  this; nothing read it until release forms needed to skip the asset page. */
-  kind: 'asset' | 'contract' | 'release_form'
+  kind: 'asset' | 'contract' | 'release_form' | 'licence'
   /** The waveform, if it has been worked out yet. */
   peaks: number[] | null
 }

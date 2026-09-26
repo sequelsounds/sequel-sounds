@@ -47,13 +47,6 @@ const RATE_CARD: RateCardRow[] = [
 const REF: McpsReference = {
   rateCard: RATE_CARD,
   fx: { gbp: 1, usd: 1.32, euro: 1.1235, jpy: 206.7, sgd: 1.6875 },
-  uplifts: {
-    'Asia Pacific': 1.1,
-    Europe: 1,
-    'Latin America': 1.1,
-    'North America': 1.1,
-    'Middle East & Turkey': 1.1,
-  },
   minimumFees: {
     'Asia Pacific': { euro: 40000, gbp: 35000, sgd: 60000, usd: 45000, jpy: 7250000 },
     Europe: { euro: 50000, gbp: 50000, sgd: 75000, usd: 60000, jpy: 9000000 },
@@ -125,10 +118,13 @@ console.log('\nQuote 377 — All Media, "Spain, France.", Track_Rate, NA client,
   check('mcps_fee_GBP', r.perTrackGbp, 656300)
   check('Territory (bought)', r.territory, 'Europe')
   check('MCPS_territories (asked)', r.territoriesAsked, 'Spain, France.')
-  check('local licence fee', r.licenceFeeLocal, 721930)
-  check('Sequel licensing fee', r.sequelLicensingFee, 72193)
+  // ⚠️ Stored as 721,930 / 72,193 / 864,123 - the NA client's 1.1 regional
+  // uplift. The uplift follows the currency since 25 Sep 2026, and this is a
+  // GBP quote, so it now prices with none.
+  check('local licence fee', r.licenceFeeLocal, 656300)
+  check('Sequel licensing fee', r.sequelLicensingFee, 65630)
   check('search fee', r.searchFee, 70000)
-  check('Local_grand_total', r.grandTotal, 864123)
+  check('Local_grand_total', r.grandTotal, 791930)
   check('Online_worldwide', r.onlineWorldwide, null)
 }
 
@@ -193,9 +189,11 @@ console.log('\nQuote 380 — the same + Public Location, Mexico. The run that ex
   check('mcps_fee_GBP', r.perTrackGbp, 750000)
   check('Media collapses', r.mediaBought, ['All Media'])
   check('Territory HELD at Mexico', r.territory, 'Mexico')
-  check('local licence fee', r.licenceFeeLocal, 825000)
-  check('Sequel licensing fee', r.sequelLicensingFee, 82500)
-  check('Local_grand_total', r.grandTotal, 907500)
+  // ⚠️ Stored as 825,000 / 82,500 / 907,500 under the old regional uplift.
+  // GBP quote, so no uplift since 25 Sep 2026.
+  check('local licence fee', r.licenceFeeLocal, 750000)
+  check('Sequel licensing fee', r.sequelLicensingFee, 75000)
+  check('Local_grand_total', r.grandTotal, 825000)
 }
 
 // ---------------------------------------------------------------------------
@@ -315,7 +313,7 @@ console.log('\nRegional minimum — cheap track, 2 tracks, expect 2 x the minimu
 }
 
 // ---------------------------------------------------------------------------
-console.log('\nAPAC uplift on a GBP quote — 10% higher with no currency conversion (§8.9)')
+console.log('\nThe uplift follows the CURRENCY, not the region (25 Sep 2026)')
 {
   const base = {
     ...blank,
@@ -330,8 +328,38 @@ console.log('\nAPAC uplift on a GBP quote — 10% higher with no currency conver
   }
   const eu = priceMcps(base, REF, { region: 'Europe', currency: 'GBP' })
   const apac = priceMcps(base, REF, { region: 'Asia Pacific', currency: 'GBP' })
-  check('Europe, no uplift', eu.perTrackLocal, eu.perTrackGbp)
-  check('APAC, 1.1', apac.perTrackLocal, Math.round(eu.perTrackGbp * 1.1))
+  const euEur = priceMcps(base, REF, { region: 'Europe', currency: 'EURO' })
+  const apacSgd = priceMcps(base, REF, { region: 'Asia Pacific', currency: 'SGD' })
+  check('GBP, Europe client: no uplift', eu.perTrackLocal, eu.perTrackGbp)
+  check('GBP, APAC client: no uplift either', apac.perTrackLocal, apac.perTrackGbp)
+  check('EURO, Europe client: 1.1', euEur.perTrackLocal, Math.round(eu.perTrackGbp * 1.1235 * 1.1))
+  check('SGD, APAC client: 1.1', apacSgd.perTrackLocal, Math.round(eu.perTrackGbp * 1.6875 * 1.1))
+}
+
+// ---------------------------------------------------------------------------
+console.log('\nQuote 365 — Edelman Milan, Italy, Linear TV + VOD, Per_30s, EURO, Europe client')
+{
+  const r = priceMcps(
+    {
+      ...blank,
+      media: ['Linear TV (Excluding VOD)', 'Video On Demand'],
+      territoryText: 'Italy',
+      territory: {
+        is_worldwide: false,
+        whole_continents: [],
+        countries: ['Italy'],
+        distinct_continents: ['Europe'],
+      },
+    },
+    REF,
+    { region: 'Europe', currency: 'EURO' },
+  )
+  // Stored at 281,999 / 50,000 / 331,999 with no uplift - the case that
+  // prompted the change. 251,000 x 1.1235 x 1.1 = 310,198.
+  check('GBP fee', r.perTrackGbp, 251000)
+  check('local licence fee', r.licenceFeeLocal, 310198)
+  check('10% is 31,020, floored to the Europe EUR minimum', r.sequelLicensingFee, 50000)
+  check('Local_grand_total', r.grandTotal, 360198)
 }
 
 // ---------------------------------------------------------------------------

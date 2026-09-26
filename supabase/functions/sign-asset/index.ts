@@ -50,6 +50,8 @@ const CONTRACT_KEY_RE = /^contracts\/[0-9a-f-]{36}_[^/\\]+$/
  *  at `contracts/release-forms/<uuid>.pdf`, so the contract pattern above
  *  rejects it and a perfectly good share link reports itself invalid. */
 const RELEASE_KEY_RE = /^contracts\/release-forms\/[0-9a-f-]{36}\.pdf$/
+/** Composition licences (0087), at `contracts/licences/<uuid>.pdf`. */
+const LICENCE_KEY_RE = /^contracts\/licences\/[0-9a-f-]{36}\.pdf$/
 
 const ALLOWED_ORIGINS = [
   /^http:\/\/localhost:\d+$/,
@@ -162,7 +164,12 @@ Deno.serve(async (req) => {
     })
     if (error) return json({ error: 'server' }, 500, origin)
     if (data?.error) return json({ error: data.error }, data.error === 'busy' ? 429 : 404, origin)
-    if (!KEY_RE.test(data.key) && !CONTRACT_KEY_RE.test(data.key) && !RELEASE_KEY_RE.test(data.key)) {
+    if (
+      !KEY_RE.test(data.key) &&
+      !CONTRACT_KEY_RE.test(data.key) &&
+      !RELEASE_KEY_RE.test(data.key) &&
+      !LICENCE_KEY_RE.test(data.key)
+    ) {
       return json({ error: 'invalid' }, 404, origin)
     }
     /* ⚠️ RECORDED HERE, NOT WITH A PIXEL. A tracking image in the email would

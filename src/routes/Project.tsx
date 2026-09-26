@@ -44,6 +44,8 @@ import {
 import type { Brief, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../lib/xanoMirror'
 import { useProjectContracts, type ContractRow } from '../lib/contracts'
 import { useProjectReleaseForms } from '../lib/releaseForms'
+import { useProjectLicences } from '../lib/compositionLicences'
+import { LicenceModal, LicenceRowActions, type LicenceMode } from '../components/staff/LicenceActions'
 import {
   ContractRowActions,
   ContractModal,
@@ -509,6 +511,7 @@ export default function Project() {
   }
   const contracts = useProjectContracts(projectId)
   const releaseForms = useProjectReleaseForms(projectId)
+  const licences = useProjectLicences(projectId)
   const briefs = useProjectBriefs(projectId)
   const files = useProjectFiles(projectId)
   const songs = useProjectSongs(projectId)
@@ -529,6 +532,7 @@ export default function Project() {
   const [assetModal, setAssetModal] = useState<AssetModalMode | null>(null)
   const [contractModal, setContractModal] = useState<ContractModalMode | null>(null)
   const [releaseModal, setReleaseModal] = useState<ReleaseFormMode | null>(null)
+  const [licenceModal, setLicenceModal] = useState<LicenceMode | null>(null)
   const [newSong, setNewSong] = useState(false)
   // row_flash: the row just saved blinks, then stops.
   const [flash, setFlash] = useState<string | null>(null)
@@ -1073,10 +1077,10 @@ export default function Project() {
             // (Andy, 19 Sep) because they are the same kind of thing as each
             // other and a different kind from the first two.
             //
-            // Only the release form is built. The composition licence waits on
-            // how its invoice number gets onto the page; the library contract
-            // is not written at all, and cannot be a copy of the composition
-            // one, because that catalogue is third-party.
+            // The release form and the composition licence are built (the
+            // licence 25 Sep, created from a raised invoice). The library
+            // contract is not written at all, and cannot be a copy of the
+            // composition one, because that catalogue is third-party.
             menu={[
               {
                 label: 'UPLOAD CONTRACT',
@@ -1086,7 +1090,12 @@ export default function Project() {
                 label: 'CREATE CONTRACT',
                 menu: [
                   { label: 'LIBRARY CONTRACT', onClick: undefined },
-                  { label: 'COMPOSITION CONTRACT', onClick: undefined },
+                  {
+                    label: 'COMPOSITION CONTRACT',
+                    // Built 25 Sep. Created from a RAISED invoice, whose
+                    // number prints on the licence (Andy: invoice first).
+                    onClick: edit ? () => setLicenceModal({ kind: 'new' }) : undefined,
+                  },
                 ],
               },
               // ⚠️ LAST — Andy, 20 Sep. The two contract buttons belong beside
@@ -1097,7 +1106,7 @@ export default function Project() {
                 onClick: edit ? () => setReleaseModal({ kind: 'new' }) : undefined,
               },
             ]}
-            empty={releaseForms.data?.length ? '' : 'Nothing here yet.  Upload a file or create a contract to get started'}
+            empty={releaseForms.data?.length || licences.data?.length ? '' : 'Nothing here yet.  Upload a file or create a contract to get started'}
             state={contracts}
             variant="contract"
             // The row opens the edit form, as on Track.
@@ -1128,6 +1137,29 @@ export default function Project() {
             second empty note. A release form is not a contract, but the row
             says which it is without a heading over it, and two headers on one
             short tab read as clutter (Andy, 19 Sep). */}
+        {/* Composition licences — Sequel → the client. Same list, no second
+            header (Andy, 25 Sep: "all in the same place"). The first column
+            is who the document is FROM, as on every other row: Sequel. */}
+        {tab === 'Contracting' &&
+          licences.data?.map((l) => (
+            <div
+              key={l.uuid}
+              className={`project-row project-row-release${edit ? ' is-openable' : ''}`}
+              onClick={edit ? () => setLicenceModal({ kind: 'edit', licence: l }) : undefined}
+            >
+              <Title>Sequel</Title>
+              <Cell>Composition Licence</Cell>
+              <Cell>{l.composition_title}</Cell>
+              <Cell>{l.ref}</Cell>
+              <Cell>{fmt(longDate, l.created_at)}</Cell>
+              {edit && <LicenceRowActions licence={l} projectId={projectId} />}
+            </div>
+          ))}
+
+        {licenceModal && projectId !== undefined && (
+          <LicenceModal mode={licenceModal} projectId={projectId} onClose={() => setLicenceModal(null)} />
+        )}
+
         {tab === 'Contracting' &&
           releaseForms.data?.map((r) => (
             <div

@@ -14,7 +14,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * throwaway data and cut over once, at the end.
  *
  * ⚠️ THE MCPS PATH IS NOT HERE. "Library (MCPS)" prices itself: a rate card, a
- * cheapest-lawful-combination search, an All Media cap, FX, a regional uplift,
+ * cheapest-lawful-combination search, an All Media cap, FX, a currency uplift,
  * per-track minimum fees, and a Gemini call that reads the territory text. All
  * of that lives in Xano api 418 and has to be ported before the button can do
  * anything. The other six paths price nothing — they add up what someone typed,

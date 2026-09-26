@@ -9,13 +9,14 @@ import { priceMcps, type McpsAnswers, type McpsPrice, type McpsReference, type R
  *
  * The arithmetic lives in `mcpsPricing.ts`, deliberately with no database and
  * no network in it so it can be replayed against stored quotes. This file is
- * the other half: the rate card and the four per-region tables, the client's
+ * the other half: the rate card and the three per-region tables, the client's
  * region, the classifier call, and the write.
  *
  * ⚠️ THE CLIENT'S REGION, NOT THE LICENCE TERRITORY. A North American client
- * licensing Spain and France gets the North American uplift, the North American
- * minimum and the North American search fee. Correct by design, reads oddly,
- * and someone will query it.
+ * licensing Spain and France gets the North American minimum and the North
+ * American search fee. Correct by design, reads oddly, and someone will query
+ * it. The uplift is NOT regional any more - it follows the quote's currency
+ * (25 Sep 2026, see priceMcps), so `region_uplifts` is no longer read.
  */
 
 /** The eight media buttons.
@@ -51,9 +52,9 @@ export const SEARCH_COUNTS = Array.from({ length: 11 }, (_, i) => i)
 type PerRegion = Record<string, Record<string, number>>
 
 /**
- * The rate card and the four per-region tables.
+ * The rate card, the FX row and the two per-region tables.
  *
- * All five are reference data that changes perhaps once a year, so they are
+ * All four are reference data that changes perhaps once a year, so they are
  * fetched once and held. They are also all on the SAFE side of the sync —
  * nothing here is written, only read.
  */
@@ -62,14 +63,13 @@ export function useMcpsReference() {
     queryKey: ['mirror', 'mcps-reference'],
     staleTime: Infinity,
     queryFn: async (): Promise<McpsReference> => {
-      const [rates, fx, uplifts, minimums, searches] = await Promise.all([
+      const [rates, fx, minimums, searches] = await Promise.all([
         mirror.from('mcps_rate_card').select('id, media, territory, per_30s, track_rate, campaign_rate'),
         mirror.from('fx_rates').select('*').eq('base_currency', 'GBP').limit(1),
-        mirror.from('region_uplifts').select('region, percentage'),
         mirror.from('unilever_minimum_licensing_fees').select('*'),
         mirror.from('unilever_library_search_fees').select('*'),
       ])
-      const failed = [rates, fx, uplifts, minimums, searches].find((r) => r.error)
+      const failed = [rates, fx, minimums, searches].find((r) => r.error)
       if (failed?.error) throw failed.error
 
       const rows = <T,>(r: { data: unknown }) => (r.data ?? []) as T[]
@@ -104,17 +104,9 @@ export function useMcpsReference() {
         if (Number.isFinite(n)) fxRates[k] = n
       }
 
-      const upliftMap: Record<string, number> = {}
-      for (const row of rows<{ region: string | null; percentage: string | number | null }>(uplifts)) {
-        if (!row.region) continue
-        const n = Number(row.percentage)
-        upliftMap[row.region] = Number.isFinite(n) ? n : 1
-      }
-
       return {
         rateCard: rows<RateCardRow>(rates),
         fx: fxRates,
-        uplifts: upliftMap,
         minimumFees: perRegion(rows<Record<string, unknown>>(minimums)),
         searchFees: perRegion(rows<Record<string, unknown>>(searches)),
       }
@@ -122,7 +114,7 @@ export function useMcpsReference() {
   })
 }
 
-/** The client's region name, which drives the uplift, the minimum and the search fee. */
+/** The client's region name, which drives the minimum and the search fee. */
 export function useClientRegion(clientId: number | null) {
   return useQuery({
     enabled: clientId !== null,

@@ -78,8 +78,6 @@ export type McpsReference = {
   rateCard: RateCardRow[]
   /** GBP row of `fx_rates`, keyed by lowercase currency column: gbp, usd, euro, sgd, jpy. */
   fx: Record<string, number>
-  /** `region_uplifts`, region → multiplier. */
-  uplifts: Record<string, number>
   /** `unilever_minimum_licensing_fees`, region → currency column → minor units. */
   minimumFees: Record<string, Record<string, number>>
   /** `unilever_library_search_fees`, same shape. */
@@ -89,8 +87,9 @@ export type McpsReference = {
 export type McpsContext = {
   /**
    * The CLIENT'S region, not the licence territory. A North American client
-   * licensing Spain and France gets the North American uplift and the North
+   * licensing Spain and France gets the North American minimum and the North
    * American search fee. Correct by design, reads oddly, someone will query it.
+   * The region no longer decides the uplift - the currency does. See priceMcps.
    */
   region: string
   /**
@@ -170,7 +169,7 @@ export type McpsPrice = {
   tracks: number
   /** Per track, GBP, minor units. The Sequel fee needs this, not the multiplied figure. */
   perTrackGbp: number
-  /** Per track, client currency, after FX and the regional uplift. */
+  /** Per track, client currency, after FX and the currency uplift. */
   perTrackLocal: number
   /** perTrackLocal × tracks. */
   licenceFeeLocal: number
@@ -370,7 +369,17 @@ export function priceMcps(answers: McpsAnswers, ref: McpsReference, ctx: McpsCon
   const rateType = rateTypeFor(a)
   const currencyKey = ctx.currency.toLowerCase()
   const fx = ref.fx[currencyKey] ?? 1
-  const uplift = ref.uplifts[ctx.region] ?? 1
+  /**
+   * ⚠️ THE UPLIFT FOLLOWS THE QUOTE'S CURRENCY, NOT THE CLIENT'S REGION.
+   * Andy, 25 Sep 2026. The 10% protects against the exchange rate moving
+   * between quote and invoice, so every non-GBP quote carries it and no GBP
+   * quote does. It used to come from `region_uplifts` by the client's region
+   * (Europe 1.0, the rest 1.1), which left EUR quotes for European clients
+   * unprotected - old-app quote 365 came out EUR 281.99 short - and put 10% on
+   * GBP quotes for APAC and North American clients with nothing to protect.
+   * Changed in the old app (api 418) the same day; the two must agree.
+   */
+  const uplift = ctx.currency === 'GBP' ? 1 : 1.1
   const minFee = ref.minimumFees[ctx.region]?.[currencyKey] ?? 0
   const searchRate = ref.searchFees[ctx.region]?.[currencyKey] ?? 0
   const tracks = trackMultiplier(a.tracks)

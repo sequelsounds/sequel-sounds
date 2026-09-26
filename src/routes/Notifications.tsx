@@ -27,6 +27,8 @@ import {
 const KIND_LABEL: Record<string, string> = {
   release_form_viewed: 'Release form opened',
   release_form_downloaded: 'Release form downloaded',
+  licence_viewed: 'Licence opened',
+  licence_downloaded: 'Licence downloaded',
   invoice_submitted: 'Invoice to raise',
   invoice_raised: 'Invoice raised',
   invoice_paid: 'Invoice paid',
