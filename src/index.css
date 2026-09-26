@@ -813,6 +813,24 @@
     height: auto;
   }
 
+  /* The Connect (Allow) page — /connect. Brown II mark top right, opposite the
+     wordmark (.bp-logo); both buttons outlined, filling BROWN on hover rather
+     than the brief page's plum (Andy, 26 Sep). */
+  .cn-mark {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    z-index: 10;
+    width: 4rem;
+    height: 4rem;
+  }
+
+  .bp-button.is-ghost.cn-button:hover {
+    color: var(--color-sequel-silver);
+    background-color: var(--color-sequel-brown);
+    border-color: var(--color-sequel-brown);
+  }
+
   /* .menu-close_button: a 32px box with 8px of padding, holding TWO 16x1px
      rules crossed — not a × glyph, which sits on the text baseline and reads
      a size larger than the real thing. */

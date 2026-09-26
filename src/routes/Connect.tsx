@@ -86,9 +86,10 @@ export default function Connect() {
 
   return (
     <div className="bp-wrap">
-      {/* The brown II mark, top left where the brief and join pages put the
-          wordmark (Andy, 26 Sep). */}
-      <img className="bp-logo h-16 w-16" src="/sequel-mark.png" alt="Sequel" width={400} height={400} />
+      {/* Written logo top left, as on the brief and join pages; the brown II
+          mark top right (Andy, 26 Sep). */}
+      <img className="bp-logo qw-logo" src="/sequel-wordmark.png" alt="Written Sequel Logo" width={425} height={96} />
+      <img className="cn-mark" src="/sequel-mark.png" alt="" width={400} height={400} />
       <div className="bp-screen">
         <h2 className="bp-heading">Connect {clientName ?? '…'} to Sequel?</h2>
 
@@ -107,7 +108,7 @@ export default function Connect() {
         <div className="bp-nav">
           <button
             type="button"
-            className="bp-button is-ghost"
+            className="bp-button is-ghost cn-button"
             onClick={() => handBack({ error: 'access_denied' })}
             disabled={busy}
           >
@@ -115,7 +116,7 @@ export default function Connect() {
           </button>
           <button
             type="button"
-            className={`bp-button${busy ? ' is-disabled'   : ''}`}
+            className={`bp-button is-ghost cn-button${busy ? ' is-disabled' : ''}`}
             onClick={allow}
             disabled={busy}
           >
