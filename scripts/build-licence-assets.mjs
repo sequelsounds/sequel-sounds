@@ -4,8 +4,8 @@
 //
 // After Andy re-exports the licence from Word:
 //
-//   python3 scripts/strip-licence-template.py \
-//     "Claude outputs/Composition Licence (template).pdf"
+//   python3 scripts/strip-licence-template.py "Claude outputs/Composition Licence.pdf"
+//   python3 scripts/strip-licence-template.py "Claude outputs/Library Licence.pdf" library
 //   node scripts/build-licence-assets.mjs
 //
 // ⚠️ THE STRIP STEP IS NOT OPTIONAL — it is also what re-measures layout.ts.
@@ -24,8 +24,9 @@ const HEADER = `// Generated — do not hand-edit. Rebuild with scripts/build-li
 // Inlined for the same reason as release-form/assets.ts: a deploy either
 // carries these or does not build, rather than failing at runtime.
 //
-// licence-template.pdf is Andy's own Word export (25 Sep 2026) with the
-// placeholder text REMOVED by scripts/strip-licence-template.py.
+// licence-template.pdf (composition) and library-template.pdf (library) are
+// Andy's own Word exports (26 Sep 2026) with the placeholder text REMOVED by
+// scripts/strip-licence-template.py.
 //
 // Roboto Condensed is the licence's body face. These are the Google Fonts
 // TTFs (already glyf, so no outline conversion is needed, unlike Creato).
@@ -44,6 +45,8 @@ const pack = (file) => gzipSync(readFileSync(join(fn, file)), { level: 9 }).toSt
 const out =
   HEADER +
   wrap('TEMPLATE_GZ_B64', pack('licence-template.pdf')) +
+  '\n' +
+  wrap('LIBRARY_TEMPLATE_GZ_B64', pack('library-template.pdf')) +
   '\n' +
   wrap('ROBOTO_REGULAR_GZ_B64', pack('RobotoCondensed-Regular.ttf')) +
   '\n' +

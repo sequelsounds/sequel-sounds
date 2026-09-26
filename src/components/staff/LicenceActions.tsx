@@ -16,6 +16,7 @@ import {
   type LicenceActivity,
   type LicenceFeeParts,
   type LicenceFields,
+  type LicenceKind,
   type LicenceRow,
 } from '../../lib/compositionLicences'
 
@@ -58,7 +59,19 @@ function fromIsoDate(iso: string): string {
  * One modal, two modes, like the release form: clicking a row reopens it.
  */
 
-export type LicenceMode = { kind: 'new' } | { kind: 'edit'; licence: LicenceRow }
+/**
+ * ⚠️ LIBRARY (Andy, 26 Sep 2026) — the same modal, with three differences:
+ * only invoices with a PAYTHROUGH library line are offered (when the client
+ * pays the library direct, the library issues the licence); the fee is those
+ * library lines alone, never Sequel's fee; the licensor's share is always 100%,
+ * so it is not asked. No song picker: the track is not a Sequel song.
+ */
+export type LicenceMode = { kind: 'new'; type: LicenceKind } | { kind: 'edit'; licence: LicenceRow }
+
+export const LICENCE_NAME: Record<LicenceKind, string> = {
+  composition: 'Composition Licence',
+  library: 'Library Licence',
+}
 
 const RIGHTS = ['Master & Publishing', 'Master Only', 'Publishing Only']
 
@@ -118,6 +131,7 @@ export function LicenceModal({
   onClose: () => void
 }) {
   const editing = mode.kind === 'edit' ? mode.licence : null
+  const type: LicenceKind = mode.kind === 'edit' ? (mode.licence.kind ?? 'composition') : mode.type
   const detail = useLicenceDetail(editing?.uuid)
 
   // ⚠️ Not rendered until its values exist — empty boxes that fill a moment
@@ -126,7 +140,7 @@ export function LicenceModal({
     return (
       <Modal onClose={onClose} className="am-box cm-box">
         <button type="button" className="wizard-close rm-close" aria-label="Close" onClick={onClose} />
-        <div className="rm-header">{`Composition Licence ${editing.ref}`}</div>
+        <div className="rm-header">{`${LICENCE_NAME[type]} ${editing.ref}`}</div>
         <div className="rm-subheader">{detail.error ? detail.error.message : 'Opening…'}</div>
       </Modal>
     )
@@ -135,7 +149,8 @@ export function LicenceModal({
   const d = detail.data
   return (
     <LicenceEditor
-      key={editing?.uuid ?? 'new'}
+      key={editing?.uuid ?? `new-${type}`}
+      type={type}
       editing={editing}
       fixedInvoice={d ? { id: d.invoice_id, number: d.invoice_number } : null}
       initial={d ? pickFields(d) : BLANK_LICENCE}
@@ -154,12 +169,14 @@ function pickFields(src: Partial<LicenceFields>): LicenceFields {
 }
 
 function LicenceEditor({
+  type,
   editing,
   fixedInvoice,
   initial,
   projectId,
   onClose,
 }: {
+  type: LicenceKind
   editing: LicenceRow | null
   fixedInvoice: { id: number; number: string } | null
   initial: LicenceFields
@@ -175,8 +192,10 @@ function LicenceEditor({
   /** The chosen invoice's master and publishing parts. Null when editing. */
   const [feeParts, setFeeParts] = useState<LicenceFeeParts | null>(null)
 
+  const library = type === 'library'
   const invoices = useLicenceInvoices(projectId, !editing)
-  const songs = useLicenceSongs(projectId)
+  // Library tracks are not Sequel songs: no picker, nothing filled from one.
+  const songs = useLicenceSongs(projectId, !library)
   const create = useCreateLicence(projectId)
   const update = useUpdateLicence(projectId)
 
@@ -202,7 +221,8 @@ function LicenceEditor({
          * 26 Sep). 1167 on Bisma bills "Demo & Licence Fees" at SGD 15,200, of
          * which 3,600 is demos: the fee is the master and/or publishing part,
          * whichever the rights granted cover (feeFor). Still editable. */
-        const parts = pre.fee_parts ?? null
+        // Library: the paythrough library lines only — never Sequel's fee.
+        const parts = (library ? pre.library_parts : pre.fee_parts) ?? null
         setFeeParts(parts)
         setInvoiceTotal(next.licence_fee)
         setF((p) => ({
@@ -213,22 +233,24 @@ function LicenceEditor({
           writer_names: p.writer_names || next.writer_names,
         }))
         // One song on the project is the one: fill it straight in.
-        const only = songs.data?.length === 1 ? songs.data[0] : null
+        const only = !library && songs.data?.length === 1 ? songs.data[0] : null
         if (only) setF((p) => ({ ...p, composition_title: only.title, writer_names: only.writers }))
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setFilling(false))
   }
 
-  const ready = invoiceId !== null && REQUIRED.every((k) => f[k].trim() !== '')
+  // A library licence is always 100% (the database sets it too).
+  const fields = library ? { ...f, licensor_share: '100%' } : f
+  const ready = invoiceId !== null && REQUIRED.every((k) => fields[k].trim() !== '')
   const busy = create.isPending || update.isPending || filling
 
   const submit = () => {
     if (!ready || busy) return
     setError(null)
     const done = { onSuccess: () => onClose(), onError: (e: Error) => setError(e.message) }
-    if (editing) update.mutate({ uuid: editing.uuid, fields: f }, done)
-    else create.mutate({ invoice_id: invoiceId!, fields: f }, done)
+    if (editing) update.mutate({ uuid: editing.uuid, fields }, done)
+    else create.mutate({ invoice_id: invoiceId!, kind: type, fields }, done)
   }
 
   const input = (k: keyof LicenceFields, placeholder?: string) => (
@@ -289,22 +311,23 @@ function LicenceEditor({
     </div>
   )
 
-  const invoiceList = invoices.data ?? []
+  const invoiceList = (invoices.data ?? []).filter((i) => !library || i.library_fee)
   const noInvoices = !editing && invoices.isSuccess && invoiceList.length === 0
 
   return (
     <Modal onClose={onClose} className="am-box cm-box">
       <button type="button" className="wizard-close rm-close" aria-label="Close" onClick={onClose} />
       <div className="rm-header">
-        {editing ? `Composition Licence ${editing.ref}` : 'New Composition Licence'}
+        {editing ? `${LICENCE_NAME[type]} ${editing.ref}` : `New ${LICENCE_NAME[type]}`}
       </div>
       {error && <div className="rm-subheader">{error}</div>}
       {noInvoices && (
         // ⚠️ INVOICE FIRST. Said plainly rather than a greyed-out button with
         // no reason — Andy, 25 Sep.
         <div className="rm-subheader">
-          There is no raised invoice on this project yet. Raise the licence invoice first — its
-          number prints on the licence.
+          {library
+            ? 'There is no raised invoice with a paythrough library fee on this project. Raise the licence invoice first. If the client pays the library direct, the library issues the licence.'
+            : 'There is no raised invoice on this project yet. Raise the licence invoice first — its number prints on the licence.'}
         </div>
       )}
 
@@ -381,7 +404,7 @@ function LicenceEditor({
             {input('composition_title')}
             {input('writer_names', 'Individual writers, comma separated')}
             {select('rights_granted', RIGHTS)}
-            {input('licensor_share', 'e.g. 100%')}
+            {!library && input('licensor_share', 'e.g. 100%')}
             {input('scripts', 'e.g. 1 x 30"')}
             {select('cutdowns', ['Yes', 'No'])}
             {input('media')}

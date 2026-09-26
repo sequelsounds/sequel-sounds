@@ -1,4 +1,8 @@
-// The composition licence as a PDF, drawn onto Andy's own Word export.
+// The composition licence AND the library licence as a PDF, drawn onto Andy's
+// own Word exports. The library licence (26 Sep 2026) is the composition
+// licence's Word file with the library changes: the same placeholders on the
+// same two pages, a plum page with Sequel Silver type, and no Owner line (so
+// its schedule sits one line higher — measured, not assumed: layout-library.ts).
 //
 // ⚠️ THE TEMPLATE IS THE DOCUMENT. Pages 2–4 — the eleven clauses — are never
 // touched: the legal text is Andy's, exported from Word, and a wording change
@@ -18,10 +22,14 @@
 //  - both fee lines cover "one hundred per cent (100%) of the Rights Granted"
 import { PDFDocument, rgb, setCharacterSpacing, type PDFFont, type PDFPage } from 'npm:pdf-lib@1.17.1'
 import fontkit from 'npm:@pdf-lib/fontkit@1.1.1'
-import { ROBOTO_BOLD_GZ_B64, ROBOTO_REGULAR_GZ_B64, TEMPLATE_GZ_B64 } from './assets.ts'
+import { LIBRARY_TEMPLATE_GZ_B64, ROBOTO_BOLD_GZ_B64, ROBOTO_REGULAR_GZ_B64, TEMPLATE_GZ_B64 } from './assets.ts'
 import { LAYOUT } from './layout.ts'
+import { LIBRARY_LAYOUT } from './layout-library.ts'
+
+export type LicenceKind = 'composition' | 'library'
 
 export type LicenceInput = {
+  kind: LicenceKind
   sequel_no: string
   /** As it prints: "25th September 2026". */
   issued_on: string
@@ -47,8 +55,13 @@ export type LicenceInput = {
   licence_fee: string
 }
 
-/** Sequel brown, #372B29 — the colour every line of the template is set in. */
-const INK = rgb(0.2156863, 0.1686275, 0.1607843)
+/** The colour every line of each template is set in: Sequel brown #372B29 on
+ *  the composition's sage, Sequel Silver #F1F0EE on the library's plum (the
+ *  library quote's pairing, src/routes/Quote.tsx). */
+const INKS: Record<LicenceKind, ReturnType<typeof rgb>> = {
+  composition: rgb(0x37 / 255, 0x2b / 255, 0x29 / 255),
+  library: rgb(0xf1 / 255, 0xf0 / 255, 0xee / 255),
+}
 const SIZE = 11.04
 /** The smallest a value may be set to fit its line before it wraps. */
 const MIN_SIZE = 8.5
@@ -61,9 +74,6 @@ const MIN_SIZE = 8.5
  */
 const TRACKING: Record<number, number> = { 0: -0.3146, 4: 0 }
 
-/** Line step of the binding-acceptance paragraph, as Word set it. */
-const LEADING = LAYOUT.binding.y - LAYOUT.binding_next.y
-
 const BINDING_LINE = (invoice: string) =>
   `This document serves as a binding contract. By paying the associated Licence Fee invoice (${invoice}), the`
 
@@ -75,11 +85,17 @@ async function unpack(b64: string) {
   return new Uint8Array(await new Response(stream).arrayBuffer())
 }
 
-let assets: Promise<{ template: Uint8Array; regular: Uint8Array; bold: Uint8Array }> | null = null
+let assets: Promise<{
+  template: Uint8Array
+  library: Uint8Array
+  regular: Uint8Array
+  bold: Uint8Array
+}> | null = null
 function loadAssets() {
   if (!assets) {
     assets = (async () => ({
       template: await unpack(TEMPLATE_GZ_B64),
+      library: await unpack(LIBRARY_TEMPLATE_GZ_B64),
       regular: await unpack(ROBOTO_REGULAR_GZ_B64),
       bold: await unpack(ROBOTO_BOLD_GZ_B64),
     }))()
@@ -113,12 +129,17 @@ type Run = { text: string; font: PDFFont }
 
 export async function buildLicence(f: LicenceInput): Promise<Uint8Array> {
   const a = await loadAssets()
-  const pdf = await PDFDocument.load(a.template)
+  const library = f.kind === 'library'
+  const LAYOUT_ = (library ? LIBRARY_LAYOUT : LAYOUT) as typeof LAYOUT
+  const INK = INKS[library ? 'library' : 'composition']
+  /** Line step of the binding-acceptance paragraph, as Word set it. */
+  const LEADING = LAYOUT_.binding.y - LAYOUT_.binding_next.y
+  const pdf = await PDFDocument.load(library ? a.library : a.template)
   pdf.registerFontkit(fontkit)
   const regular = await pdf.embedFont(a.regular, { subset: true })
   const bold = await pdf.embedFont(a.bold, { subset: true })
   const pages = pdf.getPages()
-  const RIGHT = LAYOUT.page_right
+  const RIGHT = LAYOUT_.page_right
 
   const widthOf = (runs: Run[], size: number, tc: number) =>
     runs.reduce((w, r) => w + r.font.widthOfTextAtSize(r.text, size) + tc * r.text.length, 0)
@@ -162,7 +183,7 @@ export async function buildLicence(f: LicenceInput): Promise<Uint8Array> {
     runs: Run[],
     opts: { maxLines?: 1 | 2; step?: number } = {},
   ) => {
-    const spot = LAYOUT[key] as { page: number; x: number; y: number }
+    const spot = LAYOUT_[key] as { page: number; x: number; y: number }
     const page = pages[spot.page]
     const tc = TRACKING[spot.page] ?? 0
     const max = RIGHT - spot.x
@@ -204,7 +225,7 @@ export async function buildLicence(f: LicenceInput): Promise<Uint8Array> {
     .filter(Boolean)
     .join(', ')
   if (address) {
-    const spot = LAYOUT.licensee_address
+    const spot = LAYOUT_.licensee_address
     const tc = TRACKING[spot.page]
     const max = RIGHT - spot.x
     let size = SIZE

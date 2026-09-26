@@ -1,7 +1,12 @@
-// composition-licence — draws a composition licence and puts it in S3.
+// composition-licence — draws a composition OR LIBRARY licence and puts it in S3.
+//
+// ⚠️ ONE FUNCTION, TWO DOCUMENTS (26 Sep 2026). A library licence is the same
+// record with kind = 'library': same table, same RPCs, same key prefix, drawn
+// onto Andy's library template and emailed with the plum Resend template.
+// The kind is chosen at create and never changes.
 //
 //   staff (their session as bearer):
-//     { action: "create", project_id, invoice_id, fields: {...} }
+//     { action: "create", project_id, invoice_id, kind?: "library", fields: {...} }
 //         -> the row is written FIRST (track_create_composition_licence), which
 //            is what decides the key, the Sequel No., the issue date and — the
 //            point of the whole design — the INVOICE NUMBER. Then the PDF is
@@ -37,6 +42,10 @@ const EMAIL_SENDER_ADDRESS = Deno.env.get('RELEASE_FORM_FROM') ?? 'notifications
  *  release form's. It must be PUBLISHED in Resend before a send will work. */
 const LICENCE_TEMPLATE_ID =
   Deno.env.get('LICENCE_TEMPLATE_ID') ?? 'ded30423-9959-4e86-a93c-ad3ece1690f0'
+/** "Library licence" (alias library-licence) — the composition one in library
+ *  plum, made 26 Sep. Must be PUBLISHED in Resend too. */
+const LIBRARY_LICENCE_TEMPLATE_ID =
+  Deno.env.get('LIBRARY_LICENCE_TEMPLATE_ID') ?? 'f52a9fcc-4a88-49d7-8763-384489c2691c'
 /** Belt and braces: only this prefix is ever written or signed, whatever the row says. */
 const KEY_RE = /^contracts\/licences\/[0-9a-f-]{36}\.pdf$/
 
@@ -157,6 +166,7 @@ Deno.serve(async (req) => {
   // deno-lint-ignore no-explicit-any
   const drawAndStore = async (row: any) => {
     const input: LicenceInput = {
+      kind: row.kind === 'library' ? 'library' : 'composition',
       sequel_no: String(row.sequel_no),
       issued_on: londonLongDate(new Date(`${row.issued_on}T12:00:00Z`)),
       licensee_name: String(row.licensee_name),
@@ -191,7 +201,8 @@ Deno.serve(async (req) => {
     const { data, error } = await asCaller.rpc('track_create_composition_licence', {
       p_project_id: Number(body.project_id),
       p_invoice_id: Number(body.invoice_id),
-      p_fields: pickFields(body.fields),
+      // The kind rides in with the fields; the database checks it.
+      p_fields: { ...pickFields(body.fields), kind: body.kind === 'library' ? 'library' : 'composition' },
     })
     if (error) {
       const e = dbError(error)
@@ -326,7 +337,10 @@ Deno.serve(async (req) => {
           ...(cc.length ? { cc } : {}),
           ...(mine ? { reply_to: mine } : {}),
           subject,
-          template: { id: LICENCE_TEMPLATE_ID, variables },
+          template: {
+            id: detail.kind === 'library' ? LIBRARY_LICENCE_TEMPLATE_ID : LICENCE_TEMPLATE_ID,
+            variables,
+          },
         }),
       })
       if (!res.ok) sendError = `Resend ${res.status}: ${(await res.text()).slice(0, 300)}`

@@ -45,7 +45,7 @@ import type { Brief, CreativeLink, Invoice, ProjectFile, Quote, Song } from '../
 import { useProjectContracts, type ContractRow } from '../lib/contracts'
 import { useProjectReleaseForms } from '../lib/releaseForms'
 import { useProjectLicences } from '../lib/compositionLicences'
-import { LicenceModal, LicenceRowActions, type LicenceMode } from '../components/staff/LicenceActions'
+import { LICENCE_NAME, LicenceModal, LicenceRowActions, type LicenceMode } from '../components/staff/LicenceActions'
 import {
   ContractRowActions,
   ContractModal,
@@ -1094,12 +1094,17 @@ export default function Project() {
                 menu: [
                   // Just the kind — Andy, 26 Sep. CREATE CONTRACT already
                   // said what they are.
-                  { label: 'LIBRARY', onClick: undefined },
+                  {
+                    label: 'LIBRARY',
+                    // Built 26 Sep. Sequel sub-licenses a library track under
+                    // its agreement with the library; paythrough invoices only.
+                    onClick: edit ? () => setLicenceModal({ kind: 'new', type: 'library' }) : undefined,
+                  },
                   {
                     label: 'COMPOSITION',
                     // Built 25 Sep. Created from a RAISED invoice, whose
                     // number prints on the licence (Andy: invoice first).
-                    onClick: edit ? () => setLicenceModal({ kind: 'new' }) : undefined,
+                    onClick: edit ? () => setLicenceModal({ kind: 'new', type: 'composition' }) : undefined,
                   },
                 ],
               },
@@ -1153,7 +1158,7 @@ export default function Project() {
               onClick={edit ? () => setLicenceModal({ kind: 'edit', licence: l }) : undefined}
             >
               <Title>Sequel</Title>
-              <Cell>Composition Licence</Cell>
+              <Cell>{LICENCE_NAME[l.kind ?? 'composition']}</Cell>
               <Cell>{l.composition_title}</Cell>
               <Cell>{l.ref}</Cell>
               <Cell>{fmt(longDate, l.created_at)}</Cell>

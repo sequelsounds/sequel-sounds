@@ -63,9 +63,11 @@ export default function Licence() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  /* A library licence (0089) says so; anything older is a composition one. */
+  const name = file?.details?.licence_kind === 'library' ? 'Library Licence' : 'Composition Licence'
   useEffect(() => {
-    document.title = 'Sequel | Composition Licence'
-  }, [])
+    document.title = `Sequel | ${name}`
+  }, [name])
 
   useEffect(() => {
     let live = true
@@ -106,7 +108,7 @@ export default function Licence() {
         <SequelLogo wordmark className="qw-logo !h-auto !w-20" />
         {d && (
           <div className="ct-meta lc-meta">
-            <span className="ct-meta-item is-bold">Composition Licence</span>
+            <span className="ct-meta-item is-bold">{name}</span>
             <span className="ct-meta-sep">|</span>
             <span className="ct-meta-item lc-no-case">{d.sequel_no}</span>
           </div>
@@ -133,8 +135,8 @@ export default function Licence() {
               <dl className="lc-terms">
                 {ROWS.filter(([k]) => String(d[k] ?? '').trim() !== '').map(([k, label]) => (
                   <div key={k} className="lc-term">
-                    <dt>{label}</dt>
-                    <dd>{k === 'issued_on' ? longDate(d[k]) : d[k]}</dd>
+                    <dt>{k === 'composition_title' && name === 'Library Licence' ? 'Track' : label}</dt>
+                    <dd>{k === 'issued_on' ? longDate(String(d[k])) : d[k]}</dd>
                   </div>
                 ))}
               </dl>

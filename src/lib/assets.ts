@@ -169,6 +169,8 @@ export type SharedFile = {
 }
 
 export type LicenceShareDetails = {
+  /** 'composition' | 'library' (0089). */
+  licence_kind?: string
   sequel_no: string
   issued_on: string
   invoice_number: string

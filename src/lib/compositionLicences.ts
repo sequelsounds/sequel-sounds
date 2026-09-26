@@ -3,7 +3,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
 /**
- * Composition licences — Sequel → the client, for a composition Sequel owns.
+ * Composition AND library licences — Sequel → the client. A library licence
+ * (26 Sep 2026) is the same record with kind 'library': Sequel sub-licenses a
+ * library track under its agreement with the library. Same list, same actions.
+ * claude/sequel-track-library-licence-handoff.md
  *
  * ⚠️ INVOICE FIRST — Andy, 25 Sep 2026: "a client doesn't get a licence
  * without the invoice being raised first." A licence is made FROM a raised
@@ -21,9 +24,12 @@ import { supabase } from './supabase'
 const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
 const rpc = (supabase as unknown as SupabaseClient).rpc.bind(supabase as unknown as SupabaseClient)
 
+export type LicenceKind = 'composition' | 'library'
+
 export type LicenceRow = {
   id: number
   uuid: string
+  kind: LicenceKind
   /** '#12-L'. Built by `track_ref` in SQL — never rebuilt in a page. */
   ref: string
   licensee_name: string
@@ -87,12 +93,17 @@ export type LicenceInvoice = {
   client: string | null
   /** How many live licences already print this invoice's number. */
   licences: number
+  /** Has a paythrough library line — the only invoices a library licence can
+   *  be made from (Andy, 26 Sep: when the client pays the library direct, the
+   *  library issues the licence). */
+  library_fee: boolean
 }
 
 export type LicenceSong = { id: number; title: string; writers: string }
 
 export type LicenceDetail = LicenceFields & {
   uuid: string
+  kind: LicenceKind
   ref: string
   invoice_id: number
   invoice_number: string
@@ -162,7 +173,11 @@ export async function fetchLicencePrefill(projectId: number, invoiceId: number) 
     p_invoice_id: invoiceId,
   })
   if (error) throw error
-  return data as LicenceFields & { fee_parts?: LicenceFeeParts | null }
+  return data as LicenceFields & {
+    fee_parts?: LicenceFeeParts | null
+    /** The paythrough library lines only — a library licence's fee. */
+    library_parts?: LicenceFeeParts | null
+  }
 }
 
 /** The invoice's master and publishing parts (0088), read off its lines. The
@@ -184,7 +199,7 @@ export function useLicenceDetail(uuid: string | undefined) {
 export function useCreateLicence(projectId: number | undefined) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (v: { invoice_id: number; fields: LicenceFields }) =>
+    mutationFn: async (v: { invoice_id: number; kind: LicenceKind; fields: LicenceFields }) =>
       (await callFunction({ action: 'create', project_id: projectId, ...v })) as {
         uuid: string
         ref: string
