@@ -11,7 +11,7 @@ import CodaMarkdown from '../../lib/codaMarkdown'
  * screenshots of the running widget (21 Sep 2026). Three earlier attempts were
  * wrong because they were built from the stylesheet without looking at her.
  *
- *   chat_global_wrapper       fixed, right 24px, bottom 24px, z-index 999
+ *   chat_global_wrapper       fixed, right 24px, bottom 24px, z-index 999 (30 here)
  *   ├── chat_header           12px 16px, brown ground, no bottom border
  *   │   ├── chat_header_title Fahkwang 0.9rem 600 caps, silver, margin-right auto
  *   │   └── (unstyled div)    clear / maximize / minimize
@@ -92,7 +92,10 @@ export default function Coda() {
 
   return (
     <div
-      className="fixed right-6 bottom-6 z-[999] block"
+      // z-30, not the old widget's 999 (Andy, 26 Sep 2026): every modal and
+      // full-screen form (z-40 to z-60) must sit in front of her — at 999 she
+      // covered the wizards' Next button. Still above the page's own z-20s.
+      className="fixed right-6 bottom-6 z-30 block"
       style={{ width: open ? OPEN_WIDTH : SHUT_WIDTH }}
     >
       {/* chat_header */}
