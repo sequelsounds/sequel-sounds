@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import SequelLogo from '../SequelLogo'
+import { InfoIcon } from './icons'
 import {
   FEE_SCREENS,
   formatAmount,
@@ -222,11 +223,38 @@ function flowFor(a: Answers): StepKey[] {
   return steps
 }
 
-function Question({ title, children }: { title: string; children?: React.ReactNode }) {
+/**
+ * `info` puts an i beside the title; the note shows under the question only
+ * once it is clicked (Andy, 26 Sep 2026 — the Media note was always on show).
+ */
+function Question({
+  title,
+  info,
+  children,
+}: {
+  title: string
+  info?: React.ReactNode
+  children?: React.ReactNode
+}) {
+  const [showInfo, setShowInfo] = useState(false)
   return (
     <div className="qw-question">
-      <h2 className="qw-title">{title}</h2>
+      <h2 className="qw-title">
+        {title}
+        {info && (
+          <button
+            type="button"
+            className="qw-info"
+            aria-label={showInfo ? 'Hide the note' : 'Show the note'}
+            aria-expanded={showInfo}
+            onClick={() => setShowInfo(!showInfo)}
+          >
+            <InfoIcon size="1.1rem" />
+          </button>
+        )}
+      </h2>
       {children}
+      {info && showInfo && <p className="qw-note">{info}</p>}
     </div>
   )
 }
@@ -890,14 +918,14 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
              screens use. These are the quote type buttons and they have to sit
              where the quote type buttons sit — same width, same centre line.
              is-wide left-aligns them and stretches them half the screen. */
-          <Question title="Media">
+          /* The note is worth having, because the price often comes back
+             lower than the sum of the parts and it looks like a mistake — but
+             behind the i, not always on show. */
+          <Question
+            title="Media"
+            info="Every lawful way of buying these is priced and the cheapest is taken, then capped against All Media."
+          >
             <MediaPicker value={a.mcpsMedia} onChange={(mcpsMedia) => patch({ mcpsMedia })} />
-            {/* Worth saying on the screen, because the price often comes back
-                lower than the sum of the parts and it looks like a mistake. */}
-            <p className="qw-note">
-              Every lawful way of buying these is priced and the cheapest is taken, then capped
-              against All Media.
-            </p>
           </Question>
         )}
 

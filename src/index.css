@@ -1770,6 +1770,18 @@
     border: 0;
   }
 
+  /* The i beside a question's title. Sits on the title's line, in its colour. */
+  .qw-info {
+    display: inline-flex;
+    margin-left: 0.6rem;
+    padding: 0;
+    vertical-align: middle;
+    color: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+
   .qw-note {
     margin-top: 1.5rem;
     font-family: 'Creato Display', Arial, sans-serif;
