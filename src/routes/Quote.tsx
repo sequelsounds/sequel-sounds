@@ -52,8 +52,14 @@ type Section = {
   sequelQty: number | null
 }
 
-/** Minor units in, major units out. Rounded ONCE, here, for display. */
-const amount = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 })
+/**
+ * Minor units in, major units out, always to the penny (Andy, 26 Sep 2026 — it
+ * had rounded to whole units, so 9,572.31 showed as 9,572).
+ */
+const amount = new Intl.NumberFormat('en-GB', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
 
 function money(minor: number | null | undefined): string {
   if (minor === null || minor === undefined || !Number.isFinite(Number(minor))) return ''
