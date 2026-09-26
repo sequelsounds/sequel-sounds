@@ -1065,6 +1065,20 @@ export function NewQuote({ projectId, prefill, onClose, onCreated }: Props) {
                     {estimate.mediaBought.length > 0 ? estimate.mediaBought.join(', ') : '—'}
                   </span>
                 </div>
+                {/* Which column of the rate card it was priced on (Andy, 26 Sep
+                    2026). Not on a searches-only estimate: nothing is licensed. */}
+                {estimate.licenceFeeLocal > 0 && (
+                  <div className="qw-summary-row">
+                    <span>Rate</span>
+                    <span className="qw-summary-amount">
+                      {estimate.rateType === 'campaign_rate'
+                        ? 'Campaign Rate'
+                        : estimate.rateType === 'track_rate'
+                          ? 'Track Rate'
+                          : 'Per 30s'}
+                    </span>
+                  </div>
+                )}
                 {estimate.capped && (
                   <p className="qw-note">
                     All Media works out cheaper than the media chosen, so that is what is being
