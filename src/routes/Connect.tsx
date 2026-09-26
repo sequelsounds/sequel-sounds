@@ -86,10 +86,8 @@ export default function Connect() {
 
   return (
     <div className="bp-wrap">
-      {/* Written logo top left, as on the brief and join pages; the brown II
-          mark top right (Andy, 26 Sep). */}
-      <img className="bp-logo qw-logo" src="/sequel-wordmark.png" alt="Written Sequel Logo" width={425} height={96} />
-      <img className="cn-mark" src="/sequel-mark.png" alt="" width={400} height={400} />
+      {/* The brown II mark where the app's rail puts it (Andy, 26 Sep). */}
+      <img className="cn-mark" src="/sequel-mark.png" alt="Sequel" width={400} height={400} />
       <div className="bp-screen">
         <h2 className="bp-heading">Connect {clientName ?? '…'} to Sequel?</h2>
 

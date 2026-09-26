@@ -813,13 +813,14 @@
     height: auto;
   }
 
-  /* The Connect (Allow) page — /connect. Brown II mark top right, opposite the
-     wordmark (.bp-logo); both buttons outlined, filling BROWN on hover rather
-     than the brief page's plum (Andy, 26 Sep). */
+  /* The Connect (Allow) page — /connect. The brown II mark exactly where the
+     app's rail puts it (.nav-sidebar padding 2rem top, 3rem left; .app-logo-wrap
+     4rem square); both buttons outlined, filling BROWN on hover rather than the
+     brief page's plum (Andy, 26 Sep). */
   .cn-mark {
     position: absolute;
     top: 2rem;
-    right: 2rem;
+    left: 3rem;
     z-index: 10;
     width: 4rem;
     height: 4rem;
